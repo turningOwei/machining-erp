@@ -413,14 +413,16 @@ const OrderMonitorPanel = ({
                       </div>
                     )}
                   </td>
-                  <td className={`pl-4 pr-6 py-2 sticky right-4 ${colors.bg} z-10 text-left border-b ${colors.sep} shadow-[inset_1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
-                    <button 
-                      onClick={() => editOrder(order)}
-                      className="inline-flex items-center gap-1.5 text-zinc-900 font-bold hover:text-blue-600 transition-colors py-1.5 px-3 hover:bg-white rounded-lg whitespace-nowrap"
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span className="text-xs">修改</span>
-                    </button>
+                  <td className={`pl-4 pr-6 py-2 sticky right-4 ${colors.bg} z-10 border-b ${colors.sep} shadow-[inset_1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
+                    <div className="flex items-center justify-center">
+                      <button
+                        onClick={() => editOrder(order)}
+                        className="inline-flex items-center gap-1.5 text-zinc-900 font-bold hover:text-blue-600 transition-colors py-1.5 px-3 hover:bg-white rounded-lg whitespace-nowrap"
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span className="text-xs">修改</span>
+                      </button>
+                    </div>
                   </td>
                   <td className="w-4 sticky right-0 bg-white z-10 border-none"></td>
                 </tr>
@@ -1602,14 +1604,16 @@ export default function App() {
                            </td>
                           
                           {/* Actions - Sticky Right */}
-                           <td className="pl-4 pr-6 py-2 sticky right-4 bg-blue-50 z-10 text-left border-b border-blue-300 shadow-[-4px_0_8px_rgba(37,99,235,0.02),inset_1px_0_0_0_#bfdbfe]">
-                            <button 
-                              onClick={() => editOrder(order)}
-                              className="inline-flex items-center gap-1.5 text-blue-600 font-bold hover:text-blue-700 transition-colors py-1.5 px-3 hover:bg-blue-50 rounded-lg whitespace-nowrap"
-                            >
-                              <Settings className="w-4 h-4" />
-                              <span className="text-xs">修改</span>
-                            </button>
+                           <td className="pl-4 pr-6 py-2 sticky right-4 bg-blue-50 z-10 border-b border-blue-300 shadow-[-4px_0_8px_rgba(37,99,235,0.02),inset_1px_0_0_0_#bfdbfe]">
+                            <div className="flex items-center justify-center">
+                              <button
+                                onClick={() => editOrder(order)}
+                                className="inline-flex items-center gap-1.5 text-blue-600 font-bold hover:text-blue-700 transition-colors py-1.5 px-3 hover:bg-blue-50 rounded-lg whitespace-nowrap"
+                              >
+                                <Settings className="w-4 h-4" />
+                                <span className="text-xs">修改</span>
+                              </button>
+                            </div>
                           </td>
                           <td className="w-4 sticky right-0 bg-white z-10 border-none"></td>
                         </tr>
