@@ -42,6 +42,7 @@ db.exec(`
     part_name TEXT NOT NULL,
     part_number TEXT,
     quantity INTEGER DEFAULT 1,
+    scrap_quantity INTEGER DEFAULT 0,
     unit_price REAL,
     total_price REAL,
     status TEXT DEFAULT 'pending',
@@ -54,6 +55,8 @@ db.exec(`
     tool_cost REAL,
     fixture_cost REAL,
     material_cost REAL,
+    other_cost REAL,
+    item_notes TEXT,
     FOREIGN KEY (order_id) REFERENCES orders(id)
   );
 
@@ -138,6 +141,9 @@ const migrations = [
   "ALTER TABLE order_items ADD COLUMN tool_cost REAL;",
   "ALTER TABLE order_items ADD COLUMN fixture_cost REAL;",
   "ALTER TABLE order_items ADD COLUMN material_cost REAL;",
+  "ALTER TABLE order_items ADD COLUMN other_cost REAL;",
+  "ALTER TABLE order_items ADD COLUMN scrap_quantity INTEGER DEFAULT 0;",
+  "ALTER TABLE order_items ADD COLUMN item_notes TEXT;",
   "ALTER TABLE advent_rules ADD COLUMN target_status TEXT DEFAULT 'pending';",
   "ALTER TABLE advent_rules ADD COLUMN scopeType TEXT DEFAULT 'general';",
   "ALTER TABLE advent_rules ADD COLUMN ruleType TEXT DEFAULT 'imminent';"
@@ -150,6 +156,13 @@ migrations.forEach(migration => {
     // Ignore errors (e.g., column already exists)
   }
 });
+
+// Ensure scrap_quantity column has default values for existing rows
+try {
+  db.exec("UPDATE order_items SET scrap_quantity = 0 WHERE scrap_quantity IS NULL;");
+} catch (e) {
+  // Ignore if column doesn't exist
+}
 
 function calculateStatus(subItems: any[], label: string = 'unknown'): string {
   if (!subItems || subItems.length === 0) {
@@ -198,17 +211,15 @@ async function startServer() {
   // Orders
   app.get("/api/orders", (req, res) => {
     const orders = db.prepare(`
-      SELECT orders.*, customers.name as customer_name 
-      FROM orders 
+      SELECT orders.*, customers.name as customer_name
+      FROM orders
       LEFT JOIN customers ON orders.customer_id = customers.id
-      ORDER BY 
-        CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
-        due_date ASC
+      ORDER BY start_date ASC
     `).all();
 
     // Attach items and processes to each order
     const fullOrders = orders.map(order => {
-      const items = db.prepare("SELECT * FROM order_items WHERE order_id = ?").all(order.id);
+      const items = db.prepare("SELECT * FROM order_items WHERE order_id = ? ORDER BY due_date ASC").all(order.id);
       const itemsWithProcesses = items.map(item => {
         const processes = db.prepare("SELECT * FROM order_processes WHERE order_item_id = ? ORDER BY sort_order ASC").all(item.id);
         return { ...item, processes };
@@ -252,13 +263,13 @@ async function startServer() {
     if (items && Array.isArray(items)) {
       const insertItem = db.prepare(`
         INSERT INTO order_items (
-          order_id, part_name, part_number, quantity, unit_price, total_price, 
-          drawing_data, notes, status, completion_date, start_date, due_date, delivered_quantity, 
-          tool_cost, fixture_cost, material_cost
+          order_id, part_name, part_number, quantity, scrap_quantity, unit_price, total_price,
+          drawing_data, notes, status, completion_date, start_date, due_date, delivered_quantity,
+          tool_cost, fixture_cost, material_cost, other_cost, item_notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      
+
       const insertProcess = db.prepare(`
         INSERT INTO order_processes (order_item_id, name, is_outsourced, outsourcing_fee, status, sort_order)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -268,13 +279,14 @@ async function startServer() {
         const total_price = (item.quantity || 1) * (item.unit_price || 0);
         const itemStatus = calculateStatus(item.processes || []);
         const itemInfo = insertItem.run(
-          orderId, 
-          item.part_name, 
-          item.part_number, 
-          item.quantity || 1, 
-          item.unit_price || 0, 
-          total_price, 
-          item.drawing_data, 
+          orderId,
+          item.part_name,
+          item.part_number,
+          item.quantity || 1,
+          item.scrap_quantity || 0,
+          item.unit_price || 0,
+          total_price,
+          item.drawing_data,
           item.notes,
           itemStatus,
           item.completion_date,
@@ -283,7 +295,9 @@ async function startServer() {
           item.delivered_quantity,
           item.tool_cost,
           item.fixture_cost,
-          item.material_cost
+          item.material_cost,
+          item.other_cost,
+          item.item_notes
         );
         const itemId = itemInfo.lastInsertRowid;
 
@@ -307,7 +321,7 @@ async function startServer() {
   app.patch("/api/orders/:id", (req, res) => {
     const { id } = req.params;
     const { customer_id, priority, start_date, due_date, notes, status, items } = req.body;
-    
+
     if (start_date === "" || start_date === null || due_date === "" || due_date === null) {
       return res.status(400).send("start_date and due_date cannot be empty");
     }
@@ -339,13 +353,13 @@ async function startServer() {
           // Re-insert items
           const insertItem = db.prepare(`
             INSERT INTO order_items (
-              order_id, part_name, part_number, quantity, unit_price, total_price, 
-              drawing_data, notes, status, completion_date, start_date, due_date, delivered_quantity, 
-              tool_cost, fixture_cost, material_cost
+              order_id, part_name, part_number, quantity, scrap_quantity, unit_price, total_price,
+              drawing_data, notes, status, completion_date, start_date, due_date, delivered_quantity,
+              tool_cost, fixture_cost, material_cost, other_cost, item_notes
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
-          
+
           const insertProcess = db.prepare(`
             INSERT INTO order_processes (order_item_id, name, is_outsourced, outsourcing_fee, status, sort_order)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -355,13 +369,14 @@ async function startServer() {
             const total_price = (item.quantity || 1) * (item.unit_price || 0);
             const itemStatus = calculateStatus(item.processes || []);
             const itemInfo = insertItem.run(
-              id, 
-              item.part_name, 
-              item.part_number, 
-              item.quantity || 1, 
-              item.unit_price || 0, 
-              total_price, 
-              item.drawing_data, 
+              id,
+              item.part_name,
+              item.part_number,
+              item.quantity || 1,
+              item.scrap_quantity || 0,
+              item.unit_price || 0,
+              total_price,
+              item.drawing_data,
               item.notes,
               itemStatus,
               item.completion_date,
@@ -370,7 +385,9 @@ async function startServer() {
               item.delivered_quantity,
               item.tool_cost,
               item.fixture_cost,
-              item.material_cost
+              item.material_cost,
+              item.other_cost,
+              item.item_notes
             );
             const itemId = itemInfo.lastInsertRowid;
 

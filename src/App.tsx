@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   FileText,
   Image as ImageIcon,
   User,
@@ -39,7 +41,7 @@ const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 // --- Components ---
 // ... (StatusBadge and PriorityBadge remain the same)
 
-const PROCESS_OPTIONS = ['下料', '车削', '铣削', '磨削', '线切割', '电火花', '热处理', '表面处理', '其他'];
+const PROCESS_OPTIONS = ['下料', '车削', '铣削', '磨削', '线切割', '电火花', '热处理', '表面处理', '送货'];
 
 const PROCESS_COLORS: Record<string, string> = {
   '下料': 'bg-orange-100 text-orange-700 border-orange-200',
@@ -50,7 +52,7 @@ const PROCESS_COLORS: Record<string, string> = {
   '电火花': 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
   '热处理': 'bg-rose-100 text-rose-700 border-rose-200',
   '表面处理': 'bg-emerald-100 text-emerald-700 border-emerald-100',
-  '其他': 'bg-zinc-100 text-zinc-700 border-zinc-200',
+  '送货': 'bg-zinc-100 text-zinc-700 border-zinc-200',
 };
 
 const ProcessStatusBadge = ({ status }: { status: 'pending' | 'processing' | 'completed' }) => {
@@ -281,7 +283,17 @@ const OrderMonitorPanel = ({
   title, icon: Icon, orders, filters, setFilters, page, setPage, pageSize, setPageSize, themeColor,
   editOrder, setShowDrawingModal, handleProcessClick, getOrderMaxDueDate
 }: OrderMonitorPanelProps) => {
-  const filteredOrders = orders.filter(o => {
+  const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
+  const [allExpanded, setAllExpanded] = useState(true);
+
+  // Sort orders by start_date ascending
+  const sortedOrders = [...orders].sort((a, b) => {
+    const dateA = a.start_date || '';
+    const dateB = b.start_date || '';
+    return dateA.localeCompare(dateB);
+  });
+
+  const filteredOrders = sortedOrders.filter(o => {
     const mDate = getOrderMaxDueDate(o);
     const matchDueDate = !filters.dueDate || mDate === filters.dueDate;
     const matchOrderNumber = !filters.orderNumber || String(o.order_number || o.id).toLowerCase().includes(filters.orderNumber.toLowerCase());
@@ -293,11 +305,31 @@ const OrderMonitorPanel = ({
 
   const displayOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize);
 
+  // Initialize expanded orders when displayOrders changes
+  React.useEffect(() => {
+    if (allExpanded) {
+      setExpandedOrders(new Set(filteredOrders.map(o => o.id)));
+    }
+  }, [filteredOrders.length, allExpanded]);
+
+  const toggleOrder = (orderId: number) => {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
   const colors = {
+    blue: { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', sep: 'border-blue-200', sepHex: '#93c5fd', pseudoSep: 'after:bg-blue-300', headText: 'text-blue-900', headBg: 'bg-blue-100', listBorder: 'border-l-blue-500', focus: 'focus:ring-blue-500' },
     rose: { text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', sep: 'border-rose-300', sepHex: '#fb7185', pseudoSep: 'after:bg-rose-300', headText: 'text-rose-900', headBg: 'bg-rose-100', listBorder: 'border-l-rose-500', focus: 'focus:ring-rose-500' },
     orange: { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', sep: 'border-orange-300', sepHex: '#fb923c', pseudoSep: 'after:bg-orange-300', headText: 'text-orange-900', headBg: 'bg-orange-100', listBorder: 'border-l-orange-500', focus: 'focus:ring-orange-500' },
     amber: { text: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', sep: 'border-amber-300', sepHex: '#fbbf24', pseudoSep: 'after:bg-amber-300', headText: 'text-amber-900', headBg: 'bg-amber-100', listBorder: 'border-l-amber-500', focus: 'focus:ring-amber-500' }
-  }[themeColor as 'rose' | 'orange' | 'amber'] || { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-100', sep: 'border-zinc-300', sepHex: '#a1a1aa', pseudoSep: 'after:bg-zinc-300', headText: 'text-zinc-900', headBg: 'bg-zinc-50', listBorder: 'border-l-zinc-500', focus: 'focus:ring-zinc-900' };
+  }[themeColor as 'blue' | 'rose' | 'orange' | 'amber'] || { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-100', sep: 'border-zinc-300', sepHex: '#a1a1aa', pseudoSep: 'after:bg-zinc-300', headText: 'text-zinc-900', headBg: 'bg-zinc-50', listBorder: 'border-l-zinc-500', focus: 'focus:ring-zinc-900' };
 
   return (
     <div className="flex-1 !w-full flex flex-col min-h-0 space-y-8 animate-in fade-in duration-500 py-4 md:py-8 !max-w-none !m-0 !p-0">
@@ -306,9 +338,24 @@ const OrderMonitorPanel = ({
           <h2 className={`text-3xl font-bold tracking-tight ${colors.text} flex items-center gap-2`}>
             <Icon className="w-8 h-8" />
             {title}
+            <span className="text-base font-normal text-zinc-500">检测到 {filteredOrders.length} 个符合筛选条件的订单</span>
           </h2>
-          <p className="text-zinc-500">检测到 {filteredOrders.length} 个符合筛选条件的订单</p>
         </div>
+        <button
+          onClick={() => {
+            if (allExpanded) {
+              setExpandedOrders(new Set());
+              setAllExpanded(false);
+            } else {
+              setExpandedOrders(new Set(filteredOrders.map(o => o.id)));
+              setAllExpanded(true);
+            }
+          }}
+          className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors flex items-center gap-2"
+        >
+          {allExpanded ? <ChevronUp className="shrink-0 w-4 h-4" /> : <ChevronDown className="shrink-0 w-4 h-4" />}
+          {allExpanded ? '全部收起' : '全部展开'}
+        </button>
       </div>
 
       <div className="px-4 md:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm">
@@ -351,44 +398,76 @@ const OrderMonitorPanel = ({
       </div>
 
       <div className="flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto shadow-none" style={{ '--sep-color': colors.sepHex } as React.CSSProperties}>
-        <table className={`min-w-[2100px] w-full text-left text-sm table-fixed border-collapse border-b ${colors.sep}`}>
-          <thead className={`${colors.headBg} border-b ${colors.border} sticky top-0 z-20`}>
+        <table className={`min-w-[2100px] w-full text-left text-sm table-fixed border-b ${colors.sep}`}>
+          <thead className={`${colors.headBg} sticky top-0 z-20`}>
             <tr className="whitespace-nowrap">
-              <th className={`pl-4 pr-6 py-4 font-semibold ${colors.headText} w-[192px] sticky left-0 ${colors.headBg} z-20 border-b ${colors.sep} text-xs shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>零件名称</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-[160px] sticky left-[192px] ${colors.headBg} z-20 border-b ${colors.sep} text-xs text-center shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>零件号(P/N)</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-24 border-r ${colors.sep}`}>数量</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-24 border-r ${colors.sep}`}>单价 (¥)</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-32 border-r ${colors.sep}`}>总计 (¥)</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-32 border-r ${colors.sep}`}>订单日期</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-32 border-r ${colors.sep} ${colors.text} font-bold`}>交货日期</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-32 border-r ${colors.sep}`}>完工日期</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-24 border-r ${colors.sep}`}>交货数量</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-24 border-r ${colors.sep}`}>刀具费用</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-24 border-r ${colors.sep}`}>工装费用</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-24 border-r ${colors.sep}`}>材料费用</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-96 border-r ${colors.sep}`}>工序流程</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-32 border-r ${colors.sep}`}>外协共计 (¥)</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} w-32 border-r ${colors.sep}`}>状态</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} min-w-[16rem] w-full border-r border-b ${colors.sep}`}>备注</th>
-              <th className={`pl-4 pr-6 py-4 font-semibold ${colors.headText} w-20 text-left sticky right-4 ${colors.headBg}  border-b ${colors.sep} z-20 shadow-[inset_1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.05)]`}>操作</th>
-              <th className="w-4 sticky right-0 bg-white z-20 border-none"></th>
+              <th className={`pl-4 pr-6 py-4 font-semibold ${colors.headText} w-[192px] sticky left-0 ${colors.headBg} z-20 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] cursor-pointer hover:brightness-95`}
+                  onClick={() => {
+                    if (allExpanded) {
+                      setExpandedOrders(new Set());
+                      setAllExpanded(false);
+                    } else {
+                      setExpandedOrders(new Set(filteredOrders.map(o => o.id)));
+                      setAllExpanded(true);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    {allExpanded ? <ChevronUp className="shrink-0 w-4 h-4" /> : <ChevronDown className="shrink-0 w-4 h-4" />}
+                    零件名称
+                  </div>
+                </th>
+              <th className={`px-6 py-4 font-bold ${colors.headText} w-[160px] sticky left-[192px] ${colors.headBg} z-20 text-sm text-center shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>零件号(P/N)</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>数量</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>报废数量</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>单价 (¥)</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>总计 (¥)</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>订单日期</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.text} font-bold`}>交货日期</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>完工日期</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>交货数量</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>刀具费用</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>工装费用</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>材料费用</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>其他费用</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-96 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>工序流程</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>外协共计 (¥)</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>状态</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-64 font-bold text-sm shadow-[inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>备注</th>
+              <th className={`pl-4 pr-6 py-4 font-bold ${colors.headText} w-20 text-sm text-left sticky right-2 ${colors.headBg} z-20 shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>操作</th>
+              <th className={`w-2 sticky right-0 bg-white z-20 border-none`}></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {displayOrders.map((order) => (
+            {displayOrders.map((order) => {
+              const isExpanded = expandedOrders.has(order.id);
+              // Sort items by due_date ascending
+              const sortedItems = [...(order.items || [])].sort((a, b) => {
+                const dateA = a.due_date || order.due_date || '';
+                const dateB = b.due_date || order.due_date || '';
+                return dateA.localeCompare(dateB);
+              });
+
+              return (
               <React.Fragment key={order.id}>
-                <tr className={`${colors.bg} sticky top-[52px] z-[15] border-b ${colors.border}`}>
-                  <td className={`pl-4 pr-6 py-2 sticky left-0 ${colors.bg} z-[3] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
-                    <span className={`font-bold ${colors.headText} whitespace-nowrap`}>订单: {order.order_number || order.id}</span>
+                <tr
+                  className={`${colors.bg} sticky top-[52px] z-[15] cursor-pointer hover:brightness-95 transition-all`}
+                  onClick={() => toggleOrder(order.id)}
+                >
+                  <td className={`pl-4 pr-6 py-2 sticky left-0 ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <div className="flex items-center gap-2">
+                      {isExpanded ? <ChevronUp className={`shrink-0 w-4 h-4 ${colors.text}`} /> : <ChevronDown className={`shrink-0 w-4 h-4 ${colors.text}`} />}
+                      <span className={`text-sm font-bold ${colors.headText} whitespace-nowrap`}>{order.order_number || order.id}</span>
+                    </div>
                   </td>
-                  <td className={`px-6 py-2 sticky left-[192px] ${colors.bg} z-[3] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
+                  <td className={`px-6 py-2 sticky left-[192px] ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
                     <div className="flex items-center gap-2 whitespace-nowrap">
                       <span className="text-zinc-600 underline decoration-zinc-200 underline-offset-4 font-medium">{order.customer_name}</span>
                       <PriorityBadge priority={order.priority} />
                     </div>
                   </td>
-                  <td colSpan={3} className={`px-6 py-2 border-r ${colors.sep}`}></td>
-                  <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap border-r ${colors.sep}`}>
+                  <td colSpan={4} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}></td>
+                  <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
                     {order.start_date && (
                       <div className="flex items-center gap-1.5 opacity-80">
                         <span className="p-1 bg-zinc-100 rounded text-zinc-400">订</span>
@@ -396,17 +475,47 @@ const OrderMonitorPanel = ({
                       </div>
                     )}
                   </td>
-                  <td className={`px-6 py-2 text-xs font-bold ${colors.text} whitespace-nowrap border-r ${colors.sep}`}>
+                  <td className={`px-6 py-2 text-xs font-bold ${colors.text} whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
                     <div className="flex items-center gap-1.5">
                       <Icon className="w-4 h-4" />
                       {getOrderMaxDueDate(order)}
                     </div>
                   </td>
-                  <td colSpan={7} className={`px-6 py-2 border-r ${colors.sep}`}></td>
-                  <td className={`px-6 py-2 whitespace-nowrap border-r ${colors.sep}`}>
+                  <td colSpan={6} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}></td>
+                  <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    {(() => {
+                      const allProcesses = (order.items || []).flatMap((item: any) => item.processes || []);
+                      if (allProcesses.length === 0) return null;
+                      return (
+                        <div className="flex gap-1">
+                          {allProcesses.map((p: any, idx: number) => {
+                            const statusColors: Record<string, { border: string; bg: string }> = {
+                              pending: { border: 'border-zinc-300', bg: 'bg-white' },
+                              processing: { border: 'border-blue-400', bg: 'bg-white' },
+                              completed: { border: 'border-emerald-400', bg: 'bg-emerald-400' }
+                            };
+                            const sc = statusColors[p.status] || statusColors.pending;
+                            return (
+                              <div
+                                key={idx}
+                                className={`w-3 h-5 rounded-sm border ${sc.border} ${sc.bg} relative overflow-hidden`}
+                                title={`${p.name || '工序'}: ${p.status === 'pending' ? '待加工' : p.status === 'processing' ? '加工中' : '已完成'}`}
+                              >
+                                {p.status === 'processing' && (
+                                  <div className="absolute inset-y-0 left-0 w-1/2 bg-blue-400" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}></td>
+                  <td className={`px-6 py-2 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
                     <StatusBadge status={order.status} />
                   </td>
-                  <td className={`px-6 py-2 border-r ${colors.sep}`}>
+                  <td className={`px-6 py-2 shadow-[inset_0_-1px_0_0_var(--sep-color)]`}>
                     {order.notes && (
                       <div className="flex items-center gap-2 text-zinc-500 max-w-xl overflow-hidden">
                         <FileText className="w-3.5 h-3.5 shrink-0" />
@@ -414,7 +523,7 @@ const OrderMonitorPanel = ({
                       </div>
                     )}
                   </td>
-                  <td className={`pl-4 pr-6 py-2 sticky right-4 ${colors.bg} z-10 border-b ${colors.sep} shadow-[inset_1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
+                  <td className={`pl-4 pr-6 py-2 sticky right-2 ${colors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
                     <div className="flex items-center justify-center">
                       <button
                         onClick={() => editOrder(order)}
@@ -425,9 +534,9 @@ const OrderMonitorPanel = ({
                       </button>
                     </div>
                   </td>
-                  <td className="w-4 sticky right-0 bg-white z-10 border-none"></td>
+                  <td className="w-2 sticky right-0 bg-white z-10 !border-0"></td>
                 </tr>
-                {(order.items || []).map((item) => (
+                {isExpanded && sortedItems.map((item) => (
                   <tr key={item.id} className={`hover:${colors.bg}/10 transition-colors group`}>
                     <td className={`pl-4 pr-6 py-4 sticky left-0 bg-white z-[2] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-2">
@@ -437,44 +546,50 @@ const OrderMonitorPanel = ({
                     <td className={`px-6 py-4 sticky left-[192px] bg-white z-[2] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <span className="text-xs text-zinc-500 font-mono whitespace-nowrap">{item.part_number || '-'}</span>
                     </td>
-                    <td className={`px-6 py-4 text-zinc-900 font-medium whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 text-zinc-900 font-medium whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       {item.quantity}
                     </td>
-                    <td className={`px-6 py-4 text-zinc-600 whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 font-medium whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] ${(item.scrap_quantity || 0) > 0 ? 'bg-white text-red-600' : 'text-zinc-900'}`}>
+                      {item.scrap_quantity || '-'}
+                    </td>
+                    <td className={`px-6 py-4 text-zinc-600 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       ¥{item.unit_price}
                     </td>
-                    <td className={`px-6 py-4 whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="text-zinc-900 font-bold">
                         ¥{(item.quantity * item.unit_price).toFixed(2)}
                       </div>
                     </td>
-                    <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       {item.start_date || order.start_date || '-'}
                     </td>
-                    <td className={`px-6 py-4 ${colors.text} font-bold whitespace-nowrap border-r ${colors.sep} ${colors.bg}/20`}>
+                    <td className={`px-6 py-4 ${colors.text} font-bold whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] ${colors.bg}/20`}>
                       {item.due_date || order.due_date}
                     </td>
-                    <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       {item.completion_date || '-'}
                     </td>
-                    <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       {item.delivered_quantity || '-'}
                     </td>
-                    <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       ¥{item.tool_cost || '0'}
                     </td>
-                    <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       ¥{item.fixture_cost || '0'}
                     </td>
-                    <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       ¥{item.material_cost || '0'}
                     </td>
-                    <td className={`px-6 py-4 whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
+                      ¥{item.other_cost || '0'}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       {item.processes && item.processes.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {item.processes.map((p) => (
-                            <div 
-                              key={p.id} 
+                            <div
+                              key={p.id}
                               className={`flex items-center gap-1 border rounded px-2 py-1 cursor-pointer transition-colors whitespace-nowrap ${PROCESS_COLORS[p.name] || 'bg-zinc-50 border-zinc-100 hover:bg-zinc-100'}`}
                               onClick={() => handleProcessClick(order.id, item.id, p.id, p.status, p.name)}
                             >
@@ -485,20 +600,20 @@ const OrderMonitorPanel = ({
                         </div>
                       )}
                     </td>
-                    <td className={`px-6 py-4 whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="text-zinc-500 font-bold text-right px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg whitespace-nowrap">
                         ¥{(item.processes || []).reduce((sum, p) => (sum + (p.outsourcing_fee || 0)), 0).toFixed(2)}
                       </div>
                     </td>
-                    <td className={`px-6 py-4 whitespace-nowrap border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <StatusBadge status={item.status} />
                     </td>
-                    <td className={`px-6 py-4 border-r ${colors.sep}`}>
+                    <td className={`px-6 py-4 border-b ${colors.sep}`}>
                       <div className="text-xs text-zinc-500 truncate max-w-[200px]" title={item.notes}>
                         {item.notes || '-'}
                       </div>
                     </td>
-                    <td className={`pl-4 pr-6 py-4 text-left sticky right-4 bg-white group-hover:bg-zinc-50  border-b ${colors.sep} shadow-[inset_1px_0_0_0_#e2e8f0,-4px_0_8px_rgba(0,0,0,0.02)] z-10`}>
+                    <td className={`pl-4 pr-6 py-4 text-left sticky right-2 bg-white group-hover:bg-zinc-50 border-b ${colors.sep} z-[2] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
                       <div className="flex justify-start gap-2">
                         {item.drawing_data && (
                           <button 
@@ -511,11 +626,12 @@ const OrderMonitorPanel = ({
                         )}
                       </div>
                     </td>
-                    <td className="w-4 sticky right-0 bg-white z-10 border-none"></td>
+                    <td className="w-2 sticky right-0 bg-white z-10 !border-0"></td>
                   </tr>
                 ))}
               </React.Fragment>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -745,11 +861,26 @@ export default function App() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   
-  const [newOrder, setNewOrder] = useState<Partial<Order>>({ 
-    priority: 'medium', 
+  const [newOrder, setNewOrder] = useState<Partial<Order>>({
+    priority: 'medium',
     status: 'pending',
     items: [{ part_name: '', quantity: 1, unit_price: 0, processes: [] }]
   });
+
+  // 订单管理面板展开/收起状态
+  const [orderMgrExpanded, setOrderMgrExpanded] = useState<Set<number>>(new Set());
+  const [allOrderMgrExpanded, setAllOrderMgrExpanded] = useState(true);
+  const toggleOrderMgr = (orderId: number) => {
+    setOrderMgrExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
+  };
  
   const getOrderMaxDueDate = (order: Order) => {
     let max = order.due_date || '';
@@ -1190,17 +1321,17 @@ export default function App() {
       {/* Sidebar */}
       <AnimatePresence>
         {(isSidebarOpen || window.innerWidth >= 768) && (
-          <motion.aside 
+          <motion.aside
             initial={{ x: -300 }}
-            animate={{ 
+            animate={{
               x: 0,
-              width: isSidebarCollapsed ? 64 : 224
+              width: isSidebarCollapsed ? 72 : 224
             }}
             exit={{ x: -300 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className={`fixed inset-y-0 left-0 bg-zinc-900 text-zinc-400 z-50 md:relative md:flex flex-col transition-all duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+            transition={{ type: 'tween', duration: 0.15 }}
+            className={`fixed inset-y-0 left-0 bg-zinc-900 text-zinc-400 z-50 md:relative md:flex flex-col transition-all duration-150 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
           >
-            <div className={`p-6 flex items-center justify-between ${isSidebarCollapsed ? 'px-4' : ''}`}>
+            <div className={`p-4 flex items-center justify-between border-b border-white/5`}>
               <div className="flex items-center gap-3 text-white overflow-hidden">
                 <div className="shrink-0 w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
                   <Settings className="w-6 h-6" />
@@ -1228,7 +1359,7 @@ export default function App() {
               </button>
             </div>
 
-            <nav className="flex-1 px-4 py-4 space-y-1 overflow-x-hidden">
+            <nav className="flex-1 px-2 py-4 space-y-1 overflow-x-hidden">
               {navItems.map((item) => (
                 <button
                   key={item.id}
@@ -1237,7 +1368,7 @@ export default function App() {
                     setIsSidebarOpen(false);
                   }}
                   title={isSidebarCollapsed ? item.label : ''}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id ? 'bg-white text-zinc-900 font-medium' : 'hover:bg-white/5 hover:text-white'}`}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 ${isSidebarCollapsed ? 'justify-center' : ''} ${activeTab === item.id ? 'bg-white text-zinc-900 font-medium' : 'hover:bg-white/5 hover:text-white'}`}
                 >
                   <item.icon className="shrink-0 w-5 h-5" />
                   {!isSidebarCollapsed && (
@@ -1253,8 +1384,8 @@ export default function App() {
               ))}
             </nav>
 
-            <div className={`p-4 border-t border-white/5 ${isSidebarCollapsed ? 'px-2' : ''}`}>
-              <div className={`flex items-center gap-3 px-4 py-2 ${isSidebarCollapsed ? 'px-2 justify-center' : ''}`}>
+            <div className={`p-4 border-t border-white/5`}>
+              <div className={`flex items-center gap-3 px-2 py-2 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
                 <div className="shrink-0 w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-white">
                   老板
                 </div>
@@ -1653,50 +1784,85 @@ export default function App() {
                   return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
                 });
 
+                // 使用 colors.blue 对象统一管理蓝色主题
+                const blueColors = {
+                  text: 'text-blue-600',
+                  bg: 'bg-blue-50',
+                  border: 'border-blue-200',
+                  sep: 'border-blue-200',
+                  sepHex: '#93c5fd',
+                  headText: 'text-blue-900',
+                  headBg: 'bg-blue-100'
+                };
+
                 return (
                   <>
-                    <div className="flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto">
-                      <table className="min-w-[2100px] w-full text-left text-sm table-fixed border-b border-blue-300">
-                        <thead className="bg-blue-100 border-b border-blue-200 sticky top-0 z-20">
+                    <div className="flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto" style={{ '--sep-color': blueColors.sepHex } as React.CSSProperties}>
+                      <table className={`min-w-[2100px] w-full text-left text-sm table-fixed border-b ${blueColors.sep}`}>
+                        <thead className={`${blueColors.headBg} sticky top-0 z-20`}>
                           <tr className="whitespace-nowrap">
-                            <th className="pl-4 pr-6 py-4 font-semibold text-blue-900 w-[192px] sticky left-0 bg-blue-100 z-20 border-b border-blue-300 text-xs shadow-[inset_-1px_0_0_0_#bfdbfe]">零件名称</th>
-                            <th className="px-6 py-4 font-semibold text-blue-900 w-[160px] sticky left-[192px] bg-blue-100 z-20 border-b border-blue-300 text-xs text-center shadow-[inset_-1px_0_0_0_#bfdbfe]">零件号(P/N)</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">数量</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">单价 (¥)</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">总计 (¥)</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">订单日期</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">交货日期</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">完工日期</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">交货数量</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">刀具费用</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">工装费用</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">材料费用</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-96 border-r border-zinc-300">工序流程</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">外协共计 (¥)</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">状态</th>
-                            <th className="px-6 py-4 font-semibold text-zinc-500 min-w-[16rem] w-full border-r border-zinc-300">备注</th>
-                            <th className="pl-4 pr-6 py-4 font-semibold text-blue-900 w-20 text-left sticky right-4 bg-blue-100 border-b border-blue-300 z-20 shadow-[-4px_0_8px_rgba(0,0,0,0.05),inset_1px_0_0_0_#bfdbfe]">操作</th>
-                            <th className="w-4 sticky right-0 bg-white z-20 border-none"></th>
+                            <th className={`pl-4 pr-6 py-4 font-semibold ${blueColors.headText} w-[192px] sticky left-0 ${blueColors.headBg} z-20 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] cursor-pointer hover:brightness-95`}
+                              onClick={() => {
+                                 if (allOrderMgrExpanded) {
+                                   setOrderMgrExpanded(new Set());
+                                   setAllOrderMgrExpanded(false);
+                                 } else {
+                                   setOrderMgrExpanded(new Set(filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(o => o.id)));
+                                   setAllOrderMgrExpanded(true);
+                                 }
+                              }}
+                            >
+                              <div className="flex items-center gap-2">
+                                {allOrderMgrExpanded ? <ChevronUp className="shrink-0 w-4 h-4" /> : <ChevronDown className="shrink-0 w-4 h-4" />}
+                                零件名称
+                              </div>
+                            </th>
+                            <th className={`px-6 py-4 font-bold ${blueColors.headText} w-[160px] sticky left-[192px] ${blueColors.headBg} z-20 text-sm text-center shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>零件号(P/N)</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>数量</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>报废数量</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>单价 (¥)</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>总计 (¥)</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>订单日期</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] font-bold`}>交货日期</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>完工日期</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>交货数量</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>刀具费用</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>工装费用</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>材料费用</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>其他费用</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-96 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>工序流程</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>外协共计 (¥)</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>状态</th>
+                            <th className={`px-6 py-4 font-semibold ${blueColors.headText} ${blueColors.headBg} w-64 font-bold text-sm shadow-[inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>备注</th>
+                            <th className={`pl-4 pr-6 py-4 font-bold ${blueColors.headText} w-20 text-sm text-left sticky right-2 ${blueColors.headBg} z-20 shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>操作</th>
+                            <th className={`w-2 sticky right-0 bg-white z-20 border-none`}></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100">
-                          {filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((order) => (
+                          {filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((order) => {
+                      const isExpanded = orderMgrExpanded.has(order.id);
+                      return (
                       <React.Fragment key={order.id}>
-                        <tr className="bg-blue-50 sticky top-[52px] z-[15] border-b border-blue-300">
+                        <tr className={`${blueColors.bg} sticky top-[52px] z-[15] cursor-pointer hover:brightness-95 transition-all`}
+                          onClick={() => toggleOrderMgr(order.id)}
+                        >
                           {/* Order Info - Sticky Left columns matched with item rows */}
-                          <td className="pl-4 pr-6 py-2 sticky left-0 bg-blue-50 z-[3] border-b border-blue-300 shadow-[inset_-1px_0_0_0_#bfdbfe]">
-                            <span className="font-bold text-blue-900 whitespace-nowrap">订单: {order.order_number || order.id}</span>
+                          <td className={`pl-4 pr-6 py-2 sticky left-0 ${blueColors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                            <div className="flex items-center gap-2">
+                              {isExpanded ? <ChevronUp className={`shrink-0 w-4 h-4 ${blueColors.text}`} /> : <ChevronDown className={`shrink-0 w-4 h-4 ${blueColors.text}`} />}
+                              <span className={`text-sm font-bold ${blueColors.headText} whitespace-nowrap`}>{order.order_number || order.id}</span>
+                            </div>
                           </td>
-                          <td className="px-6 py-2 sticky left-[192px] bg-blue-50 z-[3] border-b border-blue-300 shadow-[inset_-1px_0_0_0_#bfdbfe]">
+                          <td className={`px-6 py-2 sticky left-[192px] ${blueColors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
                             <div className="flex items-center justify-start gap-2 whitespace-nowrap">
-                              <span className="text-blue-700 underline decoration-blue-200 underline-offset-4 font-medium">{order.customer_name}</span>
+                              <span className={`${blueColors.text} underline decoration-blue-200 underline-offset-4 font-medium`}>{order.customer_name}</span>
                               <PriorityBadge priority={order.priority} />
                             </div>
                           </td>
-                          <td colSpan={3} className="px-6 py-2 border-r border-zinc-300"></td>
-                          
-                          {/* Start Date - Aligns with column 6 */}
-                          <td className="px-6 py-2 text-xs text-zinc-500 whitespace-nowrap border-r border-zinc-300">
+                          <td colSpan={4} className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]"></td>
+
+                          {/* Start Date - Aligns with column 7 */}
+                          <td className="px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]">
                             {order.start_date && (
                               <div className="flex items-center gap-1.5 opacity-80">
                                 <span className="p-1 bg-zinc-100 rounded text-zinc-400">订</span>
@@ -1704,23 +1870,57 @@ export default function App() {
                               </div>
                             )}
                           </td>
-                          
-                          {/* Due Date - Aligns with column 7 */}
-                          <td className="px-6 py-2 text-xs font-bold text-zinc-600 whitespace-nowrap border-r border-zinc-300">
+
+                          {/* Due Date - Aligns with column 8 */}
+                          <td className="px-6 py-2 text-xs font-bold text-zinc-600 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]">
                             <div className="flex items-center gap-1.5 text-zinc-900">
                               <span className="p-1 bg-zinc-900 text-white rounded text-[8px]">终</span>
                                  {getOrderMaxDueDate(order)}
                             </div>
                           </td>
-                          
-                          {/* Empty spacer for columns 8-14 (was 8-15) */}
-                          <td colSpan={7} className="px-6 py-2 border-r border-blue-300"></td>
-                          
+
+                          {/* Empty spacer for columns 9-14 */}
+                          <td colSpan={6} className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]"></td>
+
+                          {/* Process Progress - Column 15 */}
+                          <td className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]">
+                            {(() => {
+                              const allProcesses = (order.items || []).flatMap(item => item.processes || []);
+                              if (allProcesses.length === 0) return null;
+                              return (
+                                <div className="flex gap-1">
+                                  {allProcesses.map((p, idx) => {
+                                    const statusColors = {
+                                      pending: { border: 'border-zinc-300', bg: 'bg-white', fill: '' },
+                                      processing: { border: 'border-blue-400', bg: 'bg-white', fill: 'bg-gradient-to-r from-blue-400 to-transparent' },
+                                      completed: { border: 'border-emerald-400', bg: 'bg-emerald-400', fill: '' }
+                                    };
+                                    const colors = statusColors[p.status] || statusColors.pending;
+                                    return (
+                                      <div
+                                        key={idx}
+                                        className={`w-3 h-5 rounded-sm border ${colors.border} ${colors.bg} relative overflow-hidden`}
+                                        title={`${p.name || '工序'}: ${p.status === 'pending' ? '待加工' : p.status === 'processing' ? '加工中' : '已完成'}`}
+                                      >
+                                        {p.status === 'processing' && (
+                                          <div className="absolute inset-y-0 left-0 w-1/2 bg-blue-400" />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </td>
+
+                          {/* Empty spacer for 外协共计 - Column 16 */}
+                          <td className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]"></td>
+
                           {/* Status - Aligns with column 15 (was 16) */}
-                           <td className="px-6 py-2 whitespace-nowrap border-r border-zinc-300">
+                           <td className="px-6 py-2 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]">
                              <StatusBadge status={order.status} />
                            </td>
-                           <td className="px-6 py-2 border-r border-zinc-300">
+                           <td className="px-6 py-2 shadow-[inset_0_-1px_0_0_var(--sep-color)]">
                               {order.notes && (
                                 <div className="flex items-center gap-2 text-zinc-500 max-w-xl overflow-hidden">
                                   <FileText className="w-3.5 h-3.5 shrink-0" />
@@ -1728,52 +1928,56 @@ export default function App() {
                                 </div>
                               )}
                            </td>
-                          
+
                           {/* Actions - Sticky Right */}
-                           <td className="pl-4 pr-6 py-2 sticky right-4 bg-blue-50 z-10 border-b border-blue-300 shadow-[-4px_0_8px_rgba(37,99,235,0.02),inset_1px_0_0_0_#bfdbfe]">
+                           <td className={`pl-4 pr-6 py-2 sticky right-2 ${blueColors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),-4px_0_8px_rgba(37,99,235,0.02)]`}>
                             <div className="flex items-center justify-center">
                               <button
                                 onClick={() => editOrder(order)}
-                                className="inline-flex items-center gap-1.5 text-blue-600 font-bold hover:text-blue-700 transition-colors py-1.5 px-3 hover:bg-blue-50 rounded-lg whitespace-nowrap"
+                                className={`inline-flex items-center gap-1.5 ${blueColors.text} font-bold hover:text-blue-700 transition-colors py-1.5 px-3 hover:bg-blue-50 rounded-lg whitespace-nowrap`}
                               >
                                 <Settings className="w-4 h-4" />
                                 <span className="text-xs">修改</span>
                               </button>
                             </div>
                           </td>
-                          <td className="w-4 sticky right-0 bg-white z-10 border-none"></td>
+                          <td className="w-2 sticky right-0 bg-white z-10 !border-0"></td>
                         </tr>
-                        {(order.items || []).map((item) => (
+                        {isExpanded && (order.items || []).map((item) => (
                           <tr key={item.id} className="hover:bg-zinc-50 transition-colors group">
-                             <td className="pl-4 pr-6 py-4 sticky left-0 bg-white group-hover:bg-zinc-50 z-[2] border-b border-zinc-300 shadow-[inset_-1px_0_0_0_#bfdbfe]">
+                             <td className={`pl-4 pr-6 py-4 sticky left-0 bg-white group-hover:bg-zinc-50 z-[2] border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-zinc-900 whitespace-nowrap">{item.part_name}</span>
                               </div>
                             </td>
-                            <td className="px-6 py-4 sticky left-[192px] bg-white group-hover:bg-zinc-50 z-[2] border-b border-zinc-300 shadow-[inset_-1px_0_0_0_#bfdbfe]">
+                            <td className={`px-6 py-4 sticky left-[192px] bg-white group-hover:bg-zinc-50 z-[2] border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                               <span className="text-xs text-zinc-500 font-mono whitespace-nowrap">{item.part_number || '-'}</span>
                             </td>
-                            <td className="px-6 py-4 text-zinc-900 font-medium whitespace-nowrap border-r border-zinc-300">{item.quantity}</td>
-                            <td className="px-6 py-4 text-zinc-600 whitespace-nowrap border-r border-zinc-300">¥{item.unit_price}</td>
-                            <td className="px-6 py-4 whitespace-nowrap border-r border-zinc-300">
+                            <td className={`px-6 py-4 text-zinc-900 font-medium whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.quantity}</td>
+                            <td className={`px-6 py-4 font-medium whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] ${(item.scrap_quantity || 0) > 0 ? 'bg-white text-red-600' : 'text-zinc-900'}`}>
+                              {item.scrap_quantity || '-'}
+                            </td>
+                            <td className={`px-6 py-4 text-zinc-600 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.unit_price}</td>
+                            <td className={`px-6 py-4 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                               <div className="text-zinc-900 font-bold">
                                 ¥{(item.quantity * item.unit_price).toFixed(2)}
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-r border-zinc-300">{item.start_date || order.start_date || '-'}</td>
-                            <td className="px-6 py-4 text-zinc-500 font-medium whitespace-nowrap border-r border-zinc-300">{item.due_date || order.due_date}</td>
-                            <td className="px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-r border-zinc-300">{item.completion_date || '-'}</td>
-                            <td className="px-6 py-4 text-zinc-500 whitespace-nowrap border-r border-zinc-300">{item.delivered_quantity || '-'}</td>
-                            <td className="px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-r border-zinc-300">¥{item.tool_cost || '0'}</td>
-                            <td className="px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-r border-zinc-300">¥{item.fixture_cost || '0'}</td>
-                            <td className="px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-r border-zinc-300">¥{item.material_cost || '0'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap border-r border-zinc-300">
+                            <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.start_date || order.start_date || '-'}</td>
+                            <td className={`px-6 py-4 text-zinc-500 font-medium whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.due_date || order.due_date}</td>
+                            <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.completion_date || '-'}</td>
+                            <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.delivered_quantity || '-'}</td>
+                            <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.tool_cost || '0'}</td>
+                            <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.fixture_cost || '0'}</td>
+                            <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.material_cost || '0'}</td>
+                            <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.other_cost || '0'}</td>
+                            <td className={`px-6 py-4 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                               {/* Process Flow Visualization */}
                               {item.processes && item.processes.length > 0 && (
                                 <div className="flex flex-wrap gap-2">
                                   {item.processes.map((p) => (
-                                    <div 
-                                      key={p.id} 
+                                    <div
+                                      key={p.id}
                                       className={`flex items-center gap-1 border rounded px-2 py-1 cursor-pointer transition-colors whitespace-nowrap ${PROCESS_COLORS[p.name] || 'bg-zinc-50 border-zinc-100 hover:bg-zinc-100'}`}
                                       onClick={() => handleProcessClick(order.id, item.id, p.id, p.status, p.name)}
                                     >
@@ -1790,23 +1994,23 @@ export default function App() {
                                 </div>
                               )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap border-r border-zinc-300">
+                            <td className={`px-6 py-4 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                               <div className="text-zinc-500 font-bold text-right px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg whitespace-nowrap">
                                 ¥{(item.processes || []).reduce((sum, p) => (sum + (p.outsourcing_fee || 0)), 0).toFixed(2)}
                               </div>
                             </td>
-                             <td className="px-6 py-4 whitespace-nowrap border-r border-zinc-300">
+                             <td className={`px-6 py-4 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                                <StatusBadge status={item.status} />
                              </td>
-                             <td className="px-6 py-4 border-r border-zinc-300">
+                             <td className={`px-6 py-4 border-b ${blueColors.sep}`}>
                                 <div className="text-xs text-zinc-500 truncate max-w-[200px]" title={item.notes}>
                                   {item.notes || '-'}
                                 </div>
                              </td>
-                             <td className="pl-4 pr-6 py-4 text-left sticky right-4 bg-white group-hover:bg-zinc-50 border-b border-zinc-300 shadow-[inset_1px_0_0_0_#bfdbfe] z-10">
+                             <td className={`pl-4 pr-6 py-4 text-left sticky right-2 bg-white group-hover:bg-zinc-50 border-b ${blueColors.sep} z-[2] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color)]`}>
                               <div className="flex justify-start gap-2">
                                 {item.drawing_data && (
-                                  <button 
+                                  <button
                                     onClick={() => setShowDrawingModal(item.drawing_data!)}
                                     className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors"
                                     title="查看图纸"
@@ -1816,11 +2020,12 @@ export default function App() {
                                 )}
                               </div>
                             </td>
-                            <td className="w-4 sticky right-0 bg-white z-10 border-none"></td>
+                            <td className="w-2 sticky right-0 bg-white z-10 !border-0"></td>
                           </tr>
                         ))}
                       </React.Fragment>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -2335,6 +2540,7 @@ export default function App() {
                           <th className="px-4 py-3 font-bold text-zinc-500 w-[192px] sticky left-0 bg-zinc-50 border-b border-zinc-200 z-10 shadow-[inset_-1px_0_0_0_#e4e4e7]">零件名称 *</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-[160px] sticky left-[192px] bg-zinc-50 border-b border-zinc-200 z-10 shadow-[inset_-1px_0_0_0_#e4e4e7]">零件号(P/N)</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-24">数量</th>
+                          <th className="px-4 py-3 font-bold text-zinc-500 w-24">报废数量</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-24">单价 (¥)</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-24">总计 (¥)</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-32">订单日期</th>
@@ -2344,10 +2550,11 @@ export default function App() {
                           <th className="px-4 py-3 font-bold text-zinc-500 w-24">刀具费用</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-24">工装费用</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-24">材料费用</th>
+                          <th className="px-4 py-3 font-bold text-zinc-500 w-24">其他费用</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-96">工序流程</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-32 text-right">外协共计 (¥)</th>
-                          <th className="px-4 py-3 font-bold text-zinc-500 w-48">备注</th>
-                           <th className="pl-4 pr-6 py-3 font-bold text-zinc-500 w-20 text-left sticky right-4 bg-zinc-50 border-l border-b border-zinc-200 z-10 shadow-[inset_1px_0_0_0_#e4e4e7]">操作</th>
+                           <th className="px-4 py-3 font-bold text-zinc-500 w-48">备注</th>
+                           <th className="pl-4 pr-6 py-3 font-bold text-zinc-500 w-20 text-left sticky right-2 bg-zinc-50 border-l border-b border-zinc-200 z-10 shadow-[inset_1px_0_0_0_#e4e4e7]">操作</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100">
@@ -2382,8 +2589,8 @@ export default function App() {
                               />
                             </td>
                             <td className="px-2 py-2">
-                              <input 
-                                type="number" 
+                              <input
+                                type="number"
                                 value={item.quantity || ''}
                                 onChange={e => {
                                   const items = [...newOrder.items!];
@@ -2393,9 +2600,21 @@ export default function App() {
                                 className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                               />
                             </td>
+                            <td className={`px-2 py-2 ${(item.scrap_quantity || 0) > 0 ? 'bg-white' : ''}`}>
+                              <input
+                                type="number"
+                                value={item.scrap_quantity || ''}
+                                onChange={e => {
+                                  const items = [...newOrder.items!];
+                                  items[idx] = { ...items[idx], scrap_quantity: parseInt(e.target.value) || 0 };
+                                  setNewOrder({ ...newOrder, items });
+                                }}
+                                className={`w-full px-3 py-1.5 border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all ${(item.scrap_quantity || 0) > 0 ? 'text-red-600 font-bold' : 'bg-transparent'}`}
+                              />
+                            </td>
                             <td className="px-2 py-2">
-                              <input 
-                                type="number" 
+                              <input
+                                type="number"
                                 step="0.01"
                                 value={item.unit_price || ''}
                                 onChange={e => {
@@ -2495,13 +2714,26 @@ export default function App() {
                               />
                             </td>
                             <td className="px-2 py-2">
-                              <input 
-                                type="number" 
+                              <input
+                                type="number"
                                 step="0.01"
                                 value={item.material_cost || ''}
                                 onChange={e => {
                                   const items = [...newOrder.items!];
                                   items[idx] = { ...items[idx], material_cost: parseFloat(e.target.value) };
+                                  setNewOrder({ ...newOrder, items });
+                                }}
+                                className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.other_cost || ''}
+                                onChange={e => {
+                                  const items = [...newOrder.items!];
+                                  items[idx] = { ...items[idx], other_cost: parseFloat(e.target.value) };
                                   setNewOrder({ ...newOrder, items });
                                 }}
                                 className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
@@ -2523,19 +2755,19 @@ export default function App() {
                                </div>
                              </td>
                              <td className="px-2 py-2">
-                                <input 
-                                  type="text" 
+                                <input
+                                  type="text"
                                   placeholder="添加备注..."
-                                  value={item.notes || ''}
+                                  value={item.item_notes || ''}
                                   onChange={e => {
                                     const items = [...newOrder.items!];
-                                    items[idx] = { ...items[idx], notes: e.target.value };
+                                    items[idx] = { ...items[idx], item_notes: e.target.value };
                                     setNewOrder({ ...newOrder, items });
                                   }}
                                   className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all text-xs"
                                 />
                              </td>
-                              <td className="pl-4 pr-6 py-2 text-left sticky right-4 bg-white/90 backdrop-blur-sm border-b border-zinc-100 shadow-[inset_1px_0_0_0_#e4e4e7] z-10">
+                              <td className="pl-4 pr-6 py-2 text-left sticky right-2 bg-white/90 backdrop-blur-sm border-b border-zinc-100 shadow-[inset_1px_0_0_0_#e4e4e7] z-10">
                               <button 
                                 type="button"
                                 onClick={() => {
@@ -2548,7 +2780,7 @@ export default function App() {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </td>
-                            <td className="w-4 sticky right-0 bg-white z-10 border-none"></td>
+                            <td className="w-2 sticky right-0 bg-white z-10 !border-0"></td>
                           </tr>
                         ))}
                       </tbody>
@@ -2584,7 +2816,7 @@ export default function App() {
                   <button 
                     type="submit" 
                     disabled={isSaving}
-                    className={`flex-[2] py-3 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-start gap-2 ${
+                    className={`flex-[2] py-3 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${
                       isSaving 
                         ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed' 
                         : 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-zinc-200'

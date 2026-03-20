@@ -21,6 +21,7 @@ export interface OrderItem {
   part_name: string;
   part_number?: string;
   quantity: number;
+  scrap_quantity?: number;
   unit_price: number;
   total_price: number;
   status: 'pending' | 'processing' | 'completed' | 'delivered';
@@ -34,6 +35,8 @@ export interface OrderItem {
   tool_cost?: number;
   fixture_cost?: number;
   material_cost?: number;
+  other_cost?: number;
+  item_notes?: string;
 }
 
 export interface Order {
