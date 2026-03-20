@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  ClipboardList, 
-  Package, 
-  CircleDollarSign, 
-  Plus, 
-  Search, 
-  Clock, 
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Package,
+  CircleDollarSign,
+  Plus,
+  Search,
+  Clock,
   Calendar,
-  CheckCircle2, 
+  CheckCircle2,
   AlertCircle,
   AlertTriangle,
   ChevronRight,
@@ -26,7 +26,8 @@ import {
   Trash2,
   GripVertical,
   Settings2,
-  Link as LinkIcon
+  Link as LinkIcon,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
@@ -390,7 +391,7 @@ const OrderMonitorPanel = ({
                   <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap border-r ${colors.sep}`}>
                     {order.start_date && (
                       <div className="flex items-center gap-1.5 opacity-80">
-                        <span className="p-1 bg-zinc-100 rounded text-zinc-400">暂无</span>
+                        <span className="p-1 bg-zinc-100 rounded text-zinc-400">订</span>
                         {order.start_date}
                       </div>
                     )}
@@ -710,6 +711,23 @@ export default function App() {
   const [imminentPageSize, setImminentPageSize] = useState(10);
   const [imminentFilters, setImminentFilters] = useState({
     dueDate: '',
+    orderNumber: '',
+    partNumber: '',
+    customerName: '',
+    priority: ''
+  });
+  // 订单管理筛选状态
+  const [orderFilters, setOrderFilters] = useState({
+    dueDateStart: '',
+    dueDateEnd: '',
+    orderNumber: '',
+    partNumber: '',
+    customerName: '',
+    priority: ''
+  });
+  const [appliedOrderFilters, setAppliedOrderFilters] = useState({
+    dueDateStart: '',
+    dueDateEnd: '',
     orderNumber: '',
     partNumber: '',
     customerName: '',
@@ -1511,16 +1529,33 @@ export default function App() {
               <div className="flex items-center justify-between px-4 md:px-8">
                 <h2 className="text-2xl font-bold">订单管理</h2>
                 <div className="flex gap-2">
-                  <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                    <input 
-                      type="text" 
-                      placeholder="搜索零件或客户..." 
-                      className="pl-9 pr-4 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 w-64 transition-all"
-                    />
-                  </div>
-                  <button 
-                    onClick={resetAndOpenModal}
+                  <button
+                    onClick={() => {
+                      setOrderFilters({
+                        dueDateStart: '',
+                        dueDateEnd: '',
+                        orderNumber: '',
+                        partNumber: '',
+                        customerName: '',
+                        priority: ''
+                      });
+                      setAppliedOrderFilters({
+                        dueDateStart: '',
+                        dueDateEnd: '',
+                        orderNumber: '',
+                        partNumber: '',
+                        customerName: '',
+                        priority: ''
+                      });
+                      setCurrentPage(1);
+                    }}
+                    className="px-4 py-2 border border-zinc-200 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-zinc-50 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    刷新
+                  </button>
+                  <button
+                    onClick={() => resetAndOpenModal()}
                     className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm shadow-blue-100"
                   >
                     <Plus className="w-4 h-4" />
@@ -1529,32 +1564,123 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto">
-                <table className="min-w-[2100px] w-full text-left text-sm table-fixed border-b border-blue-300">
-                  <thead className="bg-blue-100 border-b border-blue-200 sticky top-0 z-20">
-                    <tr className="whitespace-nowrap">
-                      <th className="pl-4 pr-6 py-4 font-semibold text-blue-900 w-[192px] sticky left-0 bg-blue-100 z-20 border-b border-blue-300 text-xs shadow-[inset_-1px_0_0_0_#bfdbfe]">零件名称</th>
-                      <th className="px-6 py-4 font-semibold text-blue-900 w-[160px] sticky left-[192px] bg-blue-100 z-20 border-b border-blue-300 text-xs text-center shadow-[inset_-1px_0_0_0_#bfdbfe]">零件号(P/N)</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">数量</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">单价 (¥)</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">总计 (¥)</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">订单日期</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">交货日期</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">完工日期</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">交货数量</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">刀具费用</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">工装费用</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">材料费用</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-96 border-r border-zinc-300">工序流程</th>
-                      <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">外协共计 (¥)</th>
-                       <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">状态</th>
-                       <th className="px-6 py-4 font-semibold text-zinc-500 min-w-[16rem] w-full border-r border-zinc-300">备注</th>
-                       <th className="pl-4 pr-6 py-4 font-semibold text-blue-900 w-20 text-left sticky right-4 bg-blue-100 border-b border-blue-300 z-20 shadow-[-4px_0_8px_rgba(0,0,0,0.05),inset_1px_0_0_0_#bfdbfe]">操作</th>
-                       <th className="w-4 sticky right-0 bg-white z-20 border-none"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {orders.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((order) => (
+              {/* 筛选条件区域 */}
+              <div className="px-4 md:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">交货日期(起)</label>
+                  <input
+                    type="date"
+                    value={orderFilters.dueDateStart}
+                    onChange={(e) => setOrderFilters({ ...orderFilters, dueDateStart: e.target.value })}
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">交货日期(止)</label>
+                  <input
+                    type="date"
+                    value={orderFilters.dueDateEnd}
+                    onChange={(e) => setOrderFilters({ ...orderFilters, dueDateEnd: e.target.value })}
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">订单号</label>
+                  <input
+                    type="text"
+                    placeholder="搜索订单号..."
+                    value={orderFilters.orderNumber}
+                    onChange={(e) => setOrderFilters({ ...orderFilters, orderNumber: e.target.value })}
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">零件号</label>
+                  <input
+                    type="text"
+                    placeholder="搜索零件号..."
+                    value={orderFilters.partNumber}
+                    onChange={(e) => setOrderFilters({ ...orderFilters, partNumber: e.target.value })}
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">客户名称</label>
+                  <input
+                    type="text"
+                    placeholder="搜索客户..."
+                    value={orderFilters.customerName}
+                    onChange={(e) => setOrderFilters({ ...orderFilters, customerName: e.target.value })}
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">优先级</label>
+                  <select
+                    value={orderFilters.priority}
+                    onChange={(e) => setOrderFilters({ ...orderFilters, priority: e.target.value })}
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                  >
+                    <option value="">全部优先级</option>
+                    <option value="high">高优先级</option>
+                    <option value="medium">普通</option>
+                    <option value="low">较低</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5 flex items-end">
+                  <button
+                    onClick={() => {
+                      setAppliedOrderFilters({ ...orderFilters });
+                      setCurrentPage(1);
+                    }}
+                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
+                  >
+                    <Search className="w-4 h-4" />
+                    查询
+                  </button>
+                </div>
+              </div>
+
+              {(() => {
+                const filteredOrders = orders.filter(o => {
+                  const maxDueDate = getOrderMaxDueDate(o);
+                  const matchDueDateStart = !appliedOrderFilters.dueDateStart || maxDueDate >= appliedOrderFilters.dueDateStart;
+                  const matchDueDateEnd = !appliedOrderFilters.dueDateEnd || maxDueDate <= appliedOrderFilters.dueDateEnd;
+                  const matchOrderNumber = !appliedOrderFilters.orderNumber || String(o.order_number || o.id).toLowerCase().includes(appliedOrderFilters.orderNumber.toLowerCase());
+                  const matchCustomer = !appliedOrderFilters.customerName || o.customer_name.toLowerCase().includes(appliedOrderFilters.customerName.toLowerCase());
+                  const matchPriority = !appliedOrderFilters.priority || o.priority === appliedOrderFilters.priority;
+                  const matchPartNumber = !appliedOrderFilters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(appliedOrderFilters.partNumber.toLowerCase()));
+                  return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
+                });
+
+                return (
+                  <>
+                    <div className="flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto">
+                      <table className="min-w-[2100px] w-full text-left text-sm table-fixed border-b border-blue-300">
+                        <thead className="bg-blue-100 border-b border-blue-200 sticky top-0 z-20">
+                          <tr className="whitespace-nowrap">
+                            <th className="pl-4 pr-6 py-4 font-semibold text-blue-900 w-[192px] sticky left-0 bg-blue-100 z-20 border-b border-blue-300 text-xs shadow-[inset_-1px_0_0_0_#bfdbfe]">零件名称</th>
+                            <th className="px-6 py-4 font-semibold text-blue-900 w-[160px] sticky left-[192px] bg-blue-100 z-20 border-b border-blue-300 text-xs text-center shadow-[inset_-1px_0_0_0_#bfdbfe]">零件号(P/N)</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">数量</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">单价 (¥)</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">总计 (¥)</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">订单日期</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">交货日期</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">完工日期</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">交货数量</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">刀具费用</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">工装费用</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-24 border-r border-zinc-300">材料费用</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-96 border-r border-zinc-300">工序流程</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">外协共计 (¥)</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 w-32 border-r border-zinc-300">状态</th>
+                            <th className="px-6 py-4 font-semibold text-zinc-500 min-w-[16rem] w-full border-r border-zinc-300">备注</th>
+                            <th className="pl-4 pr-6 py-4 font-semibold text-blue-900 w-20 text-left sticky right-4 bg-blue-100 border-b border-blue-300 z-20 shadow-[-4px_0_8px_rgba(0,0,0,0.05),inset_1px_0_0_0_#bfdbfe]">操作</th>
+                            <th className="w-4 sticky right-0 bg-white z-20 border-none"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                          {filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((order) => (
                       <React.Fragment key={order.id}>
                         <tr className="bg-blue-50 sticky top-[52px] z-[15] border-b border-blue-300">
                           {/* Order Info - Sticky Left columns matched with item rows */}
@@ -1573,7 +1699,7 @@ export default function App() {
                           <td className="px-6 py-2 text-xs text-zinc-500 whitespace-nowrap border-r border-zinc-300">
                             {order.start_date && (
                               <div className="flex items-center gap-1.5 opacity-80">
-                                <span className="p-1 bg-zinc-100 rounded text-zinc-400">暂无</span>
+                                <span className="p-1 bg-zinc-100 rounded text-zinc-400">订</span>
                                 {order.start_date}
                               </div>
                             )}
@@ -1702,8 +1828,8 @@ export default function App() {
               {/* Pagination */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 md:px-8 py-2 border-t border-zinc-100 flex-shrink-0">
                 <div className="flex items-center gap-4 text-sm text-zinc-500">
-                  <span>共<span className="font-bold text-zinc-900">{orders.length}</span> 个订单</span>
-                  <select 
+                  <span>共<span className="font-bold text-zinc-900">{filteredOrders.length}</span> 个订单</span>
+                  <select
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
@@ -1717,7 +1843,7 @@ export default function App() {
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button 
+                  <button
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(prev => prev - 1)}
                     className="p-2 border border-zinc-200 rounded-xl hover:bg-zinc-50 disabled:opacity-30 transition-colors"
@@ -1725,12 +1851,12 @@ export default function App() {
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.ceil(orders.length / pageSize) }, (_, i) => i + 1)
-                      .filter(p => p === 1 || p === Math.ceil(orders.length / pageSize) || Math.abs(p - currentPage) <= 1)
+                    {Array.from({ length: Math.ceil(filteredOrders.length / pageSize) }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === Math.ceil(filteredOrders.length / pageSize) || Math.abs(p - currentPage) <= 1)
                       .map((p, i, arr) => (
                         <React.Fragment key={p}>
                           {i > 0 && arr[i-1] !== p - 1 && <span className="px-2 text-zinc-400">...</span>}
-                          <button 
+                          <button
                             onClick={() => setCurrentPage(p)}
                             className={`w-10 h-10 rounded-xl font-bold transition-all ${currentPage === p ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'hover:bg-zinc-100 text-zinc-500'}`}
                           >
@@ -1740,8 +1866,8 @@ export default function App() {
                       ))
                     }
                   </div>
-                  <button 
-                    disabled={currentPage === Math.ceil(orders.length / pageSize) || orders.length === 0}
+                  <button
+                    disabled={currentPage === Math.ceil(filteredOrders.length / pageSize) || filteredOrders.length === 0}
                     onClick={() => setCurrentPage(prev => prev + 1)}
                     className="p-2 border border-zinc-200 rounded-xl hover:bg-zinc-50 disabled:opacity-30 transition-colors"
                   >
@@ -1749,6 +1875,9 @@ export default function App() {
                   </button>
                 </div>
               </div>
+            </>
+          );
+        })()}
             </div>
           )}
 
