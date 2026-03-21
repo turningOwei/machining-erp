@@ -1518,7 +1518,6 @@ export default function App() {
                   { label: '告警订单', count: orders.filter(o => checkOrderAgainstRules(o, 'warning')).length, color: 'orange', icon: AlertTriangle, action: 'tab', tab: 'warning_orders' },
                   { label: '临期订单', count: orders.filter(o => checkOrderAgainstRules(o, 'imminent')).length, color: 'yellow', icon: Clock, action: 'tab', tab: 'imminent_orders' },
                   { label: '已完成', count: orders.filter(o => o.status === 'completed').length, color: 'emerald', icon: CheckCircle2, action: 'filter', filterStatus: 'completed' },
-                  { label: '本月营收', count: `¥${reconciliation[0]?.total_amount || 0}`, color: 'zinc', icon: CircleDollarSign, action: 'none' },
                 ].map((stat, i) => {
                   const colorStyles: Record<string, { bg: string; text: string; hover: string }> = {
                     amber: { bg: 'bg-amber-50', text: 'text-amber-600', hover: 'hover:bg-amber-100' },
