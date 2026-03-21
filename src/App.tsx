@@ -325,11 +325,11 @@ const OrderMonitorPanel = ({
   };
 
   const colors = {
-    blue: { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', sep: 'border-blue-200', sepHex: '#93c5fd', pseudoSep: 'after:bg-blue-300', headText: 'text-blue-900', headBg: 'bg-blue-100', listBorder: 'border-l-blue-500', focus: 'focus:ring-blue-500' },
-    rose: { text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', sep: 'border-rose-300', sepHex: '#fb7185', pseudoSep: 'after:bg-rose-300', headText: 'text-rose-900', headBg: 'bg-rose-100', listBorder: 'border-l-rose-500', focus: 'focus:ring-rose-500' },
-    orange: { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', sep: 'border-orange-300', sepHex: '#fb923c', pseudoSep: 'after:bg-orange-300', headText: 'text-orange-900', headBg: 'bg-orange-100', listBorder: 'border-l-orange-500', focus: 'focus:ring-orange-500' },
-    amber: { text: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', sep: 'border-amber-300', sepHex: '#fbbf24', pseudoSep: 'after:bg-amber-300', headText: 'text-amber-900', headBg: 'bg-amber-100', listBorder: 'border-l-amber-500', focus: 'focus:ring-amber-500' }
-  }[themeColor as 'blue' | 'rose' | 'orange' | 'amber'] || { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-100', sep: 'border-zinc-300', sepHex: '#a1a1aa', pseudoSep: 'after:bg-zinc-300', headText: 'text-zinc-900', headBg: 'bg-zinc-50', listBorder: 'border-l-zinc-500', focus: 'focus:ring-zinc-900' };
+    blue: { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', sep: 'border-blue-200', sepHex: '#93c5fd', pseudoSep: 'after:bg-blue-300', headText: 'text-blue-900', headBg: 'bg-blue-100', listBorder: 'border-l-blue-500', focus: 'focus:ring-blue-500', pageActive: 'bg-blue-600 text-white shadow-blue-100', pageBtn: 'hover:bg-blue-50' },
+    rose: { text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', sep: 'border-rose-300', sepHex: '#fb7185', pseudoSep: 'after:bg-rose-300', headText: 'text-rose-900', headBg: 'bg-rose-100', listBorder: 'border-l-rose-500', focus: 'focus:ring-rose-500', pageActive: 'bg-rose-600 text-white shadow-rose-100', pageBtn: 'hover:bg-rose-50' },
+    orange: { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', sep: 'border-orange-300', sepHex: '#fb923c', pseudoSep: 'after:bg-orange-300', headText: 'text-orange-900', headBg: 'bg-orange-100', listBorder: 'border-l-orange-500', focus: 'focus:ring-orange-500', pageActive: 'bg-orange-600 text-white shadow-orange-100', pageBtn: 'hover:bg-orange-50' },
+    amber: { text: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', sep: 'border-amber-300', sepHex: '#fbbf24', pseudoSep: 'after:bg-amber-300', headText: 'text-amber-900', headBg: 'bg-amber-100', listBorder: 'border-l-amber-500', focus: 'focus:ring-amber-500', pageActive: 'bg-amber-600 text-white shadow-amber-100', pageBtn: 'hover:bg-amber-50' }
+  }[themeColor as 'blue' | 'rose' | 'orange' | 'amber'] || { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-100', sep: 'border-zinc-300', sepHex: '#a1a1aa', pseudoSep: 'after:bg-zinc-300', headText: 'text-zinc-900', headBg: 'bg-zinc-50', listBorder: 'border-l-zinc-500', focus: 'focus:ring-zinc-900', pageActive: 'bg-zinc-600 text-white shadow-zinc-100', pageBtn: 'hover:bg-zinc-50' };
 
   return (
     <div className="flex-1 !w-full flex flex-col min-h-0 space-y-8 animate-in fade-in duration-500 py-4 md:py-8 !max-w-none !m-0 !p-0">
@@ -667,9 +667,9 @@ const OrderMonitorPanel = ({
               .map((p, i, arr) => (
                 <React.Fragment key={p}>
                   {i > 0 && arr[i-1] !== p - 1 && <span className="px-2 text-zinc-400">...</span>}
-                  <button 
+                  <button
                     onClick={() => setPage(p)}
-                    className={`w-10 h-10 rounded-none font-bold transition-all ${page === p ? `bg-${themeColor}-600 text-white shadow-lg shadow-${themeColor}-100` : 'hover:bg-zinc-100 text-zinc-500'}`}
+                    className={`w-10 h-10 rounded-none font-bold transition-all ${page === p ? colors.pageActive + ' shadow-lg' : colors.pageBtn + ' text-zinc-500'}`}
                   >
                     {p}
                   </button>
@@ -839,7 +839,8 @@ export default function App() {
     orderNumber: '',
     partNumber: '',
     customerName: '',
-    priority: ''
+    priority: '',
+    status: ''
   });
   const [appliedOrderFilters, setAppliedOrderFilters] = useState({
     dueDateStart: '',
@@ -847,7 +848,8 @@ export default function App() {
     orderNumber: '',
     partNumber: '',
     customerName: '',
-    priority: ''
+    priority: '',
+    status: ''
   });
   const [dashboardPage, setDashboardPage] = useState(1);
   const [dashboardPageSize, setDashboardPageSize] = useState(10);
@@ -1427,30 +1429,58 @@ export default function App() {
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 px-4 md:px-8">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 px-4 md:px-8">
                 {[
-                  { label: '待加工', count: orders.filter(o => o.status === 'pending').length, color: 'amber', icon: Clock },
-                  { label: '加工中', count: orders.filter(o => o.status === 'processing').length, color: 'blue', icon: TrendingUp },
-                  { label: '逾期订单', count: orders.filter(o => (getOrderMaxDueDate(o) || '') < new Date().toISOString().split('T')[0] && o.status !== 'delivered').length, color: 'rose', icon: AlertCircle },
-                  { label: '已完成', count: orders.filter(o => o.status === 'completed').length, color: 'emerald', icon: CheckCircle2 },
-                  { label: '本月营收', count: `¥${reconciliation[0]?.total_amount || 0}`, color: 'zinc', icon: CircleDollarSign },
-                ].map((stat, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`w-10 h-10 rounded-xl bg-${stat.color}-50 flex items-center justify-center`}>
-                        <stat.icon className={`w-5 h-5 text-${stat.color}-600`} />
+                  { label: '待加工', count: orders.filter(o => o.status === 'pending').length, color: 'amber', icon: Clock, action: 'filter', filterStatus: 'pending' },
+                  { label: '加工中', count: orders.filter(o => o.status === 'processing').length, color: 'blue', icon: TrendingUp, action: 'filter', filterStatus: 'processing' },
+                  { label: '逾期订单', count: orders.filter(o => (getOrderMaxDueDate(o) || '') < new Date().toISOString().split('T')[0] && o.status !== 'delivered').length, color: 'rose', icon: AlertCircle, action: 'tab', tab: 'overdue' },
+                  { label: '告警订单', count: orders.filter(o => checkOrderAgainstRules(o, 'warning')).length, color: 'orange', icon: AlertTriangle, action: 'tab', tab: 'warning_orders' },
+                  { label: '临期订单', count: orders.filter(o => checkOrderAgainstRules(o, 'imminent')).length, color: 'yellow', icon: Clock, action: 'tab', tab: 'imminent_orders' },
+                  { label: '已完成', count: orders.filter(o => o.status === 'completed').length, color: 'emerald', icon: CheckCircle2, action: 'filter', filterStatus: 'completed' },
+                  { label: '本月营收', count: `¥${reconciliation[0]?.total_amount || 0}`, color: 'zinc', icon: CircleDollarSign, action: 'none' },
+                ].map((stat, i) => {
+                  const colorStyles: Record<string, { bg: string; text: string; hover: string }> = {
+                    amber: { bg: 'bg-amber-50', text: 'text-amber-600', hover: 'hover:bg-amber-100' },
+                    blue: { bg: 'bg-blue-50', text: 'text-blue-600', hover: 'hover:bg-blue-100' },
+                    rose: { bg: 'bg-rose-50', text: 'text-rose-600', hover: 'hover:bg-rose-100' },
+                    orange: { bg: 'bg-orange-50', text: 'text-orange-600', hover: 'hover:bg-orange-100' },
+                    yellow: { bg: 'bg-yellow-50', text: 'text-yellow-600', hover: 'hover:bg-yellow-100' },
+                    emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', hover: 'hover:bg-emerald-100' },
+                    zinc: { bg: 'bg-zinc-50', text: 'text-zinc-600', hover: 'hover:bg-zinc-100' },
+                  };
+                  const style = colorStyles[stat.color] || colorStyles.zinc;
+                  const isClickable = stat.action !== 'none';
+
+                  const handleClick = () => {
+                    if (stat.action === 'tab' && stat.tab) {
+                      setActiveTab(stat.tab);
+                    } else if (stat.action === 'filter' && stat.filterStatus) {
+                      setOrderFilters(prev => ({ ...prev, status: stat.filterStatus as any }));
+                      setAppliedOrderFilters(prev => ({ ...prev, status: stat.filterStatus as any }));
+                      setActiveTab('orders');
+                      setCurrentPage(1);
+                    }
+                  };
+
+                  return (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      onClick={isClickable ? handleClick : undefined}
+                      className={`bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm ${isClickable ? 'cursor-pointer hover:shadow-md hover:border-zinc-300 transition-all' : ''}`}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center`}>
+                          <stat.icon className={`w-5 h-5 ${style.text}`} />
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-sm font-medium text-zinc-500">{stat.label}</p>
-                    <p className="text-2xl font-bold mt-1">{stat.count}</p>
-                  </motion.div>
-                ))}
+                      <p className="text-sm font-medium text-zinc-500">{stat.label}</p>
+                      <p className="text-2xl font-bold mt-1">{stat.count}</p>
+                    </motion.div>
+                  );
+                })}
               </div>
 
               {/* Order List (Dashboard View) */}
@@ -1668,7 +1698,8 @@ export default function App() {
                         orderNumber: '',
                         partNumber: '',
                         customerName: '',
-                        priority: ''
+                        priority: '',
+                        status: ''
                       });
                       setAppliedOrderFilters({
                         dueDateStart: '',
@@ -1676,7 +1707,8 @@ export default function App() {
                         orderNumber: '',
                         partNumber: '',
                         customerName: '',
-                        priority: ''
+                        priority: '',
+                        status: ''
                       });
                       setCurrentPage(1);
                     }}
@@ -1696,7 +1728,7 @@ export default function App() {
               </div>
 
               {/* 筛选条件区域 */}
-              <div className="px-4 md:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm">
+              <div className="px-4 md:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">交货日期(起)</label>
                   <input
@@ -1758,6 +1790,20 @@ export default function App() {
                     <option value="low">较低</option>
                   </select>
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">订单状态</label>
+                  <select
+                    value={orderFilters.status}
+                    onChange={(e) => setOrderFilters({ ...orderFilters, status: e.target.value })}
+                    className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                  >
+                    <option value="">全部状态</option>
+                    <option value="pending">待加工</option>
+                    <option value="processing">加工中</option>
+                    <option value="completed">已完成</option>
+                    <option value="delivered">已送货</option>
+                  </select>
+                </div>
                 <div className="space-y-1.5 flex items-end">
                   <button
                     onClick={() => {
@@ -1781,7 +1827,8 @@ export default function App() {
                   const matchCustomer = !appliedOrderFilters.customerName || o.customer_name.toLowerCase().includes(appliedOrderFilters.customerName.toLowerCase());
                   const matchPriority = !appliedOrderFilters.priority || o.priority === appliedOrderFilters.priority;
                   const matchPartNumber = !appliedOrderFilters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(appliedOrderFilters.partNumber.toLowerCase()));
-                  return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
+                  const matchStatus = !appliedOrderFilters.status || o.status === appliedOrderFilters.status;
+                  return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber && matchStatus;
                 });
 
                 // 使用 colors.blue 对象统一管理蓝色主题
