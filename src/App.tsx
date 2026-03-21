@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -867,6 +867,20 @@ export default function App() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [newCustomer, setNewCustomer] = useState<{ name: string; contact: string }>({ name: '', contact: '' });
   const [deletingCustomerId, setDeletingCustomerId] = useState<number | null>(null);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close customer dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -1602,23 +1616,24 @@ export default function App() {
                       return (
                         <>
                           {paginatedItems.map((item) => (
-                            <motion.div 
+                            <motion.div
                               layout
                               key={`${item.order.id}-${item.id}`}
-                              className="bg-white p-4 rounded-xl border border-zinc-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-zinc-300 transition-colors shadow-sm"
+                              className="bg-white p-4 rounded-xl border border-zinc-200 flex flex-col sm:flex-row sm:items-start gap-2 hover:border-zinc-300 transition-colors shadow-sm"
                             >
-                              <div className="flex items-start gap-4">
-                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${item.status === 'processing' ? 'bg-blue-50 text-blue-600' : 'bg-zinc-50 text-zinc-400'}`}>
+                              <div className="flex items-start gap-4 w-[420px] shrink-0">
+                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${item.status === 'processing' ? 'bg-blue-50 text-blue-600' : 'bg-zinc-50 text-zinc-400'}`}>
                                   <FileText className="w-6 h-6" />
                                 </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <h4 className="font-bold">{item.part_name}</h4>
                                     <PriorityBadge priority={item.order.priority} />
                                     <span className="text-[10px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded">订单: {item.order.order_number || item.order.id}</span>
+                                    <span className="text-xs text-zinc-500">{item.order.customer_name}</span>
+                                    <span className="text-xs text-zinc-400">数量: {item.quantity}</span>
                                   </div>
-                                  <p className="text-sm text-zinc-500">{item.order.customer_name} · 数量: {item.quantity}</p>
-                                  <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     <Clock className="w-3 h-3 text-zinc-400" />
                                     <span className="text-xs text-zinc-400">
                                       {(item.start_date || item.order.start_date) && `订单: ${item.start_date || item.order.start_date} · `}
@@ -1631,36 +1646,30 @@ export default function App() {
                                       </>
                                     )}
                                   </div>
-                                  
-                                  {item.notes && (
-                                    <div className="mt-2 flex items-start gap-1.5 bg-zinc-50 p-2 border border-zinc-100/50">
-                                      <FileText className="w-3.5 h-3.5 text-zinc-400 mt-0.5 shrink-0" />
-                                      <p className="text-[11px] text-zinc-500 italic leading-relaxed">{item.notes}</p>
-                                    </div>
-                                  )}
-                                  
-                                  {item.processes && item.processes.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 mt-3">
-                                      {item.processes.map((p) => (
-                                        <div 
-                                          key={p.id} 
-                                          className={`flex items-center gap-1 border rounded px-2 py-1 cursor-pointer transition-colors ${PROCESS_COLORS[p.name] || 'bg-zinc-50 border-zinc-100 hover:bg-zinc-100'}`}
-                                            onClick={() => handleProcessClick(item.order.id, item.id, p.id, p.status, p.name)}
-                                        >
-                                          <span className="text-[10px] font-bold">{p.name}</span>
-                                          <ProcessStatusBadge status={p.status} />
-                                          {p.is_outsourced && (
-                                            <div className="flex items-center gap-0.5 text-[8px] bg-zinc-900 text-white px-1.5 rounded-full">
-                                              <span>共</span>
-                                              {p.outsourcing_fee > 0 && <span>¥{p.outsourcing_fee}</span>}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
                                 </div>
                               </div>
+
+                              {/* 工序节点列 */}
+                              {item.processes && item.processes.length > 0 && (
+                                <div className="flex flex-wrap gap-2 w-[600px] shrink-0">
+                                  {item.processes.map((p) => (
+                                    <div
+                                      key={p.id}
+                                      className={`flex items-center gap-1 border rounded px-2 py-1 cursor-pointer transition-colors ${PROCESS_COLORS[p.name] || 'bg-zinc-50 border-zinc-100 hover:bg-zinc-100'}`}
+                                      onClick={() => handleProcessClick(item.order.id, item.id, p.id, p.status, p.name)}
+                                    >
+                                      <span className="text-[10px] font-bold">{p.name}</span>
+                                      <ProcessStatusBadge status={p.status} />
+                                      {p.is_outsourced && (
+                                        <div className="flex items-center gap-0.5 text-[8px] bg-zinc-900 text-white px-1.5 rounded-full">
+                                          <span>共</span>
+                                          {p.outsourcing_fee > 0 && <span>¥{p.outsourcing_fee}</span>}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                               
                               <div className="flex items-center gap-2 self-end sm:self-center">
                                 <button 
@@ -1679,9 +1688,6 @@ export default function App() {
                                   </button>
                                 )}
                                 <StatusBadge status={item.status} />
-                                <button className="p-2 hover:bg-zinc-100 rounded-lg">
-                                  <ChevronRight className="w-5 h-5" />
-                                </button>
                               </div>
                             </motion.div>
                           ))}
@@ -2635,26 +2641,50 @@ export default function App() {
               <form onSubmit={handleCreateOrder} className="p-6 space-y-6">
                 {/* Common Order Header */}
                 <div className="space-y-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
+                  {/* Row 1: 客户选择、订单号、优先级 */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-3 relative" ref={customerDropdownRef}>
                       <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">选择客户 *</label>
-                      <select
-                        required
-                        value={newOrder.customer_id || ''}
-                        className={`w-full px-4 py-2 bg-white border ${formErrors.customer ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none`}
-                        onChange={e => {
-                          const selectedCustomer = customers.find(c => c.id === parseInt(e.target.value));
-                          setNewOrder({
-                            ...newOrder,
-                            customer_id: parseInt(e.target.value),
-                            customer_name: selectedCustomer?.name || ''
-                          });
-                          if (formErrors.customer) setFormErrors({ ...formErrors, customer: '' });
-                        }}
-                      >
-                        <option value="">请选择客户</option>
-                        {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="搜索并选择客户..."
+                          value={customerSearch || (newOrder.customer_id ? customers.find(c => c.id === newOrder.customer_id)?.name || '' : '')}
+                          onChange={e => {
+                            setCustomerSearch(e.target.value);
+                            setShowCustomerDropdown(true);
+                          }}
+                          onFocus={() => setShowCustomerDropdown(true)}
+                          className={`w-full px-4 py-2 bg-white border ${formErrors.customer ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none`}
+                        />
+                        {showCustomerDropdown && (
+                          <div className="absolute z-20 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                            {customers
+                              .filter(c => c.name.toLowerCase().includes((customerSearch || '').toLowerCase()))
+                              .map(c => (
+                                <div
+                                  key={c.id}
+                                  className="px-4 py-2 hover:bg-zinc-100 cursor-pointer text-sm"
+                                  onClick={() => {
+                                    setNewOrder({
+                                      ...newOrder,
+                                      customer_id: c.id,
+                                      customer_name: c.name
+                                    });
+                                    setCustomerSearch('');
+                                    setShowCustomerDropdown(false);
+                                    if (formErrors.customer) setFormErrors({ ...formErrors, customer: '' });
+                                  }}
+                                >
+                                  {c.name}
+                                </div>
+                              ))}
+                            {customers.filter(c => c.name.toLowerCase().includes((customerSearch || '').toLowerCase())).length === 0 && (
+                              <div className="px-4 py-2 text-zinc-400 text-sm">未找到匹配的客户</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       {formErrors.customer && (
                         <div className="mt-1 flex items-center gap-1.5 text-red-500 text-[10px] font-bold">
                           <AlertCircle className="w-3 h-3" />
@@ -2662,21 +2692,21 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                    <div>
+                    <div className="md:col-span-3">
                       <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单号(可选)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="自动生成"
                         value={newOrder.order_number || ''}
                         className="w-full px-4 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none"
                         onChange={e => setNewOrder({...newOrder, order_number: e.target.value})}
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">优先级</label>
-                      <select 
+                      <select
                         value={newOrder.priority || 'medium'}
-                        className="w-full px-4 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none"
+                        className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
                         onChange={e => setNewOrder({...newOrder, priority: e.target.value as any})}
                       >
                         <option value="low">较低</option>
@@ -2684,50 +2714,47 @@ export default function App() {
                         <option value="high">紧急</option>
                       </select>
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单日期 *</label>
-                      <div className="space-y-1">
-                        <div className="relative flex items-center group cursor-pointer">
-                          <Calendar className="absolute left-3 w-4 h-4 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
-                          <input 
-                            required
-                            type="date" 
-                            value={newOrder.start_date || ''}
-                            className={`w-full pl-10 pr-4 py-2 bg-white border ${formErrors.orderDate ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none transition-all cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
-                            onChange={e => {
-                              const newDate = e.target.value;
-                              // Batch sync to all items
-                              const updatedItems = (newOrder.items || []).map(item => ({
-                                ...item,
-                                start_date: newDate
-                              }));
-                              setNewOrder({
-                                ...newOrder, 
-                                start_date: newDate,
-                                items: updatedItems
-                              });
-                              if (formErrors.orderDate) setFormErrors({ ...formErrors, orderDate: '' });
-                            }}
-                          />
-                        </div>
-                        {formErrors.orderDate && (
-                          <div className="mt-1 flex items-center gap-1.5 text-red-500 text-[10px] font-bold">
-                            <AlertCircle className="w-3 h-3" />
-                            {formErrors.orderDate}
-                          </div>
-                        )}
+                      <div className="relative flex items-center group cursor-pointer">
+                        <Calendar className="absolute left-3 w-4 h-4 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
+                        <input
+                          required
+                          type="date"
+                          value={newOrder.start_date || ''}
+                          className={`w-full pl-10 pr-2 py-2 bg-white border ${formErrors.orderDate ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none transition-all cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
+                          onChange={e => {
+                            const newDate = e.target.value;
+                            const updatedItems = (newOrder.items || []).map(item => ({
+                              ...item,
+                              start_date: newDate
+                            }));
+                            setNewOrder({
+                              ...newOrder,
+                              start_date: newDate,
+                              items: updatedItems
+                            });
+                            if (formErrors.orderDate) setFormErrors({ ...formErrors, orderDate: '' });
+                          }}
+                        />
                       </div>
+                      {formErrors.orderDate && (
+                        <div className="mt-1 flex items-center gap-1.5 text-red-500 text-[10px] font-bold">
+                          <AlertCircle className="w-3 h-3" />
+                          {formErrors.orderDate}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  {/* Order Level Notes */}
-                  <div className="mt-4 pt-4 border-t border-zinc-100">
-                    <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单备注</label>
-                    <textarea 
-                      placeholder="输入订单相关的补充说明..."
-                      value={newOrder.notes || ''}
-                      onChange={e => setNewOrder({...newOrder, notes: e.target.value})}
-                      className="w-full px-4 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none min-h-[80px] text-sm resize-none"
-                    />
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单备注</label>
+                      <input
+                        type="text"
+                        placeholder="备注..."
+                        value={newOrder.notes || ''}
+                        onChange={e => setNewOrder({...newOrder, notes: e.target.value})}
+                        className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
 
