@@ -1650,9 +1650,8 @@ export default function App() {
                               </div>
 
                               {/* 工序节点列 */}
-                              {item.processes && item.processes.length > 0 && (
-                                <div className="flex flex-wrap gap-2 w-[600px] shrink-0">
-                                  {item.processes.map((p) => (
+                              <div className="flex flex-wrap gap-2 w-[600px] shrink-0 min-h-[40px]">
+                                {item.processes && item.processes.length > 0 && item.processes.map((p) => (
                                     <div
                                       key={p.id}
                                       className={`flex items-center gap-1 border rounded px-2 py-1 cursor-pointer transition-colors ${PROCESS_COLORS[p.name] || 'bg-zinc-50 border-zinc-100 hover:bg-zinc-100'}`}
@@ -1668,11 +1667,10 @@ export default function App() {
                                       )}
                                     </div>
                                   ))}
-                                </div>
-                              )}
-                              
+                              </div>
+
                               <div className="flex items-center gap-2 self-end sm:self-center">
-                                <button 
+                                <button
                                   onClick={() => editOrder(item.order)}
                                   className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900"
                                   title="修改订单"
@@ -1680,7 +1678,7 @@ export default function App() {
                                   <Settings className="w-5 h-5" />
                                 </button>
                                 {item.drawing_data && (
-                                  <button 
+                                  <button
                                     onClick={() => setShowDrawingModal(item.drawing_data!)}
                                     className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900"
                                   >
