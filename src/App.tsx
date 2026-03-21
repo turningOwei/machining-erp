@@ -18,6 +18,7 @@ import {
   FileText,
   Image as ImageIcon,
   User,
+  Users,
   Settings,
   Menu,
   X,
@@ -29,7 +30,8 @@ import {
   GripVertical,
   Settings2,
   Link as LinkIcon,
-  RefreshCw
+  RefreshCw,
+  Edit
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
@@ -720,7 +722,7 @@ declare global {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'inventory' | 'finance' | 'overdue' | 'warning_orders' | 'imminent_orders' | 'advent_rules'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'inventory' | 'finance' | 'overdue' | 'warning_orders' | 'imminent_orders' | 'advent_rules' | 'customers'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -859,7 +861,13 @@ export default function App() {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
   const [showDrawingModal, setShowDrawingModal] = useState<string | null>(null);
-  
+
+  // Customer Management
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [newCustomer, setNewCustomer] = useState<{ name: string; contact: string }>({ name: '', contact: '' });
+  const [deletingCustomerId, setDeletingCustomerId] = useState<number | null>(null);
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   
@@ -1264,18 +1272,76 @@ export default function App() {
       }
       
       setShowOrderModal(false);
-      setNewOrder({ 
-        priority: 'medium', 
-        status: 'pending', 
+      setNewOrder({
+        priority: 'medium',
+        status: 'pending',
         start_date: '',
         due_date: '',
-        items: [{ part_name: '', quantity: 1, unit_price: 0, processes: [] }] 
+        items: [{ part_name: '', quantity: 1, unit_price: 0, processes: [] }]
       });
       fetchData();
     } catch (error) {
       console.error("Failed to save order", error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Customer Management Functions
+  const handleOpenCustomerModal = (customer?: Customer) => {
+    if (customer) {
+      setEditingCustomer(customer);
+      setNewCustomer({ name: customer.name, contact: customer.contact || '' });
+    } else {
+      setEditingCustomer(null);
+      setNewCustomer({ name: '', contact: '' });
+    }
+    setShowCustomerModal(true);
+  };
+
+  const handleSaveCustomer = async () => {
+    if (!newCustomer.name.trim()) {
+      alert('请输入客户名称');
+      return;
+    }
+
+    try {
+      if (editingCustomer) {
+        const response = await fetch(`/api/customers/${editingCustomer.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newCustomer)
+        });
+        if (!response.ok) {
+          throw new Error('更新失败');
+        }
+      } else {
+        const response = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newCustomer)
+        });
+        if (!response.ok) {
+          throw new Error('创建失败');
+        }
+      }
+      setShowCustomerModal(false);
+      setNewCustomer({ name: '', contact: '' });
+      setEditingCustomer(null);
+      fetchData();
+    } catch (error) {
+      console.error("Failed to save customer", error);
+      alert('保存失败: ' + error);
+    }
+  };
+
+  const handleDeleteCustomer = async (id: number) => {
+    try {
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      setDeletingCustomerId(null);
+      fetchData();
+    } catch (error) {
+      console.error("Failed to delete customer", error);
     }
   };
 
@@ -1300,6 +1366,7 @@ export default function App() {
     { id: 'overdue', label: '逾期订单', icon: AlertCircle },
     { id: 'warning_orders', label: '告警订单', icon: AlertTriangle },
     { id: 'imminent_orders', label: '临期订单', icon: Clock },
+    { id: 'customers', label: '客户管理', icon: Users },
     { id: 'inventory', label: '仓库余料', icon: Package },
     { id: 'finance', label: '财务对账', icon: CircleDollarSign },
     { id: 'advent_rules', label: '规则管理', icon: Settings2 },
@@ -2196,6 +2263,87 @@ export default function App() {
             />
           )}
 
+          {/* Customers Tab */}
+          {activeTab === 'customers' && (
+            <div className="flex-1 flex flex-col min-h-0 space-y-8 animate-in fade-in duration-500 py-4 md:py-8 !w-full !max-w-none !m-0 !p-0">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8">
+                <div>
+                  <h2 className="text-3xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
+                    <Users className="w-8 h-8" />
+                    客户管理
+                  </h2>
+                  <p className="text-zinc-500">管理客户信息，修改客户名称不会影响历史订单</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingCustomer(null);
+                    setNewCustomer({ name: '', contact: '' });
+                    setShowCustomerModal(true);
+                  }}
+                  className="bg-zinc-900 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  新建客户
+                </button>
+              </div>
+
+              <div className="flex-1 min-h-0 bg-white rounded-none border-y border-zinc-200 overflow-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-zinc-50 border-b border-zinc-200">
+                    <tr>
+                      <th className="px-6 py-4 font-semibold text-zinc-500">客户名称</th>
+                      <th className="px-6 py-4 font-semibold text-zinc-500">联系方式</th>
+                      <th className="px-6 py-4 font-semibold text-zinc-500">创建时间</th>
+                      <th className="px-6 py-4 font-semibold text-zinc-500 text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {customers.map((customer) => (
+                      <tr key={customer.id} className="hover:bg-zinc-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <span className="font-bold text-zinc-900">{customer.name}</span>
+                        </td>
+                        <td className="px-6 py-4 text-zinc-500">{customer.contact || '-'}</td>
+                        <td className="px-6 py-4 text-zinc-500 text-sm">
+                          {customer.created_at ? new Date(customer.created_at).toLocaleDateString('zh-CN') : '-'}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingCustomer(customer);
+                                setNewCustomer({ name: customer.name, contact: customer.contact || '' });
+                                setShowCustomerModal(true);
+                              }}
+                              className="p-2 hover:bg-zinc-100 rounded-lg transition-colors"
+                              title="编辑"
+                            >
+                              <Edit className="w-4 h-4 text-zinc-500" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingCustomerId(customer.id)}
+                              className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                              title="删除"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {customers.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-zinc-400">
+                          暂无客户数据，点击"新建客户"添加
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Inventory Tab */}
           {activeTab === 'inventory' && (
             <div className="flex-1 overflow-y-auto space-y-8 py-4 md:py-8 !w-full !max-w-none !m-0 !p-0">
@@ -2490,12 +2638,17 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">选择客户 *</label>
-                      <select 
+                      <select
                         required
                         value={newOrder.customer_id || ''}
                         className={`w-full px-4 py-2 bg-white border ${formErrors.customer ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none`}
                         onChange={e => {
-                          setNewOrder({...newOrder, customer_id: parseInt(e.target.value)});
+                          const selectedCustomer = customers.find(c => c.id === parseInt(e.target.value));
+                          setNewOrder({
+                            ...newOrder,
+                            customer_id: parseInt(e.target.value),
+                            customer_name: selectedCustomer?.name || ''
+                          });
                           if (formErrors.customer) setFormErrors({ ...formErrors, customer: '' });
                         }}
                       >
@@ -2996,6 +3149,107 @@ export default function App() {
               </div>
               <div className="p-4 bg-zinc-100 flex items-center justify-center min-h-[400px]">
                 <img src={showDrawingModal} alt="Drawing" className="max-w-full max-h-[70vh] object-contain shadow-lg" />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Customer Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div
+            onClick={() => setShowCustomerModal(false)}
+            className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
+          />
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl">
+            <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
+              <h3 className="text-xl font-bold">{editingCustomer ? '修改客户' : '新建客户'}</h3>
+              <button onClick={() => setShowCustomerModal(false)} className="p-2 hover:bg-zinc-100 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">客户名称 *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="输入客户名称..."
+                  value={newCustomer.name}
+                  onChange={e => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-4 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">联系方式</label>
+                <input
+                  type="text"
+                  placeholder="输入联系方式..."
+                  value={newCustomer.contact}
+                  onChange={e => setNewCustomer(prev => ({ ...prev, contact: e.target.value }))}
+                  className="w-full px-4 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerModal(false)}
+                  className="px-4 py-2 text-zinc-500 hover:text-zinc-700 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCustomer}
+                  className="bg-zinc-900 text-white px-6 py-2 rounded-xl font-medium hover:bg-zinc-800 transition-colors"
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Customer Confirmation Modal */}
+      <AnimatePresence>
+        {deletingCustomerId && (
+          <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingCustomerId(null)}
+              className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6"
+            >
+              <div className="text-center">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-bold text-zinc-900 mb-2">确认删除</h3>
+                <p className="text-zinc-500 text-sm mb-6">确定要删除这个客户吗？此操作不可撤销。</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setDeletingCustomerId(null)}
+                    className="flex-1 px-4 py-2 border border-zinc-200 rounded-xl text-zinc-600 hover:bg-zinc-50 transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCustomer(deletingCustomerId)}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
+                  >
+                    删除
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

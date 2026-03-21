@@ -26,14 +26,14 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     customer_id INTEGER,
+    customer_name TEXT,
     order_number TEXT,
     status TEXT DEFAULT 'pending',
     priority TEXT DEFAULT 'medium',
     start_date DATE,
     due_date DATE,
     notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS order_items (
@@ -146,7 +146,8 @@ const migrations = [
   "ALTER TABLE order_items ADD COLUMN item_notes TEXT;",
   "ALTER TABLE advent_rules ADD COLUMN target_status TEXT DEFAULT 'pending';",
   "ALTER TABLE advent_rules ADD COLUMN scopeType TEXT DEFAULT 'general';",
-  "ALTER TABLE advent_rules ADD COLUMN ruleType TEXT DEFAULT 'imminent';"
+  "ALTER TABLE advent_rules ADD COLUMN ruleType TEXT DEFAULT 'imminent';",
+  "ALTER TABLE orders ADD COLUMN customer_name TEXT;",
 ];
 
 migrations.forEach(migration => {
@@ -208,10 +209,24 @@ async function startServer() {
     res.json({ id: info.lastInsertRowid });
   });
 
+  app.patch("/api/customers/:id", (req, res) => {
+    const { id } = req.params;
+    const { name, contact } = req.body;
+    db.prepare("UPDATE customers SET name = ?, contact = ? WHERE id = ?").run(name, contact, id);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/customers/:id", (req, res) => {
+    const { id } = req.params;
+    db.prepare("DELETE FROM customers WHERE id = ?").run(id);
+    res.json({ success: true });
+  });
+
   // Orders
   app.get("/api/orders", (req, res) => {
     const orders = db.prepare(`
-      SELECT orders.*, customers.name as customer_name
+      SELECT orders.*,
+        COALESCE(orders.customer_name, customers.name) as customer_name
       FROM orders
       LEFT JOIN customers ON orders.customer_id = customers.id
       ORDER BY start_date ASC
@@ -231,12 +246,12 @@ async function startServer() {
   });
 
   app.post("/api/orders", (req, res) => {
-    const { customer_id, order_number, priority, start_date, due_date, notes, items } = req.body;
-    
+    const { customer_id, customer_name, order_number, priority, start_date, due_date, notes, items } = req.body;
+
     if (!customer_id || !start_date || !due_date) {
       return res.status(400).send("Missing customer_id, start_date or due_date");
     }
-    
+
     let finalOrderNumber = order_number;
     if (!finalOrderNumber) {
       const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -252,11 +267,11 @@ async function startServer() {
     }
 
     const insertOrder = db.prepare(`
-      INSERT INTO orders (customer_id, order_number, priority, start_date, due_date, notes)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO orders (customer_id, customer_name, order_number, priority, start_date, due_date, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    
-    const info = insertOrder.run(customer_id, finalOrderNumber, priority || 'medium', start_date, due_date, notes);
+
+    const info = insertOrder.run(customer_id, customer_name, finalOrderNumber, priority || 'medium', start_date, due_date, notes);
     const orderId = info.lastInsertRowid;
 
     // Insert items if provided
@@ -320,12 +335,12 @@ async function startServer() {
 
   app.patch("/api/orders/:id", (req, res) => {
     const { id } = req.params;
-    const { customer_id, priority, start_date, due_date, notes, status, items } = req.body;
+    const { customer_id, customer_name, priority, start_date, due_date, notes, status, items } = req.body;
 
     if (start_date === "" || start_date === null || due_date === "" || due_date === null) {
       return res.status(400).send("start_date and due_date cannot be empty");
     }
-    
+
     db.transaction(() => {
       // Update order fields
       if (status && !items) {
@@ -334,10 +349,10 @@ async function startServer() {
       } else {
         // Full update
         db.prepare(`
-          UPDATE orders 
-          SET customer_id = ?, priority = ?, start_date = ?, due_date = ?, notes = ?
+          UPDATE orders
+          SET customer_id = ?, customer_name = ?, priority = ?, start_date = ?, due_date = ?, notes = ?
           WHERE id = ?
-        `).run(customer_id, priority, start_date, due_date, notes, id);
+        `).run(customer_id, customer_name, priority, start_date, due_date, notes, id);
 
         if (items && Array.isArray(items)) {
           // Delete existing items and processes
