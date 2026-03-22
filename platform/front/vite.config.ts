@@ -28,5 +28,14 @@ export default defineConfig(({mode}) => {
         },
       },
     },
+    build: {
+      target: 'esnext',
+      minify: 'esbuild',
+      sourcemap: false,
+    },
+    esbuild: {
+      drop: ['console', 'debugger'],
+      legalComments: 'none',
+    },
   };
 });
