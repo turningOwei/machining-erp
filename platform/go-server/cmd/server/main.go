@@ -63,10 +63,22 @@ func main() {
 	adventRuleHandler := handlers.NewAdventRuleHandler(adventRuleRepo)
 
 	// 创建 Gin 路由
-	r := gin.Default()
+	r := gin.New()
 
 	// 中间件
 	r.Use(gin.Recovery())
+	r.Use(func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		method := c.Request.Method
+
+		c.Next()
+
+		latency := time.Since(start)
+		status := c.Writer.Status()
+
+		log.Printf("[REQUEST] %s %s | %d | %v", method, path, status, latency)
+	})
 	r.Use(middleware.CORS())
 
 	// 健康检查

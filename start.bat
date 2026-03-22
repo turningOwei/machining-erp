@@ -1,31 +1,65 @@
 @echo off
-SETLOCAL
+SETLOCAL EnableDelayedExpansion
 cd /d %~dp0
 
 echo ==========================================
-echo   机械加工 ERP 项目一键启动脚本
+echo   Machining ERP Startup Script
 echo ==========================================
 
-rem 检查 node_modules 是否存在
-if not exist "node_modules\" (
-    echo [信息] 未检测到 node_modules，正在安装依赖...
-    cmd /c "npm install"
+set FRONTEND_PORT=3000
+set BACKEND_PORT=28080
+
+echo [INFO] Checking backend port %BACKEND_PORT%...
+netstat -ano | findstr ":%BACKEND_PORT%" | findstr "LISTENING" > nul
+if %errorlevel% equ 0 (
+    echo [INFO] Backend port %BACKEND_PORT% is in use, skipping...
+) else (
+    echo [INFO] Starting Go backend server on port %BACKEND_PORT%...
+    cd platform\go-server
+    start "Go Backend" cmd /k "go run cmd/server/main.go"
+    cd ..\..
+    timeout /t 2 /nobreak > nul
 )
 
-rem 启动 Go 后端服务器
-echo [信息] 正在启动 Go 后端服务器 (端口 28080)...
-cd platform\go-server
-start "Go Backend" cmd /c "go run cmd/server/main.go"
-cd ..\..
+echo [INFO] Checking frontend port %FRONTEND_PORT%...
+netstat -ano | findstr ":%FRONTEND_PORT%" | findstr "LISTENING" > nul
+if %errorlevel% equ 0 (
+    echo [INFO] Frontend port %FRONTEND_PORT% is in use, skipping...
+    pause
+    exit /b 0
+)
 
-rem 等待 Go 服务器启动
-timeout /t 3 /nobreak > nul
+cd platform\front
+if %errorlevel% neq 0 (
+    echo [ERROR] Cannot enter platform\front directory
+    pause
+    exit /b 1
+)
 
-rem 启动浏览器
-echo [信息] 正在启动浏览器并打开 http://localhost:3000...
-start "" http://localhost:3000
+echo [DEBUG] Current directory: %cd%
 
-echo [信息] 正在启动前端开发服务器 (端口 3000)...
-cmd /c "npm run dev"
+if not exist "package.json" (
+    echo [ERROR] package.json not found
+    pause
+    exit /b 1
+)
+
+if not exist "node_modules\" (
+    echo [INFO] Installing dependencies...
+    npm install
+    if %errorlevel% neq 0 (
+        echo [ERROR] npm install failed
+        pause
+        exit /b 1
+    )
+)
+
+echo [INFO] Opening browser http://localhost:%FRONTEND_PORT%...
+start "" http://localhost:%FRONTEND_PORT%
+
+echo ==========================================
+echo   Frontend running, close to stop
+echo ==========================================
+npm run dev
 
 pause

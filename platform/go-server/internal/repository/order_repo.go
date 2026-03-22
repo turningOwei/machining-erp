@@ -16,48 +16,162 @@ func NewOrderRepository(db *sql.DB) *OrderRepository {
 }
 
 func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
-	// 获取所有订单
-	rows, err := r.db.Query(`
-		SELECT orders.id, orders.customer_id, COALESCE(orders.customer_name, customers.name) as customer_name,
-		       orders.order_number, orders.status, orders.priority, orders.start_date, orders.due_date,
-		       orders.notes, orders.created_at
-		FROM orders
-		LEFT JOIN customers ON orders.customer_id = customers.id
-		ORDER BY orders.start_date ASC
-	`)
+	// 一次查询获取所有数据
+	query := `
+		SELECT
+			o.id, o.customer_id, COALESCE(o.customer_name, c.name) as customer_name,
+			o.order_number, o.status, o.priority, o.start_date, o.due_date,
+			o.notes, o.created_at,
+			oi.id as item_id, oi.part_name, oi.part_number, oi.quantity, oi.scrap_quantity,
+			oi.unit_price, oi.total_price, oi.status as item_status, oi.drawing_data, oi.notes as item_notes_data,
+			oi.completion_date, oi.start_date as item_start_date, oi.due_date as item_due_date, oi.delivered_quantity,
+			oi.tool_cost, oi.fixture_cost, oi.material_cost, oi.other_cost, oi.item_notes,
+			op.id as process_id, op.name as process_name, op.is_outsourced, op.outsourcing_fee,
+			op.status as process_status, op.sort_order
+		FROM orders o
+		LEFT JOIN customers c ON o.customer_id = c.id
+		LEFT JOIN order_items oi ON o.id = oi.order_id
+		LEFT JOIN order_processes op ON oi.id = op.order_item_id
+		ORDER BY o.start_date ASC, oi.due_date ASC, op.sort_order ASC
+	`
+
+	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var orders []models.Order = []models.Order{} // 初始化为空数组，避免 null
-	for rows.Next() {
-		var o models.Order
-		var customerID sql.NullInt64
-		var customerName, startDate, dueDate, notes sql.NullString
-		err := rows.Scan(&o.ID, &customerID, &customerName, &o.OrderNumber, &o.Status, &o.Priority, &startDate, &dueDate, &notes, &o.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		if customerID.Valid {
-			id := int(customerID.Int64)
-			o.CustomerID = &id
-		}
-		o.CustomerName = strPtr(customerName)
-		o.StartDate = parseDatePtr(startDate.String)
-		o.DueDate = parseDatePtr(dueDate.String)
-		o.Notes = strPtr(notes)
-		orders = append(orders, o)
-	}
+	orderMap := make(map[int]int) // orderID -> index in orders slice
+	itemMap := make(map[int]int)  // itemID -> index in items slice of its order
+	var orders []models.Order
 
-	// 获取每个订单的订单项和工序
-	itemRepo := NewOrderItemRepository(r.db)
-	for i := range orders {
-		items, err := itemRepo.GetByOrderID(orders[i].ID)
+	for rows.Next() {
+		var (
+			orderID, orderItemID, processID                                    sql.NullInt64
+			customerID                                                         sql.NullInt64
+			customerName, orderNumber, orderStatus, priority                   sql.NullString
+			orderStartDate, orderDueDate, orderNotes                           sql.NullString
+			createdAt                                                          time.Time
+			partName, partNumber                                               sql.NullString
+			quantity, scrapQuantity                                            sql.NullInt64
+			unitPrice, totalPrice                                              sql.NullFloat64
+			itemStatus, drawingData, itemNotesData                             sql.NullString
+			completionDate, itemStartDate, itemDueDate                         sql.NullString
+			deliveredQty                                                       sql.NullInt64
+			toolCost, fixtureCost, materialCost, otherCost                     sql.NullFloat64
+			itemNotes                                                          sql.NullString
+			processName                                                        sql.NullString
+			isOutsourced                                                       sql.NullInt64
+			outsourcingFee                                                     sql.NullFloat64
+			processStatus                                                      sql.NullString
+			sortOrder                                                          sql.NullInt64
+		)
+
+		err := rows.Scan(
+			&orderID, &customerID, &customerName, &orderNumber, &orderStatus, &priority,
+			&orderStartDate, &orderDueDate, &orderNotes, &createdAt,
+			&orderItemID, &partName, &partNumber, &quantity, &scrapQuantity,
+			&unitPrice, &totalPrice, &itemStatus, &drawingData, &itemNotesData,
+			&completionDate, &itemStartDate, &itemDueDate, &deliveredQty,
+			&toolCost, &fixtureCost, &materialCost, &otherCost, &itemNotes,
+			&processID, &processName, &isOutsourced, &outsourcingFee,
+			&processStatus, &sortOrder,
+		)
 		if err != nil {
 			return nil, err
 		}
-		orders[i].Items = items
+
+		if !orderID.Valid {
+			continue
+		}
+
+		oid := int(orderID.Int64)
+
+		// 添加或获取订单
+		orderIdx, orderExists := orderMap[oid]
+		if !orderExists {
+			order := models.Order{
+				ID:          oid,
+				OrderNumber: orderNumber.String,
+				Status:      models.OrderStatus(orderStatus.String),
+				Priority:    models.Priority(priority.String),
+				CreatedAt:   createdAt,
+				Items:       []models.OrderItem{},
+			}
+			if customerID.Valid {
+				cid := int(customerID.Int64)
+				order.CustomerID = &cid
+			}
+			order.CustomerName = strPtr(customerName)
+			order.StartDate = parseDatePtr(orderStartDate.String)
+			order.DueDate = parseDatePtr(orderDueDate.String)
+			order.Notes = strPtr(orderNotes)
+			orderMap[oid] = len(orders)
+			orders = append(orders, order)
+			orderIdx = len(orders) - 1
+		}
+
+		// 添加或获取订单项
+		if orderItemID.Valid {
+			iid := int(orderItemID.Int64)
+			itemIdx, itemExists := itemMap[iid]
+			if !itemExists {
+				item := models.OrderItem{
+					ID:            iid,
+					OrderID:       oid,
+					PartName:      partName.String,
+					Quantity:      int(quantity.Int64),
+					UnitPrice:     unitPrice.Float64,
+					TotalPrice:    totalPrice.Float64,
+					Status:        models.OrderStatus(itemStatus.String),
+					Processes:     []models.OrderProcess{},
+				}
+				if partNumber.Valid {
+					item.PartNumber = models.NullString{NullString: sql.NullString{Valid: true, String: partNumber.String}}
+				}
+				if scrapQuantity.Valid {
+					item.ScrapQuantity = int(scrapQuantity.Int64)
+				}
+				if drawingData.Valid {
+					item.DrawingData = models.NullString{NullString: sql.NullString{Valid: true, String: drawingData.String}}
+				}
+				if deliveredQty.Valid {
+					item.DeliveredQty = models.NullInt64{NullInt64: sql.NullInt64{Valid: true, Int64: deliveredQty.Int64}}
+				}
+				if toolCost.Valid {
+					item.ToolCost = models.NullFloat64{NullFloat64: sql.NullFloat64{Valid: true, Float64: toolCost.Float64}}
+				}
+				if fixtureCost.Valid {
+					item.FixtureCost = models.NullFloat64{NullFloat64: sql.NullFloat64{Valid: true, Float64: fixtureCost.Float64}}
+				}
+				if materialCost.Valid {
+					item.MaterialCost = models.NullFloat64{NullFloat64: sql.NullFloat64{Valid: true, Float64: materialCost.Float64}}
+				}
+				if otherCost.Valid {
+					item.OtherCost = models.NullFloat64{NullFloat64: sql.NullFloat64{Valid: true, Float64: otherCost.Float64}}
+				}
+				if itemNotes.Valid {
+					item.ItemNotes = models.NullString{NullString: sql.NullString{Valid: true, String: itemNotes.String}}
+				}
+				itemMap[iid] = len(orders[orderIdx].Items)
+				orders[orderIdx].Items = append(orders[orderIdx].Items, item)
+				itemIdx = len(orders[orderIdx].Items) - 1
+			}
+
+			// 添加工序
+			if processID.Valid {
+				process := models.OrderProcess{
+					ID:             int(processID.Int64),
+					OrderItemID:    int(orderItemID.Int64),
+					Name:           processName.String,
+					IsOutsourced:   isOutsourced.Int64 == 1,
+					OutsourcingFee: outsourcingFee.Float64,
+					Status:         models.ProcessStatus(processStatus.String),
+					SortOrder:      int(sortOrder.Int64),
+				}
+				orders[orderIdx].Items[itemIdx].Processes = append(orders[orderIdx].Items[itemIdx].Processes, process)
+			}
+		}
 	}
 
 	return orders, nil
