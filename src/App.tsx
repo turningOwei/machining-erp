@@ -314,6 +314,7 @@ const OrderMonitorPanel = ({
 }: OrderMonitorPanelProps) => {
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
   const [allExpanded, setAllExpanded] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Sort orders by start_date ascending
   const sortedOrders = [...orders].sort((a, b) => {
@@ -361,8 +362,9 @@ const OrderMonitorPanel = ({
   }[themeColor as 'blue' | 'rose' | 'orange' | 'amber'] || { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-100', sep: 'border-zinc-300', sepHex: '#a1a1aa', pseudoSep: 'after:bg-zinc-300', headText: 'text-zinc-900', headBg: 'bg-zinc-50', listBorder: 'border-l-zinc-500', focus: 'focus:ring-zinc-900', pageActive: 'bg-zinc-600 text-white shadow-zinc-100', pageBtn: 'hover:bg-zinc-50' };
 
   return (
-    <div className="flex-1 !w-full flex flex-col min-h-0 space-y-8 animate-in fade-in duration-500 py-4 md:py-8 !max-w-none !m-0 !p-0">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8">
+    <div className="flex-1 !w-full flex flex-col min-h-0 space-y-0 md:space-y-8 animate-in fade-in duration-500 py-0 md:py-8 !max-w-none !m-0 !p-0">
+      {/* Desktop Header */}
+      <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8">
         <div>
           <h2 className={`text-3xl font-bold tracking-tight ${colors.text} flex items-center gap-2`}>
             <Icon className="w-8 h-8" />
@@ -387,7 +389,19 @@ const OrderMonitorPanel = ({
         </button>
       </div>
 
-      <div className="px-4 md:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm">
+      {/* Mobile filter toggle */}
+      <div className="md:hidden px-4 py-3 bg-white border border-zinc-200 flex items-center justify-between">
+        <span className={`text-lg font-bold ${colors.text} flex items-center gap-2`}>
+          <Icon className="w-5 h-5" />
+          {title}
+        </span>
+        <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900">
+          {showFilters ? '收起' : '展开'}
+          {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+      </div>
+
+      <div className={`${showFilters ? 'grid' : 'hidden'} md:grid px-4 md:px-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm`}>
         {[
           { label: '交货日期', key: 'dueDate', type: 'date', placeholder: '' },
           { label: '订单号', key: 'orderNumber', type: 'text', placeholder: '搜索订单号...' },
@@ -426,7 +440,8 @@ const OrderMonitorPanel = ({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto shadow-none" style={{ '--sep-color': colors.sepHex } as React.CSSProperties}>
+      {/* Desktop Table View */}
+      <div className="hidden md:block flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto shadow-none" style={{ '--sep-color': colors.sepHex } as React.CSSProperties}>
         <table className={`min-w-[2100px] w-full text-left text-sm table-fixed border-b ${colors.sep}`}>
           <thead className={`${colors.headBg} sticky top-0 z-20`}>
             <tr className="whitespace-nowrap">
@@ -665,6 +680,59 @@ const OrderMonitorPanel = ({
         </table>
       </div>
 
+      {/* Mobile Card View */}
+      <div className="md:hidden flex-1 min-h-0 overflow-auto">
+        <div className="flex flex-col gap-4 p-4">
+          {displayOrders.map((order) => {
+            const isExpanded = expandedOrders.has(order.id);
+            const sortedItems = [...(order.items || [])].sort((a, b) => {
+              const dateA = a.due_date || order.due_date || '';
+              const dateB = b.due_date || order.due_date || '';
+              return dateA.localeCompare(dateB);
+            });
+
+            return (
+              <div key={order.id} className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+                <div className={`${colors.bg} p-4 flex items-center justify-between cursor-pointer`} onClick={() => toggleOrder(order.id)}>
+                  <div className="flex items-center gap-2">
+                    {isExpanded ? <ChevronUp className={`w-5 h-5 ${colors.text}`} /> : <ChevronDown className={`w-5 h-5 ${colors.text}`} />}
+                    <span className={`font-bold ${colors.headText}`}>{order.order_number || order.id}</span>
+                    <PriorityBadge priority={order.priority} />
+                  </div>
+                  <StatusBadge status={order.status} />
+                </div>
+                <div className="p-4 border-b border-zinc-100 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-zinc-500">客户</span><span className="font-medium">{order.customer_name}</span></div>
+                  <div className="flex justify-between"><span className="text-zinc-500">订单日期</span><span>{formatDate(order.start_date) || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-zinc-500">交货日期</span><span className={`font-bold ${colors.text}`}>{formatDate(getOrderMaxDueDate(order))}</span></div>
+                </div>
+                {isExpanded && sortedItems.map((item, idx) => (
+                  <div key={item.id || idx} className="border-t border-zinc-100 p-4 bg-zinc-50">
+                    <div className="font-medium text-zinc-900 mb-2">{item.part_name || `零件 ${idx + 1}`}</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex justify-between"><span className="text-zinc-500">零件号</span><span>{item.part_number || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-zinc-500">数量</span><span>{item.quantity}</span></div>
+                      <div className="flex justify-between"><span className="text-zinc-500">单价</span><span>¥{item.unit_price}</span></div>
+                      <div className="flex justify-between"><span className="text-zinc-500">交货日期</span><span>{formatDate(item.due_date || order.due_date)}</span></div>
+                    </div>
+                    {item.processes && item.processes.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.processes.map((p) => (
+                          <div key={p.id} className={`flex items-center gap-1 border rounded px-2 py-1 cursor-pointer text-xs ${PROCESS_COLORS[p.name] || 'bg-zinc-50 border-zinc-100'}`} onClick={() => handleProcessClick(order.id, item.id, p.id, p.status, p.name)}>
+                            <span className="font-bold">{p.name}</span>
+                            <ProcessStatusBadge status={p.status} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 md:px-8 py-2 border-t border-zinc-100 flex-shrink-0">
         <div className="flex items-center gap-4 text-sm text-zinc-500">
@@ -827,6 +895,7 @@ export default function App() {
   const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
   const [ruleError, setRuleError] = useState<string | null>(null);
   const [deletingRuleId, setDeletingRuleId] = useState<number | null>(null);
+  const [showOrderFilters, setShowOrderFilters] = useState(false);
 
   // Check for unique general rules
   useEffect(() => {
@@ -1907,7 +1976,15 @@ export default function App() {
               </div>
 
               {/* 筛选条件区域 */}
-              <div className="px-4 md:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm">
+              {/* Mobile filter toggle */}
+              <div className="md:hidden px-4 py-3 bg-white border border-zinc-200 flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700">筛选条件</span>
+                <button onClick={() => setShowOrderFilters(!showOrderFilters)} className="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900">
+                  {showOrderFilters ? '收起' : '展开'}
+                  {showOrderFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              </div>
+              <div className={`${showOrderFilters ? 'grid' : 'hidden'} md:grid px-4 md:px-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm`}>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">交货日期(起)</label>
                   <input
@@ -2023,7 +2100,7 @@ export default function App() {
 
                 return (
                   <>
-                    <div className="flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto" style={{ '--sep-color': blueColors.sepHex } as React.CSSProperties}>
+                    <div className="hidden md:block flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto" style={{ '--sep-color': blueColors.sepHex } as React.CSSProperties}>
                       <table className={`min-w-[2100px] w-full text-left text-sm table-fixed border-b ${blueColors.sep}`}>
                         <thead className={`${blueColors.headBg} sticky top-0 z-20`}>
                           <tr className="whitespace-nowrap">
@@ -2254,6 +2331,60 @@ export default function App() {
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Card View for Orders */}
+              <div className="md:hidden flex-1 min-h-0 overflow-auto">
+                <div className="flex flex-col gap-4 p-4">
+                  {filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((order) => {
+                    const isExpanded = orderMgrExpanded.has(order.id);
+                    const sortedItems = [...(order.items || [])].sort((a, b) => {
+                      const dateA = a.due_date || order.due_date || '';
+                      const dateB = b.due_date || order.due_date || '';
+                      return dateA.localeCompare(dateB);
+                    });
+
+                    return (
+                      <div key={order.id} className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+                        <div className={`${blueColors.bg} p-4 flex items-center justify-between cursor-pointer`} onClick={() => toggleOrderMgr(order.id)}>
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? <ChevronUp className={`w-5 h-5 ${blueColors.text}`} /> : <ChevronDown className={`w-5 h-5 ${blueColors.text}`} />}
+                            <span className={`font-bold ${blueColors.headText}`}>{order.order_number || order.id}</span>
+                            <PriorityBadge priority={order.priority} />
+                          </div>
+                          <StatusBadge status={order.status} />
+                        </div>
+                        <div className="p-4 border-b border-zinc-100 space-y-2 text-sm">
+                          <div className="flex justify-between"><span className="text-zinc-500">客户</span><span className="font-medium">{order.customer_name}</span></div>
+                          <div className="flex justify-between"><span className="text-zinc-500">订单日期</span><span>{formatDate(order.start_date) || '-'}</span></div>
+                          <div className="flex justify-between"><span className="text-zinc-500">交货日期</span><span className={`font-bold ${blueColors.text}`}>{formatDate(getOrderMaxDueDate(order))}</span></div>
+                          {order.notes && <div className="pt-2 text-zinc-500 text-xs italic">备注: {order.notes}</div>}
+                        </div>
+                        {isExpanded && sortedItems.map((item, idx) => (
+                          <div key={item.id || idx} className="border-t border-zinc-100 p-4 bg-zinc-50">
+                            <div className="font-medium text-zinc-900 mb-2">{item.part_name || `零件 ${idx + 1}`}</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div className="flex justify-between"><span className="text-zinc-500">零件号</span><span>{item.part_number || '-'}</span></div>
+                              <div className="flex justify-between"><span className="text-zinc-500">数量</span><span>{item.quantity}</span></div>
+                              <div className="flex justify-between"><span className="text-zinc-500">单价</span><span>¥{item.unit_price}</span></div>
+                              <div className="flex justify-between"><span className="text-zinc-500">交货日期</span><span>{formatDate(item.due_date || order.due_date)}</span></div>
+                            </div>
+                            {item.processes && item.processes.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {item.processes.map((p) => (
+                                  <div key={p.id} className={`flex items-center gap-1 border rounded px-2 py-1 cursor-pointer text-xs ${PROCESS_COLORS[p.name] || 'bg-zinc-50 border-zinc-100'}`} onClick={() => handleProcessClick(order.id, item.id, p.id, p.status, p.name)}>
+                                    <span className="font-bold">{p.name}</span>
+                                    <ProcessStatusBadge status={p.status} />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Pagination */}
