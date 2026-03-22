@@ -2778,8 +2778,8 @@ export default function App() {
                       <thead className="bg-zinc-50 border-b border-zinc-200 sticky top-0 z-10">
                         <tr>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-12 text-center shadow-[inset_-1px_0_0_0_#e4e4e7]">#</th>
-                          <th className="px-4 py-3 font-bold text-zinc-500 w-[192px] sticky left-0 bg-zinc-50 border-b border-zinc-200 z-10 shadow-[inset_-1px_0_0_0_#e4e4e7]">零件名称 *</th>
-                          <th className="px-4 py-3 font-bold text-zinc-500 w-[160px] sticky left-[192px] bg-zinc-50 border-b border-zinc-200 z-10 shadow-[inset_-1px_0_0_0_#e4e4e7]">零件号(P/N)</th>
+                          <th className="px-4 py-3 font-bold text-zinc-500 w-[192px] sticky left-0 bg-zinc-50 border-b border-zinc-200 z-[15] shadow-[inset_-1px_0_0_0_#e4e4e7]">零件名称 *</th>
+                          <th className="px-4 py-3 font-bold text-zinc-500 w-[160px] sticky left-[192px] bg-zinc-50 border-b border-zinc-200 z-[15] shadow-[inset_-1px_0_0_0_#e4e4e7]">零件号(P/N)</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-24">数量</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-24">报废数量</th>
                           <th className="px-4 py-3 font-bold text-zinc-500 w-24">单价 (¥)</th>
@@ -2802,9 +2802,9 @@ export default function App() {
                         {newOrder.items?.map((item, idx) => (
                           <tr key={idx} className="hover:bg-zinc-50/50">
                             <td className="px-4 py-2 font-mono text-zinc-400">{idx + 1}</td>
-                            <td className="px-2 py-2 sticky left-0 bg-white z-[2] border-b border-zinc-200 shadow-[inset_-1px_0_0_0_#e4e4e7]">
-                              <input 
-                                type="text" 
+                            <td className="px-2 py-2 sticky left-0 bg-white z-[15] border-b border-zinc-200 shadow-[inset_-1px_0_0_0_#e4e4e7]">
+                              <input
+                                type="text"
                                 required
                                 placeholder="输入零件号..."
                                 value={item.part_name || ''}
@@ -2816,9 +2816,9 @@ export default function App() {
                                 className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                               />
                             </td>
-                            <td className="px-2 py-2 sticky left-[192px] bg-white z-[2] border-b border-zinc-200 shadow-[inset_-1px_0_0_0_#e4e4e7]">
-                              <input 
-                                type="text" 
+                            <td className="px-2 py-2 sticky left-[192px] bg-white z-[15] border-b border-zinc-200 shadow-[inset_-1px_0_0_0_#e4e4e7]">
+                              <input
+                                type="text"
                                 placeholder="P/N..."
                                 value={item.part_number || ''}
                                 onChange={e => {
@@ -2876,7 +2876,7 @@ export default function App() {
                                 {formatDate(item.start_date)}
                               </div>
                             </td>
-                            <td className="px-2 py-2">
+                            <td className="px-2 py-2 overflow-hidden">
                               <div className="space-y-1">
                                 <div className="relative flex items-center group cursor-pointer">
                                   <Calendar className="absolute left-2 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
@@ -2901,7 +2901,7 @@ export default function App() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-2 py-2">
+                            <td className="px-2 py-2 overflow-hidden">
                               <div className="relative flex items-center group cursor-pointer">
                                 <Calendar className="absolute left-2 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
                                 <input 
