@@ -337,6 +337,49 @@ func (r *OrderRepository) UpdateStatus(id int, status string) error {
 	return err
 }
 
+func (r *OrderRepository) Delete(id int) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 获取订单项ID
+	rows, err := tx.Query("SELECT id FROM order_items WHERE order_id = ?", id)
+	if err != nil {
+		return err
+	}
+	var itemIDs []int
+	for rows.Next() {
+		var itemID int
+		if err := rows.Scan(&itemID); err != nil {
+			rows.Close()
+			return err
+		}
+		itemIDs = append(itemIDs, itemID)
+	}
+	rows.Close()
+
+	// 删除工序
+	for _, itemID := range itemIDs {
+		if _, err := tx.Exec("DELETE FROM order_processes WHERE order_item_id = ?", itemID); err != nil {
+			return err
+		}
+	}
+
+	// 删除订单项
+	if _, err := tx.Exec("DELETE FROM order_items WHERE order_id = ?", id); err != nil {
+		return err
+	}
+
+	// 删除订单
+	if _, err := tx.Exec("DELETE FROM orders WHERE id = ?", id); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func strPtr(ns sql.NullString) *string {
 	if ns.Valid {
 		return &ns.String

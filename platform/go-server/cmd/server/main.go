@@ -131,6 +131,7 @@ func main() {
 		api.GET("/orders", orderHandler.List)
 		api.POST("/orders", orderHandler.Create)
 		api.PATCH("/orders/:id", orderHandler.Update)
+		api.DELETE("/orders/:id", orderHandler.Delete)
 
 		// 订单项
 		api.PATCH("/order-items/:itemId", itemHandler.Update)

@@ -50,3 +50,16 @@ export const filterOrdersLocal = (
     return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber && matchStatus;
   });
 };
+
+// Delete order by ID (API call)
+export const deleteOrder = async (orderId: number): Promise<boolean> => {
+  const response = await authFetch(`/api/platform/orders/${orderId}`, {
+    method: 'DELETE'
+  });
+  if (response.ok) {
+    return true;
+  } else {
+    const data = await response.json();
+    throw new Error(data.error || '删除失败');
+  }
+};

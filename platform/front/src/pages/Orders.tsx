@@ -8,12 +8,14 @@ import {
   Settings,
   Eye,
   FileText,
-  ClipboardList
+  ClipboardList,
+  Trash2
 } from 'lucide-react';
 import { Order } from '../types';
 import { StatusBadge, PriorityBadge, ProcessStatusBadge, PROCESS_COLORS, formatDate } from '../components/shared';
 import Pagination from '../components/Pagination';
 import { fetchOrders, filterOrdersLocal, OrderFilters } from '../services/orderService';
+import DeleteConfirmModal from '../components/DeleteConfirmModal';
 
 interface OrdersProps {
   orders: Order[];
@@ -34,6 +36,7 @@ interface OrdersProps {
   setAllOrderMgrExpanded: (expanded: boolean) => void;
   resetAndOpenModal: () => void;
   editOrder: (order: Order) => void;
+  deleteOrder: (orderId: number) => void;
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
@@ -59,19 +62,15 @@ const Orders: React.FC<OrdersProps> = ({
   setAllOrderMgrExpanded,
   resetAndOpenModal,
   editOrder,
+  deleteOrder,
   setShowDrawingModal,
   handleProcessClick,
   getOrderMaxDueDate,
   toggleOrderMgr
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
-
-  // Debug: log when component renders and what filters are applied
-  console.log('Orders component render:', {
-    ordersCount: orders.length,
-    appliedOrderFilters,
-    orderFilters
-  });
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [deletingOrder, setDeletingOrder] = React.useState<Order | null>(null);
 
   // Handle search with API call
   const handleSearch = async () => {
@@ -362,13 +361,23 @@ const Orders: React.FC<OrdersProps> = ({
 
                     {/* Actions */}
                     <td className={`pl-4 pr-6 py-2 sticky right-2 ${blueColors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(37,99,235,0.02)]`}>
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => editOrder(order)}
-                          className={`inline-flex items-center gap-1.5 ${blueColors.text} font-bold hover:text-blue-700 transition-colors py-1.5 px-3 hover:bg-blue-50 rounded-lg whitespace-nowrap`}
+                          className={`p-2 ${blueColors.text} hover:text-blue-700 transition-colors hover:bg-blue-50 rounded-lg`}
+                          title="修改订单"
                         >
                           <Settings className="w-4 h-4" />
-                          <span className="text-xs">修改</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeletingOrder(order);
+                            setShowDeleteConfirm(true);
+                          }}
+                          className="p-2 text-zinc-400 hover:text-red-600 transition-colors hover:bg-red-50 rounded-lg"
+                          title="删除"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -523,6 +532,24 @@ const Orders: React.FC<OrdersProps> = ({
         pageSize={pageSize}
         onPageChange={setCurrentPage}
         onPageSizeChange={setPageSize}
+      />
+
+      {/* Delete Confirm Modal */}
+      <DeleteConfirmModal
+        show={showDeleteConfirm}
+        title="确认删除订单"
+        message={`确定要删除订单 ${deletingOrder?.order_number || deletingOrder?.id} 吗？此操作不可撤销。`}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingOrder(null);
+        }}
+        onConfirm={() => {
+          if (deletingOrder) {
+            deleteOrder(deletingOrder.id);
+          }
+          setShowDeleteConfirm(false);
+          setDeletingOrder(null);
+        }}
       />
     </div>
   );

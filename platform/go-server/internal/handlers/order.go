@@ -151,3 +151,13 @@ func (h *OrderHandler) Update(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"success": true})
 }
+
+func (h *OrderHandler) Delete(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+
+	if err := h.repo.Delete(id); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"success": true})
+}

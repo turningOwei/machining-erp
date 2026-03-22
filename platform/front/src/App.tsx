@@ -55,6 +55,7 @@ import Inventory from './pages/Inventory';
 import Finance from './pages/Finance';
 import Rules from './pages/Rules';
 import { formatDate, formatDateForInput, authFetch } from './components/shared';
+import { deleteOrder as deleteOrderApi } from './services/orderService';
 import { NAV_ITEMS } from './constants/navigation';
 
 // --- AI Service ---
@@ -552,6 +553,16 @@ export default function App() {
     setShowOrderModal(true);
   };
 
+  const deleteOrder = async (orderId: number) => {
+    try {
+      await deleteOrderApi(orderId);
+      setOrders(orders.filter(o => o.id !== orderId));
+    } catch (error) {
+      console.error('Failed to delete order:', error);
+      alert(error instanceof Error ? error.message : '删除失败');
+    }
+  };
+
   const resetAndOpenModal = () => {
     const today = new Date();
     const dateStr = today.getFullYear().toString() + 
@@ -794,6 +805,7 @@ export default function App() {
             allOrderMgrExpanded={allOrderMgrExpanded}
             setAllOrderMgrExpanded={setAllOrderMgrExpanded}
             resetAndOpenModal={resetAndOpenModal}
+            deleteOrder={deleteOrder}
             toggleOrderMgr={toggleOrderMgr}
           />
         );
