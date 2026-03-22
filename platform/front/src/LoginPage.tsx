@@ -19,7 +19,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
   const checkLockStatus = async () => {
     try {
-      const res = await fetch('/api/auth/status');
+      const res = await fetch('/api/platform/auth/status');
       const data = await res.json();
       if (data.locked) {
         setLockedInfo({ locked: true, remainingMinutes: data.remainingMinutes });
@@ -38,7 +38,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/login', {
+      const res = await fetch('/api/platform/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })

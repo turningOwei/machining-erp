@@ -846,7 +846,7 @@ export default function App() {
 
       if (token && userStr) {
         try {
-          const res = await fetch('/api/auth/status', {
+          const res = await fetch('/api/platform/auth/status', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const data = await res.json();
@@ -878,7 +878,7 @@ export default function App() {
   const handleLogout = async () => {
     const token = localStorage.getItem('auth_token');
     try {
-      await fetch('/api/logout', {
+      await fetch('/api/platform/logout', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1166,7 +1166,7 @@ export default function App() {
 
   const updateProcessStatus = async (itemId: number, processId: number, status: string) => {
     try {
-      const response = await authFetch(`/api/order-items/${itemId}/processes/${processId}`, {
+      const response = await authFetch(`/api/platform/order-items/${itemId}/processes/${processId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1266,7 +1266,7 @@ export default function App() {
   const fetchAdventRules = async () => {
     try {
       const qs = new URLSearchParams(ruleFilters).toString();
-      const response = await authFetch(`/api/advent-rules?${qs}`);
+      const response = await authFetch(`/api/platform/advent-rules?${qs}`);
       const data = await response.json();
       setAdventRules(data);
     } catch (err) {
@@ -1295,7 +1295,7 @@ export default function App() {
 
     try {
       const method = editingRuleId ? 'PATCH' : 'POST';
-      const url = editingRuleId ? `/api/advent-rules/${editingRuleId}` : '/api/advent-rules';
+      const url = editingRuleId ? `/api/platform/advent-rules/${editingRuleId}` : '/api/platform/advent-rules';
       
       const response = await authFetch(url, {
         method,
@@ -1314,7 +1314,7 @@ export default function App() {
 
   const deleteRule = async (id: number) => {
     try {
-      const response = await authFetch(`/api/advent-rules/${id}`, { method: 'DELETE' });
+      const response = await authFetch(`/api/platform/advent-rules/${id}`, { method: 'DELETE' });
       if (response.ok) {
         setDeletingRuleId(null);
         fetchAdventRules();
@@ -1333,11 +1333,11 @@ export default function App() {
     setIsLoading(true);
     try {
       const [ordersRes, customersRes, materialsRes, remnantsRes, financeRes] = await Promise.all([
-        authFetch('/api/orders'),
-        authFetch('/api/customers'),
-        authFetch('/api/materials'),
-        authFetch('/api/remnants'),
-        authFetch('/api/finance/reconciliation')
+        authFetch('/api/platform/orders'),
+        authFetch('/api/platform/customers'),
+        authFetch('/api/platform/materials'),
+        authFetch('/api/platform/remnants'),
+        authFetch('/api/platform/finance/reconciliation')
       ]);
       
       const ordersData = await ordersRes.json();
@@ -1453,7 +1453,7 @@ export default function App() {
     setIsSaving(true);
     try {
       const method = newOrder.id ? "PATCH" : "POST";
-      const url = newOrder.id ? `/api/orders/${newOrder.id}` : "/api/orders";
+      const url = newOrder.id ? `/api/platform/orders/${newOrder.id}` : "/api/platform/orders";
       
       const orderToSave = { ...newOrder };
       // Sync dates if missing at order level
@@ -1510,7 +1510,7 @@ export default function App() {
 
     try {
       if (editingCustomer) {
-        const response = await authFetch(`/api/customers/${editingCustomer.id}`, {
+        const response = await authFetch(`/api/platform/customers/${editingCustomer.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newCustomer)
@@ -1519,7 +1519,7 @@ export default function App() {
           throw new Error('更新失败');
         }
       } else {
-        const response = await authFetch('/api/customers', {
+        const response = await authFetch('/api/platform/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newCustomer)
@@ -1540,7 +1540,7 @@ export default function App() {
 
   const handleDeleteCustomer = async (id: number) => {
     try {
-      await authFetch(`/api/customers/${id}`, { method: 'DELETE' });
+      await authFetch(`/api/platform/customers/${id}`, { method: 'DELETE' });
       setDeletingCustomerId(null);
       fetchData();
     } catch (error) {
@@ -1552,7 +1552,7 @@ export default function App() {
 
   const updateItemStatus = async (itemId: number, status: any) => {
     try {
-      await authFetch(`/api/order-items/${itemId}`, {
+      await authFetch(`/api/platform/order-items/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })

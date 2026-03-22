@@ -101,7 +101,7 @@ func main() {
 	r.Use(middleware.CORS())
 
 	// 健康检查
-	r.GET("/api/health", func(c *gin.Context) {
+	r.GET("/api/platform/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "ok",
 			"version": "go-gin",
@@ -110,7 +110,7 @@ func main() {
 	})
 
 	// 认证路由 (无需鉴权)
-	auth := r.Group("/api")
+	auth := r.Group("/api/platform")
 	{
 		auth.POST("/login", authHandler.Login)
 		auth.GET("/auth/status", authHandler.Status)
@@ -118,7 +118,7 @@ func main() {
 	}
 
 	// 需要鉴权的路由
-	api := r.Group("/api")
+	api := r.Group("/api/platform")
 	api.Use(middleware.AuthMiddleware(authService))
 	{
 		// 客户
