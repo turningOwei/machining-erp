@@ -36,6 +36,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import { Order, OrderItem, OrderProcess, Customer, Material, Remnant, Reconciliation } from './types';
+import LoginPage from './LoginPage';
 
 // Helper to format date to YYYY-MM-DD
 const formatDate = (date: string | null | undefined): string => {
@@ -51,6 +52,16 @@ const formatDate = (date: string | null | undefined): string => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+// Helper for authorized fetch
+const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = localStorage.getItem('auth_token');
+  const headers: HeadersInit = {
+    ...options.headers,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+  return fetch(url, { ...options, headers });
 };
 
 // --- AI Service ---
@@ -738,6 +749,64 @@ declare global {
 }
 
 export default function App() {
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authUser, setAuthUser] = useState<{ username: string } | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  // Check auth status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('auth_token');
+      const userStr = localStorage.getItem('auth_user');
+
+      if (token && userStr) {
+        try {
+          const res = await fetch('/api/auth/status', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+
+          if (data.authenticated) {
+            setIsAuthenticated(true);
+            setAuthUser(JSON.parse(userStr));
+          } else {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+          }
+        } catch (e) {
+          // Network error, try to use stored credentials
+          setIsAuthenticated(true);
+          setAuthUser(JSON.parse(userStr));
+        }
+      }
+      setAuthChecking(false);
+    };
+
+    checkAuth();
+  }, []);
+
+  const handleLoginSuccess = (token: string, user: { username: string }) => {
+    setIsAuthenticated(true);
+    setAuthUser(user);
+  };
+
+  const handleLogout = async () => {
+    const token = localStorage.getItem('auth_token');
+    try {
+      await fetch('/api/logout', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (e) {
+      // Ignore
+    }
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    setIsAuthenticated(false);
+    setAuthUser(null);
+  };
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'inventory' | 'finance' | 'overdue' | 'warning_orders' | 'imminent_orders' | 'advent_rules' | 'customers'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -1012,7 +1081,7 @@ export default function App() {
 
   const updateProcessStatus = async (itemId: number, processId: number, status: string) => {
     try {
-      const response = await fetch(`/api/order-items/${itemId}/processes/${processId}`, {
+      const response = await authFetch(`/api/order-items/${itemId}/processes/${processId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1112,7 +1181,7 @@ export default function App() {
   const fetchAdventRules = async () => {
     try {
       const qs = new URLSearchParams(ruleFilters).toString();
-      const response = await fetch(`/api/advent-rules?${qs}`);
+      const response = await authFetch(`/api/advent-rules?${qs}`);
       const data = await response.json();
       setAdventRules(data);
     } catch (err) {
@@ -1143,7 +1212,7 @@ export default function App() {
       const method = editingRuleId ? 'PATCH' : 'POST';
       const url = editingRuleId ? `/api/advent-rules/${editingRuleId}` : '/api/advent-rules';
       
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ruleForm)
@@ -1160,7 +1229,7 @@ export default function App() {
 
   const deleteRule = async (id: number) => {
     try {
-      const response = await fetch(`/api/advent-rules/${id}`, { method: 'DELETE' });
+      const response = await authFetch(`/api/advent-rules/${id}`, { method: 'DELETE' });
       if (response.ok) {
         setDeletingRuleId(null);
         fetchAdventRules();
@@ -1179,11 +1248,11 @@ export default function App() {
     setIsLoading(true);
     try {
       const [ordersRes, customersRes, materialsRes, remnantsRes, financeRes] = await Promise.all([
-        fetch('/api/orders'),
-        fetch('/api/customers'),
-        fetch('/api/materials'),
-        fetch('/api/remnants'),
-        fetch('/api/finance/reconciliation')
+        authFetch('/api/orders'),
+        authFetch('/api/customers'),
+        authFetch('/api/materials'),
+        authFetch('/api/remnants'),
+        authFetch('/api/finance/reconciliation')
       ]);
       
       setOrders(await ordersRes.json());
@@ -1292,7 +1361,7 @@ export default function App() {
         orderToSave.due_date = orderToSave.items[0].due_date;
       }
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderToSave)
@@ -1338,7 +1407,7 @@ export default function App() {
 
     try {
       if (editingCustomer) {
-        const response = await fetch(`/api/customers/${editingCustomer.id}`, {
+        const response = await authFetch(`/api/customers/${editingCustomer.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newCustomer)
@@ -1347,7 +1416,7 @@ export default function App() {
           throw new Error('更新失败');
         }
       } else {
-        const response = await fetch('/api/customers', {
+        const response = await authFetch('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newCustomer)
@@ -1368,7 +1437,7 @@ export default function App() {
 
   const handleDeleteCustomer = async (id: number) => {
     try {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      await authFetch(`/api/customers/${id}`, { method: 'DELETE' });
       setDeletingCustomerId(null);
       fetchData();
     } catch (error) {
@@ -1380,7 +1449,7 @@ export default function App() {
 
   const updateItemStatus = async (itemId: number, status: any) => {
     try {
-      await fetch(`/api/order-items/${itemId}`, {
+      await authFetch(`/api/order-items/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -1402,6 +1471,20 @@ export default function App() {
     { id: 'finance', label: '财务对账', icon: CircleDollarSign },
     { id: 'advent_rules', label: '规则管理', icon: Settings2 },
   ];
+
+  // Show loading while checking auth
+  if (authChecking) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-900">
+        <div className="text-white text-xl">加载中...</div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="h-screen w-full flex flex-col md:flex-row overflow-hidden">
@@ -1487,17 +1570,26 @@ export default function App() {
             <div className={`p-4 border-t border-white/5`}>
               <div className={`flex items-center gap-3 px-2 py-2 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
                 <div className="shrink-0 w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-white">
-                  老板
+                  {authUser?.username?.charAt(0).toUpperCase() || 'A'}
                 </div>
                 {!isSidebarCollapsed && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="flex-1 overflow-hidden"
                   >
-                    <p className="text-sm font-medium text-white truncate">王厂长</p>
+                    <p className="text-sm font-medium text-white truncate">{authUser?.username || 'Admin'}</p>
                     <p className="text-xs truncate opacity-50">管理员</p>
                   </motion.div>
+                )}
+                {!isSidebarCollapsed && (
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                    title="退出登录"
+                  >
+                    <X className="w-4 h-4 text-white/50 hover:text-white" />
+                  </button>
                 )}
               </div>
             </div>

@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import mysql from "mysql2/promise";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 
 function logStatus(msg: string) {
   try {
@@ -12,6 +13,31 @@ function logStatus(msg: string) {
     console.error("Failed to write to status_debug.log", err);
   }
 }
+
+// Login configuration
+const ADMIN_USER = "admin";
+const ADMIN_PASSWORD = "yhs@2026";  // 裕合森
+const MAX_LOGIN_ATTEMPTS = 3;
+const LOCK_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+// Login state (in-memory)
+interface LoginState {
+  attempts: number;
+  lockedUntil: Date | null;
+}
+
+const loginState: LoginState = {
+  attempts: 0,
+  lockedUntil: null
+};
+
+// Generate session token
+function generateToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// Active sessions
+const activeSessions = new Set<string>();
 
 // Helper to convert undefined to null for MySQL
 function toNull<T>(value: T | undefined | null): T | null {
@@ -338,7 +364,127 @@ async function startServer() {
     res.json({ status: "ok", version: "mysql", time: new Date().toISOString() });
   });
 
+  // Auth API Routes
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+
+    // Check if account is locked
+    if (loginState.lockedUntil && new Date() < loginState.lockedUntil) {
+      const remainingMs = loginState.lockedUntil.getTime() - Date.now();
+      const remainingMinutes = Math.ceil(remainingMs / 60000);
+      return res.status(403).json({
+        success: false,
+        error: "账户已锁定",
+        locked: true,
+        remainingMinutes
+      });
+    }
+
+    // Check if lock has expired
+    if (loginState.lockedUntil && new Date() >= loginState.lockedUntil) {
+      loginState.attempts = 0;
+      loginState.lockedUntil = null;
+    }
+
+    // Validate credentials
+    if (username === ADMIN_USER && password === ADMIN_PASSWORD) {
+      // Reset attempts on successful login
+      loginState.attempts = 0;
+      loginState.lockedUntil = null;
+
+      // Generate session token
+      const token = generateToken();
+      activeSessions.add(token);
+
+      res.json({
+        success: true,
+        token,
+        user: { username: ADMIN_USER }
+      });
+    } else {
+      // Increment failed attempts
+      loginState.attempts++;
+      const remainingAttempts = MAX_LOGIN_ATTEMPTS - loginState.attempts;
+
+      if (loginState.attempts >= MAX_LOGIN_ATTEMPTS) {
+        // Lock the account
+        loginState.lockedUntil = new Date(Date.now() + LOCK_DURATION_MS);
+        return res.status(403).json({
+          success: false,
+          error: "登录失败次数过多，账户已锁定2小时",
+          locked: true,
+          remainingMinutes: 120
+        });
+      }
+
+      res.status(401).json({
+        success: false,
+        error: `账号或密码错误，还剩 ${remainingAttempts} 次登录机会`,
+        remainingAttempts
+      });
+    }
+  });
+
+  // Check auth status
+  app.get("/api/auth/status", (req, res) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    // Check if account is locked
+    if (loginState.lockedUntil && new Date() < loginState.lockedUntil) {
+      const remainingMs = loginState.lockedUntil.getTime() - Date.now();
+      const remainingMinutes = Math.ceil(remainingMs / 60000);
+      return res.json({
+        authenticated: false,
+        locked: true,
+        remainingMinutes
+      });
+    }
+
+    if (token && activeSessions.has(token)) {
+      res.json({
+        authenticated: true,
+        user: { username: ADMIN_USER }
+      });
+    } else {
+      res.json({ authenticated: false });
+    }
+  });
+
+  // Logout
+  app.post("/api/logout", (req, res) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (token) {
+      activeSessions.delete(token);
+    }
+    res.json({ success: true });
+  });
+
   // API Routes
+
+  // Auth middleware for protected routes
+  const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    // Check if account is locked
+    if (loginState.lockedUntil && new Date() < loginState.lockedUntil) {
+      return res.status(403).json({ error: "账户已锁定", locked: true });
+    }
+
+    if (!token || !activeSessions.has(token)) {
+      return res.status(401).json({ error: "未授权访问" });
+    }
+
+    next();
+  };
+
+  // Apply auth middleware to all /api routes except auth routes
+  app.use('/api', (req, res, next) => {
+    // Skip auth for login and auth status routes
+    if (req.path === '/login' || req.path === '/auth/status') {
+      return next();
+    }
+    authMiddleware(req, res, next);
+  });
 
   // Customers
   app.get("/api/customers", async (req, res) => {
@@ -350,7 +496,7 @@ async function startServer() {
     const { name, contact } = req.body;
     const [result] = await pool.execute(
       "INSERT INTO customers (name, contact) VALUES (?, ?)",
-      [name, toNull(contact)]
+      [toNull(name), toNull(contact)]
     ) as [mysql.ResultSetHeader, any];
     res.json({ id: result.insertId });
   });
@@ -358,7 +504,7 @@ async function startServer() {
   app.patch("/api/customers/:id", async (req, res) => {
     const { id } = req.params;
     const { name, contact } = req.body;
-    await pool.execute("UPDATE customers SET name = ?, contact = ? WHERE id = ?", [name, toNull(contact), id]);
+    await pool.execute("UPDATE customers SET name = ?, contact = ? WHERE id = ?", [toNull(name), toNull(contact), id]);
     res.json({ success: true });
   });
 
@@ -418,7 +564,7 @@ async function startServer() {
 
       const [orderResult] = await connection.execute(
         "INSERT INTO orders (customer_id, customer_name, order_number, priority, start_date, due_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [customer_id, toNull(customer_name), finalOrderNumber, priority || 'medium', start_date, due_date, toNull(notes)]
+        [toNull(customer_id), toNull(customer_name), finalOrderNumber, priority || 'medium', start_date, due_date, toNull(notes)]
       ) as [mysql.ResultSetHeader, any];
       const orderId = orderResult.insertId;
 
@@ -492,7 +638,7 @@ async function startServer() {
         // Full update
         await connection.execute(
           `UPDATE orders SET customer_id = ?, customer_name = ?, priority = ?, start_date = ?, due_date = ?, notes = ? WHERE id = ?`,
-          [customer_id, toNull(customer_name), priority || 'medium', start_date, due_date, toNull(notes), id]
+          [toNull(customer_id), toNull(customer_name), priority || 'medium', start_date, due_date, toNull(notes), id]
         );
 
         if (items && Array.isArray(items)) {
@@ -649,7 +795,7 @@ async function startServer() {
     const { name, spec, quantity, unit } = req.body;
     const [result] = await pool.execute(
       "INSERT INTO materials (name, spec, quantity, unit) VALUES (?, ?, ?, ?)",
-      [name, toNull(spec), toNull(quantity), toNull(unit)]
+      [toNull(name), toNull(spec), toNull(quantity), toNull(unit)]
     ) as [mysql.ResultSetHeader, any];
     res.json({ id: result.insertId });
   });
@@ -668,7 +814,7 @@ async function startServer() {
     const { material_id, dimensions, photo_data, notes } = req.body;
     const [result] = await pool.execute(
       "INSERT INTO remnants (material_id, dimensions, photo_data, notes) VALUES (?, ?, ?, ?)",
-      [material_id, toNull(dimensions), toNull(photo_data), toNull(notes)]
+      [toNull(material_id), toNull(dimensions), toNull(photo_data), toNull(notes)]
     ) as [mysql.ResultSetHeader, any];
     res.json({ id: result.insertId });
   });
@@ -709,7 +855,7 @@ async function startServer() {
     const { name, description, formula, target_status, scopeType, ruleType } = req.body;
     const [result] = await pool.execute(
       "INSERT INTO advent_rules (name, description, formula, target_status, scopeType, ruleType) VALUES (?, ?, ?, ?, ?, ?)",
-      [name, toNull(description), formula, target_status || 'pending', scopeType || 'general', ruleType || 'imminent']
+      [toNull(name), toNull(description), toNull(formula), target_status || 'pending', scopeType || 'general', ruleType || 'imminent']
     ) as [mysql.ResultSetHeader, any];
     res.json({ id: result.insertId });
   });
@@ -719,7 +865,7 @@ async function startServer() {
     const { name, description, formula, target_status, scopeType, ruleType } = req.body;
     await pool.execute(
       "UPDATE advent_rules SET name = ?, description = ?, formula = ?, target_status = ?, scopeType = ?, ruleType = ? WHERE id = ?",
-      [name, toNull(description), formula, toNull(target_status), toNull(scopeType), toNull(ruleType), id]
+      [toNull(name), toNull(description), toNull(formula), toNull(target_status), toNull(scopeType), toNull(ruleType), id]
     );
     res.json({ success: true });
   });
