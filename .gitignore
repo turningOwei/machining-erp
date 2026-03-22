@@ -7,3 +7,13 @@ coverage/
 .env*
 !.env.example
 .claude/
+
+# Go
+platform/go-server/go.sum
+platform/go-server/bin/
+platform/go-server/tmp/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib

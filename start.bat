@@ -12,11 +12,20 @@ if not exist "node_modules\" (
     cmd /c "npm install"
 )
 
-rem 启动浏览器（稍作延迟以等待服务器响应）
+rem 启动 Go 后端服务器
+echo [信息] 正在启动 Go 后端服务器 (端口 28080)...
+cd platform\go-server
+start "Go Backend" cmd /c "go run cmd/server/main.go"
+cd ..\..
+
+rem 等待 Go 服务器启动
+timeout /t 3 /nobreak > nul
+
+rem 启动浏览器
 echo [信息] 正在启动浏览器并打开 http://localhost:3000...
 start "" http://localhost:3000
 
-echo [信息] 正在启动开发服务器...
+echo [信息] 正在启动前端开发服务器 (端口 3000)...
 cmd /c "npm run dev"
 
 pause

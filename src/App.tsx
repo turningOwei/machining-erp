@@ -54,6 +54,22 @@ const formatDate = (date: string | null | undefined): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Helper to format date for form input (returns empty string instead of '-')
+const formatDateForInput = (date: string | null | undefined): string => {
+  if (!date) return '';
+  // Already in correct format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  // ISO string format
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  // Add timezone offset to get correct local date
+  d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Helper for authorized fetch
 const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
   const token = localStorage.getItem('auth_token');
@@ -1324,11 +1340,16 @@ export default function App() {
         authFetch('/api/finance/reconciliation')
       ]);
       
-      setOrders(await ordersRes.json());
-      setCustomers(await customersRes.json());
-      setMaterials(await materialsRes.json());
-      setRemnants(await remnantsRes.json());
-      setReconciliation(await financeRes.json());
+      const ordersData = await ordersRes.json();
+      setOrders(Array.isArray(ordersData) ? ordersData : []);
+      const customersData = await customersRes.json();
+      setCustomers(Array.isArray(customersData) ? customersData : []);
+      const materialsData = await materialsRes.json();
+      setMaterials(Array.isArray(materialsData) ? materialsData : []);
+      const remnantsData = await remnantsRes.json();
+      setRemnants(Array.isArray(remnantsData) ? remnantsData : []);
+      const financeData = await financeRes.json();
+      setReconciliation(Array.isArray(financeData) ? financeData : []);
     } catch (error) {
       console.error("Failed to fetch data", error);
     } finally {
@@ -1337,20 +1358,33 @@ export default function App() {
   };
 
   const editOrder = (order: Order) => {
+    // 订单日期优先从订单级别获取，如果为空则从第一个订单项获取
+    const orderStartDate = order.start_date || (order.items && order.items.length > 0 ? order.items[0].start_date : null);
+    const orderDueDate = order.due_date || (order.items && order.items.length > 0 ? order.items[0].due_date : null);
+
     setNewOrder({
       id: order.id,
       order_number: order.order_number,
       customer_id: order.customer_id,
+      customer_name: order.customer_name,
       priority: order.priority,
-      start_date: formatDate(order.start_date) || '',
-      due_date: formatDate(order.due_date) || '',
+      start_date: formatDateForInput(orderStartDate),
+      due_date: formatDateForInput(orderDueDate),
       notes: order.notes,
-      items: order.items.map(item => ({
+      items: (order.items || []).map(item => ({
         ...item,
-        start_date: formatDate(item.start_date || order.start_date) || '',
-        due_date: formatDate(item.due_date || order.due_date) || '',
-        completion_date: formatDate(item.completion_date) || '',
-        processes: item.processes.map(p => ({ ...p }))
+        part_number: item.part_number || '',
+        scrap_quantity: item.scrap_quantity || 0,
+        delivered_quantity: item.delivered_quantity || 0,
+        tool_cost: item.tool_cost || 0,
+        fixture_cost: item.fixture_cost || 0,
+        material_cost: item.material_cost || 0,
+        other_cost: item.other_cost || 0,
+        item_notes: item.item_notes || '',
+        start_date: formatDateForInput(item.start_date || orderStartDate),
+        due_date: formatDateForInput(item.due_date || orderDueDate),
+        completion_date: formatDateForInput(item.completion_date),
+        processes: (item.processes || []).map(p => ({ ...p }))
       }))
     });
     setShowOrderModal(true);
