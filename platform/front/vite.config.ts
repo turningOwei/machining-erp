@@ -18,6 +18,7 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
+      host: true,
       port: 3000,
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
