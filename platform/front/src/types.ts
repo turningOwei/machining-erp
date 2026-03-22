@@ -77,3 +77,13 @@ export interface Reconciliation {
   order_count: number;
   delivered_amount: number;
 }
+
+export interface AdventRule {
+  id: number;
+  name: string;
+  description?: string;
+  formula: string;
+  target_status: 'pending' | 'processing' | 'completed';
+  scopeType: 'general' | 'specific';
+  ruleType: 'warning' | 'imminent';
+}

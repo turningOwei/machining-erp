@@ -1,0 +1,323 @@
+import React from 'react';
+import { motion } from 'motion/react';
+import {
+  Plus,
+  Clock,
+  TrendingUp,
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Settings,
+  Eye,
+  FileText,
+  ClipboardList,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
+import { Order, OrderItem } from '../types';
+import { StatusBadge, PriorityBadge, ProcessStatusBadge, PROCESS_COLORS } from '../components/shared';
+
+interface DashboardProps {
+  orders: Order[];
+  dashboardPage: number;
+  dashboardPageSize: number;
+  setDashboardPage: (page: number) => void;
+  setDashboardPageSize: (size: number) => void;
+  setActiveTab: (tab: string) => void;
+  setOrderFilters: (filters: any) => void;
+  setAppliedOrderFilters: (filters: any) => void;
+  setCurrentPage: (page: number) => void;
+  resetAndOpenModal: () => void;
+  editOrder: (order: Order) => void;
+  setShowDrawingModal: (data: string) => void;
+  handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
+  fetchData: () => void;
+  getOrderMaxDueDate: (order: Order) => string;
+  checkOrderAgainstRules: (order: Order, type: 'warning' | 'imminent') => boolean;
+  formatDate: (date: string | null | undefined) => string;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({
+  orders,
+  dashboardPage,
+  dashboardPageSize,
+  setDashboardPage,
+  setDashboardPageSize,
+  setActiveTab,
+  setOrderFilters,
+  setAppliedOrderFilters,
+  setCurrentPage,
+  resetAndOpenModal,
+  editOrder,
+  setShowDrawingModal,
+  handleProcessClick,
+  fetchData,
+  getOrderMaxDueDate,
+  checkOrderAgainstRules,
+  formatDate
+}) => {
+  return (
+    <div className="flex-1 overflow-y-auto space-y-8 py-4 md:py-8 !w-full !max-w-none !m-0 !p-0">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">工作看板</h2>
+          <p className="text-zinc-500">今日共有 {orders.filter(o => o.status !== 'delivered').length} 个进行中的任务</p>
+        </div>
+        <button
+          onClick={resetAndOpenModal}
+          className="bg-zinc-900 text-white px-6 py-3 rounded-none font-medium flex items-center justify-start gap-2 hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-200"
+        >
+          <Plus className="w-5 h-5" />
+          新建订单
+        </button>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 px-4 md:px-8">
+        {[
+          { label: '待加工', count: orders.filter(o => o.status === 'pending').length, color: 'amber', icon: Clock, action: 'filter', filterStatus: 'pending' },
+          { label: '加工中', count: orders.filter(o => o.status === 'processing').length, color: 'blue', icon: TrendingUp, action: 'filter', filterStatus: 'processing' },
+          { label: '逾期订单', count: orders.filter(o => (getOrderMaxDueDate(o) || '') < new Date().toISOString().split('T')[0] && o.status !== 'delivered').length, color: 'rose', icon: AlertCircle, action: 'tab', tab: 'overdue' },
+          { label: '告警订单', count: orders.filter(o => checkOrderAgainstRules(o, 'warning')).length, color: 'orange', icon: AlertTriangle, action: 'tab', tab: 'warning_orders' },
+          { label: '临期订单', count: orders.filter(o => checkOrderAgainstRules(o, 'imminent')).length, color: 'yellow', icon: Clock, action: 'tab', tab: 'imminent_orders' },
+          { label: '已完成', count: orders.filter(o => o.status === 'completed').length, color: 'emerald', icon: CheckCircle2, action: 'filter', filterStatus: 'completed' },
+        ].map((stat, i) => {
+          const colorStyles: Record<string, { bg: string; text: string; hover: string }> = {
+            amber: { bg: 'bg-amber-50', text: 'text-amber-600', hover: 'hover:bg-amber-100' },
+            blue: { bg: 'bg-blue-50', text: 'text-blue-600', hover: 'hover:bg-blue-100' },
+            rose: { bg: 'bg-rose-50', text: 'text-rose-600', hover: 'hover:bg-rose-100' },
+            orange: { bg: 'bg-orange-50', text: 'text-orange-600', hover: 'hover:bg-orange-100' },
+            yellow: { bg: 'bg-yellow-50', text: 'text-yellow-600', hover: 'hover:bg-yellow-100' },
+            emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', hover: 'hover:bg-emerald-100' },
+            zinc: { bg: 'bg-zinc-50', text: 'text-zinc-600', hover: 'hover:bg-zinc-100' },
+          };
+          const style = colorStyles[stat.color] || colorStyles.zinc;
+          const isClickable = stat.action !== 'none';
+
+          const handleClick = () => {
+            if (stat.action === 'tab' && stat.tab) {
+              setActiveTab(stat.tab);
+            } else if (stat.action === 'filter' && stat.filterStatus) {
+              setOrderFilters(prev => ({ ...prev, status: stat.filterStatus as any }));
+              setAppliedOrderFilters(prev => ({ ...prev, status: stat.filterStatus as any }));
+              setActiveTab('orders');
+              setCurrentPage(1);
+            }
+          };
+
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              onClick={isClickable ? handleClick : undefined}
+              className={`bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm ${isClickable ? 'cursor-pointer hover:shadow-md hover:border-zinc-300 transition-all' : ''}`}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center`}>
+                  <stat.icon className={`w-5 h-5 ${style.text}`} />
+                </div>
+              </div>
+              <p className="text-sm font-medium text-zinc-500">{stat.label}</p>
+              <p className="text-2xl font-bold mt-1">{stat.count}</p>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Order List (Dashboard View) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-rose-500" />
+            紧急待办(零件明细)
+          </h3>
+          <div className="flex gap-2">
+            <button
+              onClick={fetchData}
+              className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 transition-colors"
+              title="刷新数据"
+            >
+              <TrendingUp className="w-4 h-4 rotate-90" />
+            </button>
+            <button
+              onClick={resetAndOpenModal}
+              className="bg-zinc-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-zinc-800 transition-all shadow-sm"
+            >
+              <Plus className="w-3 h-3" />
+              快速下单
+            </button>
+          </div>
+        </div>
+        <div className="grid gap-3">
+          {(() => {
+            const allItems = orders
+              .flatMap(o => (o.items || []).map(item => ({ ...item, order: o })))
+              .filter(item => item.status !== 'delivered' && item.status !== 'completed')
+              .sort((a, b) => {
+                // 1. 优先级排序 (High > Medium > Low)
+                const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+                const pA = priorityOrder[a.order.priority] ?? 1;
+                const pB = priorityOrder[b.order.priority] ?? 1;
+                if (pA !== pB) return pA - pB;
+
+                // 2. 交期排序 (从小到大)
+                const dateA = a.due_date || a.order.due_date || '9999-12-31';
+                const dateB = b.due_date || b.order.due_date || '9999-12-31';
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+                // 3. 状态排序 (待加工 > 加工中)
+                const statusOrder: Record<string, number> = { pending: 0, processing: 1 };
+                const sA = statusOrder[a.status] ?? 2;
+                const sB = statusOrder[b.status] ?? 2;
+                return sA - sB;
+              });
+            const paginatedItems = allItems.slice((dashboardPage - 1) * dashboardPageSize, dashboardPage * dashboardPageSize);
+
+            if (paginatedItems.length > 0) {
+              return (
+                <>
+                  {paginatedItems.map((item) => (
+                    <motion.div
+                      layout
+                      key={`${item.order.id}-${item.id}`}
+                      className="bg-white p-4 rounded-xl border border-zinc-200 flex flex-col sm:flex-row sm:items-start gap-2 hover:border-zinc-300 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-start gap-4 w-[420px] shrink-0">
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${item.status === 'processing' ? 'bg-blue-50 text-blue-600' : 'bg-zinc-50 text-zinc-400'}`}>
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold">{item.part_name}</h4>
+                            <PriorityBadge priority={item.order.priority} />
+                            <span className="text-[10px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded">订单: {item.order.order_number || item.order.id}</span>
+                            <span className="text-xs text-zinc-500">{item.order.customer_name}</span>
+                            <span className="text-xs text-zinc-400">数量: {item.quantity}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <Clock className="w-3 h-3 text-zinc-400" />
+                            <span className="text-xs text-zinc-400">
+                              {(item.start_date || item.order.start_date) && `订单: ${formatDate(item.start_date || item.order.start_date)} · `}
+                              交期: {formatDate(item.due_date || item.order.due_date)}
+                            </span>
+                            {item.part_number && (
+                              <>
+                                <span className="text-zinc-300">|</span>
+                                <span className="text-xs text-zinc-500 font-mono">P/N: {item.part_number}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 工序节点列 */}
+                      <div className="flex flex-wrap gap-2 w-[600px] shrink-0 min-h-[40px]">
+                        {item.processes && item.processes.length > 0 && item.processes.map((p) => (
+                          <div
+                            key={p.id}
+                            className={`flex items-center gap-1 border rounded px-2 py-1 cursor-pointer transition-colors ${PROCESS_COLORS[p.name] || 'bg-zinc-50 border-zinc-100 hover:bg-zinc-100'}`}
+                            onClick={() => handleProcessClick(item.order.id, item.id, p.id, p.status, p.name)}
+                          >
+                            <span className="text-[10px] font-bold">{p.name}</span>
+                            <ProcessStatusBadge status={p.status} />
+                            {p.is_outsourced && (
+                              <div className="flex items-center gap-0.5 text-[8px] bg-zinc-900 text-white px-1.5 rounded-full">
+                                <span>共</span>
+                                {p.outsourcing_fee > 0 && <span>¥{p.outsourcing_fee}</span>}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        <button
+                          onClick={() => editOrder(item.order)}
+                          className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900"
+                          title="修改订单"
+                        >
+                          <Settings className="w-5 h-5" />
+                        </button>
+                        {item.drawing_data && (
+                          <button
+                            onClick={() => setShowDrawingModal(item.drawing_data!)}
+                            className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                        )}
+                        <StatusBadge status={item.status} />
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {/* Dashboard Pagination */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 pt-4 border-t border-zinc-100">
+                    <div className="flex items-center gap-4 text-sm text-zinc-500">
+                      <span>共<span className="font-bold text-zinc-900">{allItems.length}</span> 个待办零件</span>
+                      <select
+                        value={dashboardPageSize}
+                        onChange={(e) => {
+                          setDashboardPageSize(Number(e.target.value));
+                          setDashboardPage(1);
+                        }}
+                        className="bg-zinc-50 border border-zinc-200 rounded-none px-2 py-1 outline-none focus:ring-2 focus:ring-zinc-900"
+                      >
+                        {[10, 20, 50, 100].map(size => (
+                          <option key={size} value={size}>每页 {size} 条</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={dashboardPage === 1}
+                        onClick={() => setDashboardPage(prev => prev - 1)}
+                        className="p-2 border border-zinc-200 rounded-none hover:bg-zinc-50 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.ceil(allItems.length / dashboardPageSize) }, (_, i) => i + 1)
+                          .filter(p => p === 1 || p === Math.ceil(allItems.length / dashboardPageSize) || Math.abs(p - dashboardPage) <= 1)
+                          .map((p, i, arr) => (
+                            <React.Fragment key={p}>
+                              {i > 0 && arr[i-1] !== p - 1 && <span className="px-2 text-zinc-400">...</span>}
+                              <button
+                                onClick={() => setDashboardPage(p)}
+                                className={`w-10 h-10 rounded-none font-bold transition-all ${dashboardPage === p ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200' : 'hover:bg-zinc-100 text-zinc-500'}`}
+                              >
+                                {p}
+                              </button>
+                            </React.Fragment>
+                          ))
+                        }
+                      </div>
+                      <button
+                        disabled={dashboardPage === Math.ceil(allItems.length / dashboardPageSize) || allItems.length === 0}
+                        onClick={() => setDashboardPage(prev => prev + 1)}
+                        className="p-2 border border-zinc-200 rounded-none hover:bg-zinc-50 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              );
+            }
+            return (
+              <div className="bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl py-12 flex flex-col items-center justify-center text-zinc-400">
+                <ClipboardList className="w-12 h-12 mb-3 opacity-20" />
+                <p className="text-sm font-medium">暂无待办零件</p>
+                <p className="text-[10px]">点击右上角"快速下单"开始</p>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
