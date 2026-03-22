@@ -50,13 +50,14 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 			orderID, orderItemID, processID                                    sql.NullInt64
 			customerID                                                         sql.NullInt64
 			customerName, orderNumber, orderStatus, priority                   sql.NullString
-			orderStartDate, orderDueDate, orderNotes                           sql.NullString
+			orderStartDateRaw, orderDueDateRaw                                 sql.NullTime
+			orderNotes                                                         sql.NullString
 			createdAt                                                          time.Time
 			partName, partNumber                                               sql.NullString
 			quantity, scrapQuantity                                            sql.NullInt64
 			unitPrice, totalPrice                                              sql.NullFloat64
 			itemStatus, drawingData, itemNotesData                             sql.NullString
-			completionDate, itemStartDate, itemDueDate                         sql.NullString
+			completionDateRaw, itemStartDateRaw, itemDueDateRaw                sql.NullTime
 			deliveredQty                                                       sql.NullInt64
 			toolCost, fixtureCost, materialCost, otherCost                     sql.NullFloat64
 			itemNotes                                                          sql.NullString
@@ -69,10 +70,10 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 
 		err := rows.Scan(
 			&orderID, &customerID, &customerName, &orderNumber, &orderStatus, &priority,
-			&orderStartDate, &orderDueDate, &orderNotes, &createdAt,
+			&orderStartDateRaw, &orderDueDateRaw, &orderNotes, &createdAt,
 			&orderItemID, &partName, &partNumber, &quantity, &scrapQuantity,
 			&unitPrice, &totalPrice, &itemStatus, &drawingData, &itemNotesData,
-			&completionDate, &itemStartDate, &itemDueDate, &deliveredQty,
+			&completionDateRaw, &itemStartDateRaw, &itemDueDateRaw, &deliveredQty,
 			&toolCost, &fixtureCost, &materialCost, &otherCost, &itemNotes,
 			&processID, &processName, &isOutsourced, &outsourcingFee,
 			&processStatus, &sortOrder,
@@ -103,8 +104,12 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 				order.CustomerID = &cid
 			}
 			order.CustomerName = strPtr(customerName)
-			order.StartDate = parseDatePtr(orderStartDate.String)
-			order.DueDate = parseDatePtr(orderDueDate.String)
+			if orderStartDateRaw.Valid {
+				order.StartDate = &orderStartDateRaw.Time
+			}
+			if orderDueDateRaw.Valid {
+				order.DueDate = &orderDueDateRaw.Time
+			}
 			order.Notes = strPtr(orderNotes)
 			orderMap[oid] = len(orders)
 			orders = append(orders, order)
@@ -152,6 +157,16 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 				}
 				if itemNotes.Valid {
 					item.ItemNotes = models.NullString{NullString: sql.NullString{Valid: true, String: itemNotes.String}}
+				}
+				// 订单项日期
+				if itemStartDateRaw.Valid {
+					item.StartDate = models.Date{Time: itemStartDateRaw.Time, Valid: true}
+				}
+				if itemDueDateRaw.Valid {
+					item.DueDate = models.Date{Time: itemDueDateRaw.Time, Valid: true}
+				}
+				if completionDateRaw.Valid {
+					item.CompletionDate = models.Date{Time: completionDateRaw.Time, Valid: true}
 				}
 				itemMap[iid] = len(orders[orderIdx].Items)
 				orders[orderIdx].Items = append(orders[orderIdx].Items, item)

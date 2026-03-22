@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"machining-erp/internal/config"
@@ -13,10 +14,28 @@ import (
 	"machining-erp/pkg/database"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/joho/godotenv/autoload"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// 根据 GO_ENV 加载不同的配置文件
+	env := os.Getenv("GO_ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	envFile := ".env." + env
+	if _, err := os.Stat(envFile); err == nil {
+		if err := godotenv.Load(envFile); err != nil {
+			log.Printf("Warning: Error loading %s: %v", envFile, err)
+		} else {
+			log.Printf("Loaded config from %s", envFile)
+		}
+	} else {
+		// 回退到默认 .env
+		godotenv.Load()
+	}
+
 	// 加载配置
 	cfg := config.Load()
 
