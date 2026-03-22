@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import mysql from "mysql2/promise";
@@ -14,10 +15,11 @@ function logStatus(msg: string) {
 
 // MySQL connection pool
 const pool = mysql.createPool({
-  host: "8.145.45.155",
-  user: "appuser",
-  password: "yuhesen@2026bruecelee",
-  database: "erp",
+  host: process.env.MYSQL_HOST || "localhost",
+  user: process.env.MYSQL_USER || "root",
+  password: process.env.MYSQL_PASSWORD || "",
+  database: process.env.MYSQL_DATABASE || "erp",
+  port: Number(process.env.MYSQL_PORT) || 3306,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
