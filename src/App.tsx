@@ -37,6 +37,22 @@ import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import { Order, OrderItem, OrderProcess, Customer, Material, Remnant, Reconciliation } from './types';
 
+// Helper to format date to YYYY-MM-DD
+const formatDate = (date: string | null | undefined): string => {
+  if (!date) return '-';
+  // Already in correct format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  // ISO string format
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '-';
+  // Add timezone offset to get correct local date
+  d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // --- AI Service ---
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
@@ -473,14 +489,14 @@ const OrderMonitorPanel = ({
                     {order.start_date && (
                       <div className="flex items-center gap-1.5 opacity-80">
                         <span className="p-1 bg-zinc-100 rounded text-zinc-400">订</span>
-                        {order.start_date}
+                        {formatDate(order.start_date)}
                       </div>
                     )}
                   </td>
                   <td className={`px-6 py-2 text-xs font-bold ${colors.text} whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
                     <div className="flex items-center gap-1.5">
                       <Icon className="w-4 h-4" />
-                      {getOrderMaxDueDate(order)}
+                      {formatDate(getOrderMaxDueDate(order))}
                     </div>
                   </td>
                   <td colSpan={6} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}></td>
@@ -559,17 +575,17 @@ const OrderMonitorPanel = ({
                     </td>
                     <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="text-zinc-900 font-bold">
-                        ¥{(item.quantity * item.unit_price).toFixed(2)}
+                        ¥{(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)}
                       </div>
                     </td>
                     <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
-                      {item.start_date || order.start_date || '-'}
+                      {formatDate(item.start_date || order.start_date) || '-'}
                     </td>
                     <td className={`px-6 py-4 ${colors.text} font-bold whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] ${colors.bg}/20`}>
-                      {item.due_date || order.due_date}
+                      {formatDate(item.due_date || order.due_date)}
                     </td>
                     <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
-                      {item.completion_date || '-'}
+                      {formatDate(item.completion_date) || '-'}
                     </td>
                     <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       {item.delivered_quantity || '-'}
@@ -604,7 +620,7 @@ const OrderMonitorPanel = ({
                     </td>
                     <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="text-zinc-500 font-bold text-right px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg whitespace-nowrap">
-                        ¥{(item.processes || []).reduce((sum, p) => (sum + (p.outsourcing_fee || 0)), 0).toFixed(2)}
+                        ¥{(item.processes || []).reduce((sum, p) => sum + Number(p.outsourcing_fee || 0), 0).toFixed(2)}
                       </div>
                     </td>
                     <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
@@ -1188,13 +1204,14 @@ export default function App() {
       order_number: order.order_number,
       customer_id: order.customer_id,
       priority: order.priority,
-      start_date: order.start_date,
-      due_date: order.due_date,
+      start_date: formatDate(order.start_date) || '',
+      due_date: formatDate(order.due_date) || '',
       notes: order.notes,
       items: order.items.map(item => ({
         ...item,
-        start_date: item.start_date || order.start_date,
-        due_date: item.due_date || order.due_date,
+        start_date: formatDate(item.start_date || order.start_date) || '',
+        due_date: formatDate(item.due_date || order.due_date) || '',
+        completion_date: formatDate(item.completion_date) || '',
         processes: item.processes.map(p => ({ ...p }))
       }))
     });
@@ -1635,8 +1652,8 @@ export default function App() {
                                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     <Clock className="w-3 h-3 text-zinc-400" />
                                     <span className="text-xs text-zinc-400">
-                                      {(item.start_date || item.order.start_date) && `订单: ${item.start_date || item.order.start_date} · `}
-                                      交期: {item.due_date || item.order.due_date}
+                                      {(item.start_date || item.order.start_date) && `订单: ${formatDate(item.start_date || item.order.start_date)} · `}
+                                      交期: {formatDate(item.due_date || item.order.due_date)}
                                     </span>
                                     {item.part_number && (
                                       <>
@@ -1983,7 +2000,7 @@ export default function App() {
                             {order.start_date && (
                               <div className="flex items-center gap-1.5 opacity-80">
                                 <span className="p-1 bg-zinc-100 rounded text-zinc-400">订</span>
-                                {order.start_date}
+                                {formatDate(order.start_date)}
                               </div>
                             )}
                           </td>
@@ -1992,7 +2009,7 @@ export default function App() {
                           <td className="px-6 py-2 text-xs font-bold text-zinc-600 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]">
                             <div className="flex items-center gap-1.5 text-zinc-900">
                               <span className="p-1 bg-zinc-900 text-white rounded text-[8px]">终</span>
-                                 {getOrderMaxDueDate(order)}
+                                 {formatDate(getOrderMaxDueDate(order))}
                             </div>
                           </td>
 
@@ -2077,12 +2094,12 @@ export default function App() {
                             <td className={`px-6 py-4 text-zinc-600 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.unit_price}</td>
                             <td className={`px-6 py-4 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                               <div className="text-zinc-900 font-bold">
-                                ¥{(item.quantity * item.unit_price).toFixed(2)}
+                                ¥{(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)}
                               </div>
                             </td>
-                            <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.start_date || order.start_date || '-'}</td>
-                            <td className={`px-6 py-4 text-zinc-500 font-medium whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.due_date || order.due_date}</td>
-                            <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.completion_date || '-'}</td>
+                            <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{formatDate(item.start_date || order.start_date) || '-'}</td>
+                            <td className={`px-6 py-4 text-zinc-500 font-medium whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{formatDate(item.due_date || order.due_date)}</td>
+                            <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{formatDate(item.completion_date) || '-'}</td>
                             <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.delivered_quantity || '-'}</td>
                             <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.tool_cost || '0'}</td>
                             <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.fixture_cost || '0'}</td>
@@ -2113,7 +2130,7 @@ export default function App() {
                             </td>
                             <td className={`px-6 py-4 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                               <div className="text-zinc-500 font-bold text-right px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg whitespace-nowrap">
-                                ¥{(item.processes || []).reduce((sum, p) => (sum + (p.outsourcing_fee || 0)), 0).toFixed(2)}
+                                ¥{(item.processes || []).reduce((sum, p) => sum + Number(p.outsourcing_fee || 0), 0).toFixed(2)}
                               </div>
                             </td>
                              <td className={`px-6 py-4 whitespace-nowrap border-b ${blueColors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
@@ -2856,7 +2873,7 @@ export default function App() {
                             </td>
                             <td className="px-2 py-2">
                               <div className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-400 font-medium text-sm overflow-hidden whitespace-nowrap">
-                                {item.start_date || '-'}
+                                {formatDate(item.start_date)}
                               </div>
                             </td>
                             <td className="px-2 py-2">
@@ -2975,7 +2992,7 @@ export default function App() {
                             </td>
                              <td className="px-2 py-2">
                                <div className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-500 font-bold text-right">
-                                 ¥{(item.processes || []).reduce((sum, p) => (sum + (p.outsourcing_fee || 0)), 0).toFixed(2)}
+                                 ¥{(item.processes || []).reduce((sum, p) => sum + Number(p.outsourcing_fee || 0), 0).toFixed(2)}
                                </div>
                              </td>
                              <td className="px-2 py-2">

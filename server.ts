@@ -13,6 +13,81 @@ function logStatus(msg: string) {
   }
 }
 
+// Helper to convert undefined to null for MySQL
+function toNull<T>(value: T | undefined | null): T | null {
+  return value === undefined ? null : value ?? null;
+}
+
+// Helper to convert date value to MySQL compatible format (null for empty/invalid)
+function toDate(value: any): string | null {
+  if (!value || value === '' || value === '-') return null;
+  if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) return value;
+  return null;
+}
+
+// Helper to convert MySQL DECIMAL strings to numbers
+function toNumber(value: any): number {
+  if (value === null || value === undefined) return 0;
+  return Number(value);
+}
+
+// Helper to format date to YYYY-MM-DD (handle timezone properly)
+function formatDate(date: any): string | null {
+  if (!date) return null;
+  // Already in correct format
+  if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) return date;
+  // ISO string format like "2026-02-27T16:00:00.000Z" - need to add 1 day for timezone offset
+  if (typeof date === 'string' && date.includes('T')) {
+    const d = new Date(date);
+    // Add timezone offset to get correct local date
+    d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  // Date object
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return null;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Helper to convert order item with numeric fields
+function convertOrderItem(item: any): any {
+  return {
+    ...item,
+    quantity: toNumber(item.quantity),
+    scrap_quantity: toNumber(item.scrap_quantity),
+    unit_price: toNumber(item.unit_price),
+    total_price: toNumber(item.total_price),
+    delivered_quantity: toNumber(item.delivered_quantity),
+    tool_cost: toNumber(item.tool_cost),
+    fixture_cost: toNumber(item.fixture_cost),
+    material_cost: toNumber(item.material_cost),
+    other_cost: toNumber(item.other_cost),
+    start_date: formatDate(item.start_date),
+    due_date: formatDate(item.due_date),
+    completion_date: formatDate(item.completion_date),
+    processes: (item.processes || []).map((p: any) => ({
+      ...p,
+      outsourcing_fee: toNumber(p.outsourcing_fee),
+      is_outsourced: Number(p.is_outsourced) || 0
+    }))
+  };
+}
+
+// Helper to convert order with date formatting
+function convertOrder(order: any): any {
+  return {
+    ...order,
+    start_date: formatDate(order.start_date),
+    due_date: formatDate(order.due_date)
+  };
+}
+
 // MySQL connection pool
 const pool = mysql.createPool({
   host: process.env.MYSQL_HOST || "localhost",
@@ -275,7 +350,7 @@ async function startServer() {
     const { name, contact } = req.body;
     const [result] = await pool.execute(
       "INSERT INTO customers (name, contact) VALUES (?, ?)",
-      [name, contact]
+      [name, toNull(contact)]
     ) as [mysql.ResultSetHeader, any];
     res.json({ id: result.insertId });
   });
@@ -283,7 +358,7 @@ async function startServer() {
   app.patch("/api/customers/:id", async (req, res) => {
     const { id } = req.params;
     const { name, contact } = req.body;
-    await pool.execute("UPDATE customers SET name = ?, contact = ? WHERE id = ?", [name, contact, id]);
+    await pool.execute("UPDATE customers SET name = ?, contact = ? WHERE id = ?", [name, toNull(contact), id]);
     res.json({ success: true });
   });
 
@@ -308,9 +383,9 @@ async function startServer() {
       const [items] = await pool.execute("SELECT * FROM order_items WHERE order_id = ? ORDER BY due_date ASC", [order.id]);
       const itemsWithProcesses = await Promise.all((items as any[]).map(async (item) => {
         const [processes] = await pool.execute("SELECT * FROM order_processes WHERE order_item_id = ? ORDER BY sort_order ASC", [item.id]);
-        return { ...item, processes };
+        return convertOrderItem({ ...item, processes });
       }));
-      return { ...order, items: itemsWithProcesses };
+      return convertOrder({ ...order, items: itemsWithProcesses });
     }));
 
     res.json(fullOrders);
@@ -343,7 +418,7 @@ async function startServer() {
 
       const [orderResult] = await connection.execute(
         "INSERT INTO orders (customer_id, customer_name, order_number, priority, start_date, due_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [customer_id, customer_name, finalOrderNumber, priority || 'medium', start_date, due_date, notes]
+        [customer_id, toNull(customer_name), finalOrderNumber, priority || 'medium', start_date, due_date, toNull(notes)]
       ) as [mysql.ResultSetHeader, any];
       const orderId = orderResult.insertId;
 
@@ -359,10 +434,10 @@ async function startServer() {
               tool_cost, fixture_cost, material_cost, other_cost, item_notes
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-              orderId, item.part_name, item.part_number, item.quantity || 1, item.scrap_quantity || 0,
-              item.unit_price || 0, total_price, item.drawing_data, item.notes, itemStatus,
-              item.completion_date, item.start_date, item.due_date, item.delivered_quantity,
-              item.tool_cost, item.fixture_cost, item.material_cost, item.other_cost, item.item_notes
+              orderId, toNull(item.part_name), toNull(item.part_number), item.quantity || 1, toNull(item.scrap_quantity),
+              item.unit_price || 0, total_price, toNull(item.drawing_data), toNull(item.notes), itemStatus,
+              toDate(item.completion_date), toDate(item.start_date), toDate(item.due_date), toNull(item.delivered_quantity),
+              toNull(item.tool_cost), toNull(item.fixture_cost), toNull(item.material_cost), toNull(item.other_cost), toNull(item.item_notes)
             ]
           ) as [mysql.ResultSetHeader, any];
           const itemId = itemResult.insertId;
@@ -370,9 +445,10 @@ async function startServer() {
           if (item.processes && Array.isArray(item.processes)) {
             for (let index = 0; index < item.processes.length; index++) {
               const p = item.processes[index];
+              if (!p || !p.name) continue;
               await connection.execute(
                 "INSERT INTO order_processes (order_item_id, name, is_outsourced, outsourcing_fee, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
-                [itemId, p.name, p.is_outsourced ? 1 : 0, p.outsourcing_fee || 0, p.status || 'pending', index]
+                [itemId, p.name, p.is_outsourced ? 1 : 0, toNull(p.outsourcing_fee) || 0, toNull(p.status) || 'pending', index]
               );
             }
           }
@@ -389,7 +465,8 @@ async function startServer() {
       res.json({ id: orderId });
     } catch (err) {
       await connection.rollback();
-      throw err;
+      console.error("Error creating order:", err);
+      res.status(500).json({ error: (err as Error).message });
     } finally {
       connection.release();
     }
@@ -399,7 +476,7 @@ async function startServer() {
     const { id } = req.params;
     const { customer_id, customer_name, priority, start_date, due_date, notes, status, items } = req.body;
 
-    if (start_date === "" || start_date === null || due_date === "" || due_date === null) {
+    if (!start_date || start_date === "" || !due_date || due_date === "") {
       return res.status(400).send("start_date and due_date cannot be empty");
     }
 
@@ -415,7 +492,7 @@ async function startServer() {
         // Full update
         await connection.execute(
           `UPDATE orders SET customer_id = ?, customer_name = ?, priority = ?, start_date = ?, due_date = ?, notes = ? WHERE id = ?`,
-          [customer_id, customer_name, priority, start_date, due_date, notes, id]
+          [customer_id, toNull(customer_name), priority || 'medium', start_date, due_date, toNull(notes), id]
         );
 
         if (items && Array.isArray(items)) {
@@ -440,10 +517,10 @@ async function startServer() {
                 tool_cost, fixture_cost, material_cost, other_cost, item_notes
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
-                id, item.part_name, item.part_number, item.quantity || 1, item.scrap_quantity || 0,
-                item.unit_price || 0, total_price, item.drawing_data, item.notes, itemStatus,
-                item.completion_date, item.start_date, item.due_date, item.delivered_quantity,
-                item.tool_cost, item.fixture_cost, item.material_cost, item.other_cost, item.item_notes
+                id, toNull(item.part_name), toNull(item.part_number), item.quantity || 1, toNull(item.scrap_quantity),
+                item.unit_price || 0, total_price, toNull(item.drawing_data), toNull(item.notes), itemStatus,
+                toDate(item.completion_date), toDate(item.start_date), toDate(item.due_date), toNull(item.delivered_quantity),
+                toNull(item.tool_cost), toNull(item.fixture_cost), toNull(item.material_cost), toNull(item.other_cost), toNull(item.item_notes)
               ]
             ) as [mysql.ResultSetHeader, any];
             const itemId = itemResult.insertId;
@@ -451,9 +528,10 @@ async function startServer() {
             if (item.processes && Array.isArray(item.processes)) {
               for (let index = 0; index < item.processes.length; index++) {
                 const p = item.processes[index];
+                if (!p || !p.name) continue;
                 await connection.execute(
                   "INSERT INTO order_processes (order_item_id, name, is_outsourced, outsourcing_fee, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
-                  [itemId, p.name, p.is_outsourced ? 1 : 0, p.outsourcing_fee || 0, p.status || 'pending', index]
+                  [itemId, p.name, p.is_outsourced ? 1 : 0, toNull(p.outsourcing_fee) || 0, p.status || 'pending', index]
                 );
               }
             }
@@ -471,7 +549,8 @@ async function startServer() {
       res.json({ success: true });
     } catch (err) {
       await connection.rollback();
-      throw err;
+      console.error("Error updating order:", err);
+      res.status(500).json({ error: (err as Error).message });
     } finally {
       connection.release();
     }
@@ -516,7 +595,7 @@ async function startServer() {
     }
     if (outsourcing_fee !== undefined) {
       updates.push("outsourcing_fee = ?");
-      params.push(outsourcing_fee);
+      params.push(toNull(outsourcing_fee));
     }
 
     if (updates.length === 0) return res.json({ success: true });
@@ -550,14 +629,14 @@ async function startServer() {
 
       await connection.commit();
       logStatus("Transaction committed successfully");
+      res.json({ success: true });
     } catch (err) {
       await connection.rollback();
-      throw err;
+      console.error("Error updating process:", err);
+      res.status(500).json({ error: (err as Error).message });
     } finally {
       connection.release();
     }
-
-    res.json({ success: true });
   });
 
   // Materials
@@ -570,7 +649,7 @@ async function startServer() {
     const { name, spec, quantity, unit } = req.body;
     const [result] = await pool.execute(
       "INSERT INTO materials (name, spec, quantity, unit) VALUES (?, ?, ?, ?)",
-      [name, spec, quantity, unit]
+      [name, toNull(spec), toNull(quantity), toNull(unit)]
     ) as [mysql.ResultSetHeader, any];
     res.json({ id: result.insertId });
   });
@@ -589,7 +668,7 @@ async function startServer() {
     const { material_id, dimensions, photo_data, notes } = req.body;
     const [result] = await pool.execute(
       "INSERT INTO remnants (material_id, dimensions, photo_data, notes) VALUES (?, ?, ?, ?)",
-      [material_id, dimensions, photo_data, notes]
+      [material_id, toNull(dimensions), toNull(photo_data), toNull(notes)]
     ) as [mysql.ResultSetHeader, any];
     res.json({ id: result.insertId });
   });
@@ -630,7 +709,7 @@ async function startServer() {
     const { name, description, formula, target_status, scopeType, ruleType } = req.body;
     const [result] = await pool.execute(
       "INSERT INTO advent_rules (name, description, formula, target_status, scopeType, ruleType) VALUES (?, ?, ?, ?, ?, ?)",
-      [name, description, formula, target_status || 'pending', scopeType || 'general', ruleType || 'imminent']
+      [name, toNull(description), formula, target_status || 'pending', scopeType || 'general', ruleType || 'imminent']
     ) as [mysql.ResultSetHeader, any];
     res.json({ id: result.insertId });
   });
@@ -640,7 +719,7 @@ async function startServer() {
     const { name, description, formula, target_status, scopeType, ruleType } = req.body;
     await pool.execute(
       "UPDATE advent_rules SET name = ?, description = ?, formula = ?, target_status = ?, scopeType = ?, ruleType = ? WHERE id = ?",
-      [name, description, formula, target_status, scopeType, ruleType, id]
+      [name, toNull(description), formula, toNull(target_status), toNull(scopeType), toNull(ruleType), id]
     );
     res.json({ success: true });
   });
@@ -649,6 +728,12 @@ async function startServer() {
     const { id } = req.params;
     await pool.execute("DELETE FROM advent_rules WHERE id = ?", [id]);
     res.json({ success: true });
+  });
+
+  // Global error handler
+  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("Unhandled error:", err);
+    res.status(500).json({ error: err.message || "Internal server error" });
   });
 
   // Vite middleware for development
