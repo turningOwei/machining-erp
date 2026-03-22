@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST http://localhost:3000/api/login -H \"Content-Type: application/json\" -d '{\"\"username\"\":\"\"admin\"\",\"\"password\"\":\"\"yhs@2026\"\"}')",
+      "Bash(curl -s http://localhost:3000/api/orders -H \"Authorization: Bearer b5dd74b2b467ea7a3d03725a1480bc32fa87366c8f1631a3a4e4c5decf17fe92\")"
+    ]
+  }
+}
