@@ -37,7 +37,7 @@ const Overdue: React.FC<OverdueProps> = ({
 
   return (
     <OrderMonitorPanel
-      title="逾期订单管理"
+      title="逾期订单"
       icon={AlertCircle}
       orders={overdueOrders}
       filters={overdueFilters}

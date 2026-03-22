@@ -73,7 +73,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
   }[themeColor as 'blue' | 'rose' | 'orange' | 'amber'] || { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-100', sep: 'border-zinc-300', sepHex: '#a1a1aa', pseudoSep: 'after:bg-zinc-300', headText: 'text-zinc-900', headBg: 'bg-zinc-50', listBorder: 'border-l-zinc-500', focus: 'focus:ring-zinc-900', pageActive: 'bg-zinc-600 text-white shadow-zinc-100', pageBtn: 'hover:bg-zinc-50' };
 
   return (
-    <div className="flex-1 !w-full flex flex-col min-h-0 space-y-0 md:space-y-8 animate-in fade-in duration-500 py-0 md:py-8 !max-w-none !m-0 !p-0">
+    <div className="flex-1 !w-full flex flex-col min-h-0 animate-in fade-in duration-500 !max-w-none !m-0 !p-0">
       {/* Desktop Header */}
       <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8">
         <div>
@@ -206,23 +206,23 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
               return (
                 <React.Fragment key={order.id}>
                   <tr
-                    className={`${colors.bg} sticky top-[52px] z-[15] cursor-pointer hover:brightness-95 transition-all`}
+                    className={`${colors.bg} border-b ${colors.sep} sticky top-[52px] z-[15] cursor-pointer hover:brightness-95 transition-colors`}
                     onClick={() => toggleOrder(order.id)}
                   >
-                    <td className={`pl-4 pr-6 py-2 sticky left-0 ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <td className={`pl-4 pr-6 py-2 sticky left-0 ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronUp className={`shrink-0 w-4 h-4 ${colors.text}`} /> : <ChevronDown className={`shrink-0 w-4 h-4 ${colors.text}`} />}
                         <span className={`text-sm font-bold ${colors.headText} whitespace-nowrap`}>{order.order_number || order.id}</span>
                       </div>
                     </td>
-                    <td className={`px-6 py-2 sticky left-[192px] ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2 sticky left-[192px] ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-2 whitespace-nowrap">
                         <span className="text-zinc-600 underline decoration-zinc-200 underline-offset-4 font-medium">{order.customer_name}</span>
                         <PriorityBadge priority={order.priority} />
                       </div>
                     </td>
-                    <td colSpan={4} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}></td>
-                    <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <td colSpan={4} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]`}></td>
+                    <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       {order.start_date && (
                         <div className="flex items-center gap-1.5 opacity-80">
                           <span className="p-1 bg-zinc-100 rounded text-zinc-400">订</span>
@@ -230,14 +230,14 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className={`px-6 py-2 text-xs font-bold ${colors.text} whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2 text-xs font-bold ${colors.text} whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-1.5">
                         <Icon className="w-4 h-4" />
                         {formatDate(getOrderMaxDueDate(order))}
                       </div>
                     </td>
-                    <td colSpan={6} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}></td>
-                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <td colSpan={6} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]`}></td>
+                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       {(() => {
                         const allProcesses = (order.items || []).flatMap((item: any) => item.processes || []);
                         if (allProcesses.length === 0) return null;
@@ -266,11 +266,11 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         );
                       })()}
                     </td>
-                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}></td>
-                    <td className={`px-6 py-2 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]`}></td>
+                    <td className={`px-6 py-2 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <StatusBadge status={order.status} />
                     </td>
-                    <td className={`px-6 py-2 shadow-[inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2`}>
                       {order.notes && (
                         <div className="flex items-center gap-2 text-zinc-500 max-w-xl overflow-hidden">
                           <FileText className="w-3.5 h-3.5 shrink-0" />
@@ -278,7 +278,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className={`pl-4 pr-6 py-2 sticky right-2 ${colors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
+                    <td className={`pl-4 pr-6 py-2 sticky right-2 ${colors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
                       <div className="flex items-center justify-center">
                         <button
                           onClick={() => editOrder(order)}
@@ -425,7 +425,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
         pageSize={pageSize}
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
-        activeColor={colors.pageActive.split(' ')[0]}
+        activeColor={themeColor}
       />
     </div>
   );

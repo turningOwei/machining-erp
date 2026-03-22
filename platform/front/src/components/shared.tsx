@@ -122,3 +122,14 @@ export const formatDateForInput = (date: string | null | undefined): string => {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+// Helper for authorized fetch
+export const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = localStorage.getItem('auth_token');
+  const headers: HeadersInit = {
+    ...options.headers,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+  return fetch(url, { ...options, headers });
+};
+

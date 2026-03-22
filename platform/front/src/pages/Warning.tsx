@@ -36,7 +36,7 @@ const Warning: React.FC<WarningProps> = ({
 
   return (
     <OrderMonitorPanel
-      title="告警订单管理"
+      title="告警订单"
       icon={AlertTriangle}
       orders={warningOrders}
       filters={warningFilters}

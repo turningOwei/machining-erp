@@ -18,11 +18,23 @@ const Pagination: React.FC<PaginationProps> = ({
   onPageChange,
   onPageSizeChange,
   itemName = '订单',
-  activeColor = 'bg-blue-600'
+  activeColor = 'blue'
 }) => {
-  const totalPages = Math.ceil(total / pageSize);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // Generate color classes based on theme color name
+  const colorClasses: Record<string, { bg: string; shadow: string }> = {
+    blue: { bg: 'bg-blue-600', shadow: 'shadow-blue-100' },
+    rose: { bg: 'bg-rose-600', shadow: 'shadow-rose-100' },
+    orange: { bg: 'bg-orange-600', shadow: 'shadow-orange-100' },
+    amber: { bg: 'bg-amber-600', shadow: 'shadow-amber-100' },
+    zinc: { bg: 'bg-zinc-600', shadow: 'shadow-zinc-100' },
+  };
+
+  const colors = colorClasses[activeColor] || colorClasses.blue;
 
   const getPageNumbers = () => {
+    if (totalPages <= 1) return [1];
     return Array.from({ length: totalPages }, (_, i) => i + 1)
       .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1);
   };
@@ -30,7 +42,7 @@ const Pagination: React.FC<PaginationProps> = ({
   const pageNumbers = getPageNumbers();
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 md:px-8 py-2 border-t border-zinc-100 flex-shrink-0">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 md:px-8 py-3 bg-white border-t border-zinc-100 flex-shrink-0">
       <div className="flex items-center gap-4 text-sm text-zinc-500">
         <span>共<span className="font-bold text-zinc-900">{total}</span> 个{itemName}</span>
         <select
@@ -62,7 +74,7 @@ const Pagination: React.FC<PaginationProps> = ({
                 onClick={() => onPageChange(p)}
                 className={`w-10 h-10 rounded-xl font-bold transition-all ${
                   page === p
-                    ? `${activeColor} text-white shadow-lg shadow-blue-100`
+                    ? `${colors.bg} text-white shadow-lg ${colors.shadow}`
                     : 'hover:bg-zinc-100 text-zinc-500'
                 }`}
               >

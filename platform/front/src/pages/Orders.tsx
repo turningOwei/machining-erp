@@ -7,24 +7,17 @@ import {
   ChevronDown,
   Settings,
   Eye,
-  FileText
+  FileText,
+  ClipboardList
 } from 'lucide-react';
 import { Order } from '../types';
 import { StatusBadge, PriorityBadge, ProcessStatusBadge, PROCESS_COLORS, formatDate } from '../components/shared';
 import Pagination from '../components/Pagination';
-
-interface OrderFilters {
-  dueDateStart: string;
-  dueDateEnd: string;
-  orderNumber: string;
-  partNumber: string;
-  customerName: string;
-  priority: string;
-  status: string;
-}
+import { fetchOrders, filterOrdersLocal, OrderFilters } from '../services/orderService';
 
 interface OrdersProps {
   orders: Order[];
+  setOrders: (orders: Order[]) => void;
   orderFilters: OrderFilters;
   setOrderFilters: (filters: OrderFilters) => void;
   appliedOrderFilters: OrderFilters;
@@ -49,6 +42,7 @@ interface OrdersProps {
 
 const Orders: React.FC<OrdersProps> = ({
   orders,
+  setOrders,
   orderFilters,
   setOrderFilters,
   appliedOrderFilters,
@@ -70,17 +64,32 @@ const Orders: React.FC<OrdersProps> = ({
   getOrderMaxDueDate,
   toggleOrderMgr
 }) => {
-  const filteredOrders = orders.filter(o => {
-    const maxDueDate = getOrderMaxDueDate(o);
-    const matchDueDateStart = !appliedOrderFilters.dueDateStart || maxDueDate >= appliedOrderFilters.dueDateStart;
-    const matchDueDateEnd = !appliedOrderFilters.dueDateEnd || maxDueDate <= appliedOrderFilters.dueDateEnd;
-    const matchOrderNumber = !appliedOrderFilters.orderNumber || String(o.order_number || o.id).toLowerCase().includes(appliedOrderFilters.orderNumber.toLowerCase());
-    const matchCustomer = !appliedOrderFilters.customerName || o.customer_name.toLowerCase().includes(appliedOrderFilters.customerName.toLowerCase());
-    const matchPriority = !appliedOrderFilters.priority || o.priority === appliedOrderFilters.priority;
-    const matchPartNumber = !appliedOrderFilters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(appliedOrderFilters.partNumber.toLowerCase()));
-    const matchStatus = !appliedOrderFilters.status || o.status === appliedOrderFilters.status;
-    return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber && matchStatus;
+  const [isSearching, setIsSearching] = React.useState(false);
+
+  // Debug: log when component renders and what filters are applied
+  console.log('Orders component render:', {
+    ordersCount: orders.length,
+    appliedOrderFilters,
+    orderFilters
   });
+
+  // Handle search with API call
+  const handleSearch = async () => {
+    setIsSearching(true);
+    try {
+      setAppliedOrderFilters({ ...orderFilters });
+      setCurrentPage(1);
+      const data = await fetchOrders(orderFilters);
+      setOrders(data);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // 本地实时过滤（使用当前输入的 orderFilters）
+  const filteredOrders = filterOrdersLocal(orders, orderFilters, getOrderMaxDueDate);
 
   // Blue theme colors
   const blueColors = {
@@ -94,37 +103,16 @@ const Orders: React.FC<OrdersProps> = ({
   };
 
   return (
-    <div className="flex-1 !w-full flex flex-col min-h-0 space-y-6 py-4 md:py-8 animate-in fade-in duration-500 !max-w-none !m-0 !p-0">
-      <div className="flex items-center justify-between px-4 md:px-8">
-        <h2 className="text-2xl font-bold">订单管理</h2>
+    <div className="flex-1 !w-full flex flex-col min-h-0 animate-in fade-in duration-500 !max-w-none !m-0 !p-0">
+      <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-blue-600 flex items-center gap-2">
+            <ClipboardList className="w-8 h-8" />
+            订单管理
+            <span className="text-base font-normal text-zinc-500">检测到 {filteredOrders.length} 个符合筛选条件的订单</span>
+          </h2>
+        </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => {
-              setOrderFilters({
-                dueDateStart: '',
-                dueDateEnd: '',
-                orderNumber: '',
-                partNumber: '',
-                customerName: '',
-                priority: '',
-                status: ''
-              });
-              setAppliedOrderFilters({
-                dueDateStart: '',
-                dueDateEnd: '',
-                orderNumber: '',
-                partNumber: '',
-                customerName: '',
-                priority: '',
-                status: ''
-              });
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2 border border-zinc-200 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-zinc-50 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            刷新
-          </button>
           <button
             onClick={() => resetAndOpenModal()}
             className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm shadow-blue-100"
@@ -222,14 +210,21 @@ const Orders: React.FC<OrdersProps> = ({
         </div>
         <div className="space-y-1.5 flex items-end">
           <button
-            onClick={() => {
-              setAppliedOrderFilters({ ...orderFilters });
-              setCurrentPage(1);
-            }}
-            className="w-full bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
+            onClick={handleSearch}
+            disabled={isSearching}
+            className="w-full bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Search className="w-4 h-4" />
-            查询
+            {isSearching ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                查询中...
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4" />
+                查询
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -281,26 +276,26 @@ const Orders: React.FC<OrdersProps> = ({
               const isExpanded = orderMgrExpanded.has(order.id);
               return (
                 <React.Fragment key={order.id}>
-                  <tr className={`${blueColors.bg} sticky top-[52px] z-[15] cursor-pointer hover:brightness-95 transition-all`}
+                  <tr className={`${blueColors.bg} border-b ${blueColors.sep} sticky top-[52px] z-[15] cursor-pointer hover:brightness-95 transition-colors`}
                     onClick={() => toggleOrderMgr(order.id)}
                   >
                     {/* Order Info */}
-                    <td className={`pl-4 pr-6 py-2 sticky left-0 ${blueColors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <td className={`pl-4 pr-6 py-2 sticky left-0 ${blueColors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronUp className={`shrink-0 w-4 h-4 ${blueColors.text}`} /> : <ChevronDown className={`shrink-0 w-4 h-4 ${blueColors.text}`} />}
                         <span className={`text-sm font-bold ${blueColors.headText} whitespace-nowrap`}>{order.order_number || order.id}</span>
                       </div>
                     </td>
-                    <td className={`px-6 py-2 sticky left-[192px] ${blueColors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2 sticky left-[192px] ${blueColors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="flex items-center justify-start gap-2 whitespace-nowrap">
                         <span className={`${blueColors.text} underline decoration-blue-200 underline-offset-4 font-medium`}>{order.customer_name}</span>
                         <PriorityBadge priority={order.priority} />
                       </div>
                     </td>
-                    <td colSpan={4} className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]"></td>
+                    <td colSpan={4} className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]"></td>
 
                     {/* Start Date */}
-                    <td className="px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]">
+                    <td className="px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                       {order.start_date && (
                         <div className="flex items-center gap-1.5 opacity-80">
                           <span className="p-1 bg-zinc-100 rounded text-zinc-400">订</span>
@@ -310,17 +305,17 @@ const Orders: React.FC<OrdersProps> = ({
                     </td>
 
                     {/* Due Date */}
-                    <td className="px-6 py-2 text-xs font-bold text-zinc-600 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]">
+                    <td className="px-6 py-2 text-xs font-bold text-zinc-600 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                       <div className="flex items-center gap-1.5 text-zinc-900">
                         <span className="p-1 bg-zinc-900 text-white rounded text-[8px]">终</span>
                         {formatDate(getOrderMaxDueDate(order))}
                       </div>
                     </td>
 
-                    <td colSpan={6} className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]"></td>
+                    <td colSpan={6} className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]"></td>
 
                     {/* Process Progress */}
-                    <td className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]">
+                    <td className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                       {(() => {
                         const allProcesses = (order.items || []).flatMap(item => item.processes || []);
                         if (allProcesses.length === 0) return null;
@@ -350,13 +345,13 @@ const Orders: React.FC<OrdersProps> = ({
                       })()}
                     </td>
 
-                    <td className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]"></td>
+                    <td className="px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]"></td>
 
                     {/* Status */}
-                    <td className="px-6 py-2 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color)]">
+                    <td className="px-6 py-2 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                       <StatusBadge status={order.status} />
                     </td>
-                    <td className="px-6 py-2 shadow-[inset_0_-1px_0_0_var(--sep-color)]">
+                    <td className="px-6 py-2">
                       {order.notes && (
                         <div className="flex items-center gap-2 text-zinc-500 max-w-xl overflow-hidden">
                           <FileText className="w-3.5 h-3.5 shrink-0" />
@@ -366,7 +361,7 @@ const Orders: React.FC<OrdersProps> = ({
                     </td>
 
                     {/* Actions */}
-                    <td className={`pl-4 pr-6 py-2 sticky right-2 ${blueColors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),-4px_0_8px_rgba(37,99,235,0.02)]`}>
+                    <td className={`pl-4 pr-6 py-2 sticky right-2 ${blueColors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(37,99,235,0.02)]`}>
                       <div className="flex items-center justify-center">
                         <button
                           onClick={() => editOrder(order)}

@@ -36,7 +36,7 @@ const Imminent: React.FC<ImminentProps> = ({
 
   return (
     <OrderMonitorPanel
-      title="临期订单管理"
+      title="临期订单"
       icon={Clock}
       orders={imminentOrders}
       filters={imminentFilters}
