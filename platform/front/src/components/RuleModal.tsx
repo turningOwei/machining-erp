@@ -55,7 +55,7 @@ const RuleModal: React.FC<RuleModalProps> = ({
 
   // Check for duplicate general rules
   const ruleError = useMemo(() => {
-    if (ruleForm.scopeType === 'general') {
+    if (ruleForm.scopeType === 'general' && Array.isArray(adventRules)) {
       const isDuplicate = adventRules.some(rule =>
         rule.scopeType === 'general' &&
         rule.ruleType === ruleForm.ruleType &&

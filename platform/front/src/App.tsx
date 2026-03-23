@@ -100,8 +100,19 @@ export default function App() {
           }
         } catch (e) {
           // Network error, try to use stored credentials
-          setIsAuthenticated(true);
-          setAuthUser(JSON.parse(userStr));
+          try {
+            const user = JSON.parse(userStr);
+            if (user && user.username) {
+              setIsAuthenticated(true);
+              setAuthUser(user);
+            } else {
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('auth_user');
+            }
+          } catch {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+          }
         }
       }
       setAuthChecking(false);
