@@ -82,7 +82,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                   <input
                     type="text"
                     placeholder="搜索并选择客户..."
-                    value={customerSearch || (newOrder.customer_id ? customers.find(c => c.id === newOrder.customer_id)?.name || '' : '')}
+                    value={customerSearch || (newOrder.customer_id ? customers.find(c => c.id === newOrder.customer_id)?.short_name || customers.find(c => c.id === newOrder.customer_id)?.name || '' : '')}
                     onChange={e => {
                       setCustomerSearch(e.target.value);
                       setShowCustomerDropdown(true);
@@ -93,7 +93,10 @@ const OrderModal: React.FC<OrderModalProps> = ({
                   {showCustomerDropdown && (
                     <div className="absolute z-20 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                       {customers
-                        .filter(c => c.name.toLowerCase().includes((customerSearch || '').toLowerCase()))
+                        .filter(c => {
+                          const searchLower = (customerSearch || '').toLowerCase();
+                          return c.short_name && c.short_name.toLowerCase().includes(searchLower);
+                        })
                         .map(c => (
                           <div
                             key={c.id}
@@ -102,17 +105,21 @@ const OrderModal: React.FC<OrderModalProps> = ({
                               setNewOrder({
                                 ...newOrder,
                                 customer_id: c.id,
-                                customer_name: c.name
+                                customer_name: c.name,
+                                customer_short_name: c.short_name
                               });
                               setCustomerSearch('');
                               setShowCustomerDropdown(false);
                               if (formErrors.customer) setFormErrors({ ...formErrors, customer: '' });
                             }}
                           >
-                            {c.name}
+                            {c.short_name || c.name}
                           </div>
                         ))}
-                      {customers.filter(c => c.name.toLowerCase().includes((customerSearch || '').toLowerCase())).length === 0 && (
+                      {customers.filter(c => {
+                        const searchLower = (customerSearch || '').toLowerCase();
+                        return c.short_name && c.short_name.toLowerCase().includes(searchLower);
+                      }).length === 0 && (
                         <div className="px-4 py-2 text-zinc-400 text-sm">未找到匹配的客户</div>
                       )}
                     </div>

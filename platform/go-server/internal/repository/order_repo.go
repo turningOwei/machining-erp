@@ -20,6 +20,7 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 	query := `
 		SELECT
 			o.id, o.customer_id, COALESCE(o.customer_name, c.name) as customer_name,
+			COALESCE(o.customer_short_name, c.short_name) as customer_short_name,
 			o.order_number, o.status, o.priority, o.start_date, o.due_date,
 			o.notes, o.created_at,
 			oi.id as item_id, oi.part_name, oi.part_number, oi.quantity, oi.scrap_quantity,
@@ -49,7 +50,7 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 		var (
 			orderID, orderItemID, processID                                    sql.NullInt64
 			customerID                                                         sql.NullInt64
-			customerName, orderNumber, orderStatus, priority                   sql.NullString
+			customerName, customerShortName, orderNumber, orderStatus, priority sql.NullString
 			orderStartDateRaw, orderDueDateRaw                                 sql.NullTime
 			orderNotes                                                         sql.NullString
 			createdAt                                                          time.Time
@@ -69,7 +70,7 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 		)
 
 		err := rows.Scan(
-			&orderID, &customerID, &customerName, &orderNumber, &orderStatus, &priority,
+			&orderID, &customerID, &customerName, &customerShortName, &orderNumber, &orderStatus, &priority,
 			&orderStartDateRaw, &orderDueDateRaw, &orderNotes, &createdAt,
 			&orderItemID, &partName, &partNumber, &quantity, &scrapQuantity,
 			&unitPrice, &totalPrice, &itemStatus, &drawingData, &itemNotesData,
@@ -104,6 +105,7 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 				order.CustomerID = &cid
 			}
 			order.CustomerName = strPtr(customerName)
+			order.CustomerShortName = strPtr(customerShortName)
 			if orderStartDateRaw.Valid {
 				order.StartDate = &orderStartDateRaw.Time
 			}
@@ -201,8 +203,8 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 
 	// 插入订单
 	result, err := tx.Exec(
-		"INSERT INTO orders (customer_id, customer_name, order_number, priority, start_date, due_date, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		order.CustomerID, order.CustomerName, order.OrderNumber, order.Priority, order.StartDate, order.DueDate, order.Notes, "pending",
+		"INSERT INTO orders (customer_id, customer_name, customer_short_name, order_number, priority, start_date, due_date, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		order.CustomerID, order.CustomerName, order.CustomerShortName, order.OrderNumber, order.Priority, order.StartDate, order.DueDate, order.Notes, "pending",
 	)
 	if err != nil {
 		return 0, err
@@ -263,8 +265,8 @@ func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) 
 
 	// 更新订单
 	_, err = tx.Exec(
-		"UPDATE orders SET customer_id = ?, customer_name = ?, priority = ?, start_date = ?, due_date = ?, notes = ? WHERE id = ?",
-		order.CustomerID, order.CustomerName, order.Priority, order.StartDate, order.DueDate, order.Notes, order.ID,
+		"UPDATE orders SET customer_id = ?, customer_name = ?, customer_short_name = ?, priority = ?, start_date = ?, due_date = ?, notes = ? WHERE id = ?",
+		order.CustomerID, order.CustomerName, order.CustomerShortName, order.Priority, order.StartDate, order.DueDate, order.Notes, order.ID,
 	)
 	if err != nil {
 		return err

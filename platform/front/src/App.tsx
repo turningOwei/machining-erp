@@ -225,7 +225,7 @@ export default function App() {
   // Customer Management
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [newCustomer, setNewCustomer] = useState<{ name: string; contact: string }>({ name: '', contact: '' });
+  const [newCustomer, setNewCustomer] = useState<{ name: string; short_name: string; contacts: { name: string; contact: string }[] }>({ name: '', short_name: '', contacts: [] });
   const [deletingCustomerId, setDeletingCustomerId] = useState<number | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
@@ -678,10 +678,10 @@ export default function App() {
   const handleOpenCustomerModal = (customer?: Customer) => {
     if (customer) {
       setEditingCustomer(customer);
-      setNewCustomer({ name: customer.name, contact: customer.contact || '' });
+      setNewCustomer({ name: customer.name, short_name: customer.short_name || '', contact: customer.contact || '' });
     } else {
       setEditingCustomer(null);
-      setNewCustomer({ name: '', contact: '' });
+      setNewCustomer({ name: '', short_name: '', contacts: [] });
     }
     setShowCustomerModal(true);
   };
@@ -689,6 +689,10 @@ export default function App() {
   const handleSaveCustomer = async () => {
     if (!newCustomer.name.trim()) {
       alert('请输入客户名称');
+      return;
+    }
+    if (!newCustomer.short_name.trim()) {
+      alert('请输入客户简称');
       return;
     }
 
@@ -713,7 +717,7 @@ export default function App() {
         }
       }
       setShowCustomerModal(false);
-      setNewCustomer({ name: '', contact: '' });
+      setNewCustomer({ name: '', short_name: '', contacts: [] });
       setEditingCustomer(null);
       fetchData();
     } catch (error) {

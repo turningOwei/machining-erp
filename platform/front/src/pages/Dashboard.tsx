@@ -193,7 +193,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <h4 className="font-bold">{item.part_name}</h4>
                             <PriorityBadge priority={item.order.priority} />
                             <span className="text-[10px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded">订单: {item.order.order_number || item.order.id}</span>
-                            <span className="text-xs text-zinc-500">{item.order.customer_name}</span>
+                            <span className="text-xs text-zinc-500">{item.order.customer_short_name}</span>
                             <span className="text-xs text-zinc-400">数量: {item.quantity}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">

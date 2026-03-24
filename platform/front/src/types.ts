@@ -1,7 +1,14 @@
+export interface Contact {
+  id?: number;
+  name: string;
+  contact: string;
+}
+
 export interface Customer {
   id: number;
   name: string;
-  contact?: string;
+  short_name: string;
+  contacts: Contact[];
   created_at: string;
 }
 
@@ -43,6 +50,7 @@ export interface Order {
   id: number;
   customer_id: number;
   customer_name?: string;
+  customer_short_name?: string;
   order_number?: string;
   status: 'pending' | 'processing' | 'completed' | 'delivered';
   priority: 'low' | 'medium' | 'high';

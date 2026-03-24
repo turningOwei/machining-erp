@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"machining-erp/internal/models"
 	"machining-erp/internal/repository"
 	"strconv"
 
@@ -26,15 +27,25 @@ func (h *CustomerHandler) List(c *gin.Context) {
 
 func (h *CustomerHandler) Create(c *gin.Context) {
 	var req struct {
-		Name    string `json:"name"`
-		Contact string `json:"contact"`
+		Name      string           `json:"name"`
+		ShortName string           `json:"short_name"`
+		Contacts  []models.Contact `json:"contacts"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	id, err := h.repo.Create(req.Name, req.Contact)
+	if req.Name == "" {
+		c.JSON(400, gin.H{"error": "客户名称不能为空"})
+		return
+	}
+	if req.ShortName == "" {
+		c.JSON(400, gin.H{"error": "客户简称不能为空"})
+		return
+	}
+
+	id, err := h.repo.Create(req.Name, req.ShortName, req.Contacts)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -46,15 +57,25 @@ func (h *CustomerHandler) Update(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 
 	var req struct {
-		Name    string `json:"name"`
-		Contact string `json:"contact"`
+		Name      string           `json:"name"`
+		ShortName string           `json:"short_name"`
+		Contacts  []models.Contact `json:"contacts"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := h.repo.Update(id, req.Name, req.Contact); err != nil {
+	if req.Name == "" {
+		c.JSON(400, gin.H{"error": "客户名称不能为空"})
+		return
+	}
+	if req.ShortName == "" {
+		c.JSON(400, gin.H{"error": "客户简称不能为空"})
+		return
+	}
+
+	if err := h.repo.Update(id, req.Name, req.ShortName, req.Contacts); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}

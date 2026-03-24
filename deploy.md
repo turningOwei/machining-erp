@@ -8,6 +8,9 @@ cd platform/front && npm run build
 
 # 后端 (Windows 交叉编译 Linux)
 cd platform/go-server && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/server_linux ./cmd/server/main.go
+
+$env:CGO_ENABLED=0; $env:GOOS="linux"; $env:GOARCH="amd64"; go build -o bin/server_linux ./cmd/server
+
 ```
 
 ---
@@ -45,4 +48,10 @@ cd /opt/erp && GO_ENV=production nohup ./server > server.log 2>&1 &
 ```bash
 ps aux | grep server
 tail -50 /opt/erp/server.log
+```
+
+## 重启 Nginx：
+
+```bash
+sudo nginx -t && sudo nginx -s reload
 ```

@@ -37,14 +37,15 @@ func (h *OrderHandler) List(c *gin.Context) {
 }
 
 type CreateOrderRequest struct {
-	CustomerID   *int               `json:"customer_id"`
-	CustomerName *string            `json:"customer_name"`
-	OrderNumber  string             `json:"order_number"`
-	Priority     models.Priority    `json:"priority"`
-	StartDate    string             `json:"start_date"`
-	DueDate      string             `json:"due_date"`
-	Notes        *string            `json:"notes"`
-	Items        []models.OrderItem `json:"items"`
+	CustomerID        *int               `json:"customer_id"`
+	CustomerName      *string            `json:"customer_name"`
+	CustomerShortName *string            `json:"customer_short_name"`
+	OrderNumber       string             `json:"order_number"`
+	Priority          models.Priority    `json:"priority"`
+	StartDate         string             `json:"start_date"`
+	DueDate           string             `json:"due_date"`
+	Notes             *string            `json:"notes"`
+	Items             []models.OrderItem `json:"items"`
 }
 
 func parseDate(s string) *time.Time {
@@ -93,13 +94,14 @@ func (h *OrderHandler) Create(c *gin.Context) {
 	}
 
 	order := &models.Order{
-		CustomerID:   req.CustomerID,
-		CustomerName: req.CustomerName,
-		OrderNumber:  orderNumber,
-		Priority:     req.Priority,
-		StartDate:    parseDate(req.StartDate),
-		DueDate:      parseDate(req.DueDate),
-		Notes:        req.Notes,
+		CustomerID:        req.CustomerID,
+		CustomerName:      req.CustomerName,
+		CustomerShortName: req.CustomerShortName,
+		OrderNumber:       orderNumber,
+		Priority:          req.Priority,
+		StartDate:         parseDate(req.StartDate),
+		DueDate:           parseDate(req.DueDate),
+		Notes:             req.Notes,
 	}
 
 	id, err := h.repo.Create(order, req.Items)
@@ -111,14 +113,15 @@ func (h *OrderHandler) Create(c *gin.Context) {
 }
 
 type UpdateOrderRequest struct {
-	CustomerID   *int               `json:"customer_id"`
-	CustomerName *string            `json:"customer_name"`
-	Priority     models.Priority    `json:"priority"`
-	StartDate    string             `json:"start_date"`
-	DueDate      string             `json:"due_date"`
-	Notes        *string            `json:"notes"`
-	Status       models.OrderStatus `json:"status"`
-	Items        []models.OrderItem `json:"items"`
+	CustomerID        *int               `json:"customer_id"`
+	CustomerName      *string            `json:"customer_name"`
+	CustomerShortName *string            `json:"customer_short_name"`
+	Priority          models.Priority    `json:"priority"`
+	StartDate         string             `json:"start_date"`
+	DueDate           string             `json:"due_date"`
+	Notes             *string            `json:"notes"`
+	Status            models.OrderStatus `json:"status"`
+	Items             []models.OrderItem `json:"items"`
 }
 
 func (h *OrderHandler) Update(c *gin.Context) {
@@ -136,13 +139,14 @@ func (h *OrderHandler) Update(c *gin.Context) {
 	}
 
 	order := &models.Order{
-		ID:           id,
-		CustomerID:   req.CustomerID,
-		CustomerName: req.CustomerName,
-		Priority:     req.Priority,
-		StartDate:    parseDate(req.StartDate),
-		DueDate:      parseDate(req.DueDate),
-		Notes:        req.Notes,
+		ID:                id,
+		CustomerID:        req.CustomerID,
+		CustomerName:      req.CustomerName,
+		CustomerShortName: req.CustomerShortName,
+		Priority:          req.Priority,
+		StartDate:         parseDate(req.StartDate),
+		DueDate:           parseDate(req.DueDate),
+		Notes:             req.Notes,
 	}
 
 	if err := h.repo.Update(order, req.Items); err != nil {

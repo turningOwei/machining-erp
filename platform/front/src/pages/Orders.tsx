@@ -287,7 +287,7 @@ const Orders: React.FC<OrdersProps> = ({
                     </td>
                     <td className={`px-6 py-2 sticky left-[192px] ${blueColors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="flex items-center justify-start gap-2 whitespace-nowrap">
-                        <span className={`${blueColors.text} underline decoration-blue-200 underline-offset-4 font-medium`}>{order.customer_name}</span>
+                        <span className={`${blueColors.text} underline decoration-blue-200 underline-offset-4 font-medium`}>{order.customer_short_name}</span>
                         <PriorityBadge priority={order.priority} />
                       </div>
                     </td>
@@ -493,7 +493,7 @@ const Orders: React.FC<OrdersProps> = ({
                   <StatusBadge status={order.status} />
                 </div>
                 <div className="p-4 border-b border-zinc-100 space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-zinc-500">客户</span><span className="font-medium">{order.customer_name}</span></div>
+                  <div className="flex justify-between"><span className="text-zinc-500">客户</span><span className="font-medium">{order.customer_short_name}</span></div>
                   <div className="flex justify-between"><span className="text-zinc-500">订单日期</span><span>{formatDate(order.start_date) || '-'}</span></div>
                   <div className="flex justify-between"><span className="text-zinc-500">交货日期</span><span className={`font-bold ${blueColors.text}`}>{formatDate(getOrderMaxDueDate(order))}</span></div>
                   {order.notes && <div className="pt-2 text-zinc-500 text-xs italic">备注: {order.notes}</div>}
