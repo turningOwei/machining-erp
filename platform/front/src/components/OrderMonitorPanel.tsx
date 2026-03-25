@@ -236,20 +236,20 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
               </th>
               <th className={`px-6 py-4 font-bold ${colors.headText} w-[160px] sticky left-[192px] ${colors.headBg} z-20 text-sm text-center shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>零件号(P/N)</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>数量</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>报废数量</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>单价 (¥)</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>总计 (¥)</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>订单日期</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.text} font-bold`}>交货日期</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>完工日期</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-96 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>工序流程</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>外协共计 (¥)</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>状态</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>报废数量</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>交货数量</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>刀具费用</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>工装费用</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>材料费用</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>其他费用</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-96 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>工序流程</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>外协共计 (¥)</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>状态</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-64 font-bold text-sm shadow-[inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>备注</th>
               <th className={`pl-4 pr-6 py-4 font-bold ${colors.headText} w-20 text-sm text-left sticky right-2 ${colors.headBg} z-20 shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>操作</th>
               <th className={`w-2 sticky right-0 bg-white z-20 border-none`}></th>
@@ -270,25 +270,25 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                     className={`${colors.bg} border-b ${colors.sep} sticky top-[52px] z-[15] cursor-pointer hover:brightness-95 transition-colors`}
                     onClick={() => toggleOrder(order.id)}
                   >
-                    <td className={`pl-4 pr-6 py-2 sticky left-0 ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
+                    <td className={`pl-4 pr-6 py-2 sticky left-0 ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronUp className={`shrink-0 w-4 h-4 ${colors.text}`} /> : <ChevronDown className={`shrink-0 w-4 h-4 ${colors.text}`} />}
                         <span className={`text-sm font-bold ${colors.headText} whitespace-nowrap`}>{order.order_number || order.id}</span>
                       </div>
                     </td>
-                    <td className={`px-6 py-2 sticky left-[192px] ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2 sticky left-[192px] ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-2 whitespace-nowrap">
                         <span className={`${colors.text} underline decoration-zinc-200 underline-offset-4 font-medium`}>{order.customer_short_name}</span>
                         <PriorityBadge priority={order.priority} />
                       </div>
                     </td>
-                    <td colSpan={4} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)] ${colors.bg}`}>
+                    <td colSpan={3} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.bg}`}>
                       <div className="flex items-center gap-4 text-sm text-zinc-600">
                         {showContactName && order.contact_name && <span className="text-zinc-500">{order.contact_name}</span>}
                         {showOrderName && order.order_name && <span>{order.order_name}</span>}
                       </div>
                     </td>
-                    <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.bg}`}>
                       {order.start_date && (
                         <div className="flex items-center gap-1.5 opacity-80">
                           <span className="p-1 bg-zinc-100 rounded text-zinc-400">订</span>
@@ -296,14 +296,14 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className={`px-6 py-2 text-xs font-bold text-zinc-600 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)] ${colors.bg}`}>
+                    <td className={`px-6 py-2 text-xs font-bold text-zinc-600 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.bg}`}>
                       <div className="flex items-center gap-1.5 text-zinc-900">
                         <span className="p-1 bg-zinc-900 text-white rounded text-[8px]">终</span>
                         {formatDate(getOrderMaxDueDate(order))}
                       </div>
                     </td>
-                    <td colSpan={6} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]`}></td>
-                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}></td>
+                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
                       {(() => {
                         const allProcesses = (order.items || []).flatMap((item: any) => item.processes || []);
                         if (allProcesses.length === 0) return null;
@@ -332,11 +332,12 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         );
                       })()}
                     </td>
-                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]`}></td>
-                    <td className={`px-6 py-2 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}></td>
+                    <td className={`px-6 py-2 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
                       <StatusBadge status={order.status} />
                     </td>
-                    <td className={`px-6 py-2`}>
+                    <td colSpan={6} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}></td>
+                    <td className={`px-6 py-2 shadow-[inset_0_1px_0_0_var(--sep-color)]`}>
                       {order.notes && (
                         <div className="flex items-center gap-2 text-zinc-500 max-w-xl overflow-hidden">
                           <FileText className="w-3.5 h-3.5 shrink-0" />
@@ -344,7 +345,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className={`pl-4 pr-6 py-2 sticky right-2 ${colors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
+                    <td className={`pl-4 pr-6 py-2 sticky right-2 ${colors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => editOrder(order)}
@@ -377,7 +378,6 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         <span className="text-xs text-zinc-500 font-mono break-words">{item.part_number || '-'}</span>
                       </td>
                       <td className={`px-6 py-4 text-zinc-900 font-medium whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.quantity}</td>
-                      <td className={`px-6 py-4 font-medium whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] ${(item.scrap_quantity || 0) > 0 ? 'bg-white text-red-600' : 'text-zinc-900'}`}>{item.scrap_quantity || '-'}</td>
                       <td className={`px-6 py-4 text-zinc-600 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.unit_price}</td>
                       <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                         <div className="text-zinc-900 font-bold">¥{(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)}</div>
@@ -385,11 +385,6 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{formatDate(item.start_date || order.start_date) || '-'}</td>
                       <td className={`px-6 py-4 ${colors.text} font-bold whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] ${colors.bg}/20`}>{formatDate(item.due_date || order.due_date)}</td>
                       <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{formatDate(item.completion_date) || '-'}</td>
-                      <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.delivered_quantity || '-'}</td>
-                      <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.tool_cost || '0'}</td>
-                      <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.fixture_cost || '0'}</td>
-                      <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.material_cost || '0'}</td>
-                      <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.other_cost || '0'}</td>
                       <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                         {item.processes && item.processes.length > 0 && (
                           <div className="flex flex-wrap gap-2">
@@ -414,6 +409,12 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                         <StatusBadge status={item.status} />
                       </td>
+                      <td className={`px-6 py-4 font-medium whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] ${(item.scrap_quantity || 0) > 0 ? 'bg-white text-red-600' : 'text-zinc-900'}`}>{item.scrap_quantity || '-'}</td>
+                      <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.delivered_quantity || '-'}</td>
+                      <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.tool_cost || '0'}</td>
+                      <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.fixture_cost || '0'}</td>
+                      <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.material_cost || '0'}</td>
+                      <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.other_cost || '0'}</td>
                       <td className={`px-6 py-4 border-b ${colors.sep}`}>
                         <div className="text-xs text-zinc-500 truncate max-w-[200px]" title={item.notes}>{item.notes || '-'}</div>
                       </td>
