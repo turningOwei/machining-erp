@@ -43,6 +43,7 @@ import AiDrawingModal from './components/AiDrawingModal';
 import DrawingViewerModal from './components/DrawingViewerModal';
 import CustomerModal from './components/CustomerModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
+import ErrorModal from './components/ErrorModal';
 import ValidationAlertModal from './components/ValidationAlertModal';
 import RuleModal, { RuleForm } from './components/RuleModal';
 import Orders from './pages/Orders';
@@ -230,6 +231,11 @@ export default function App() {
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Error Modal
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorTitle, setErrorTitle] = useState('操作失败');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Close customer dropdown when clicking outside
   useEffect(() => {
@@ -539,8 +545,12 @@ export default function App() {
     setNewOrder({
       id: order.id,
       order_number: order.order_number,
+      order_name: order.order_name,
       customer_id: order.customer_id,
       customer_name: order.customer_name,
+      customer_short_name: order.customer_short_name,
+      contact_id: order.contact_id,
+      contact_name: order.contact_name,
       priority: order.priority,
       start_date: formatDateForInput(orderStartDate),
       due_date: formatDateForInput(orderDueDate),
@@ -664,6 +674,9 @@ export default function App() {
         status: 'pending',
         start_date: '',
         due_date: '',
+        order_name: '',
+        contact_id: undefined,
+        contact_name: undefined,
         items: [{ part_name: '', quantity: 1, unit_price: 0, processes: [] }]
       });
       fetchData();
@@ -678,7 +691,7 @@ export default function App() {
   const handleOpenCustomerModal = (customer?: Customer) => {
     if (customer) {
       setEditingCustomer(customer);
-      setNewCustomer({ name: customer.name, short_name: customer.short_name || '', contact: customer.contact || '' });
+      setNewCustomer({ name: customer.name, short_name: customer.short_name || '', contacts: customer.contacts || [] });
     } else {
       setEditingCustomer(null);
       setNewCustomer({ name: '', short_name: '', contacts: [] });
@@ -704,7 +717,8 @@ export default function App() {
           body: JSON.stringify(newCustomer)
         });
         if (!response.ok) {
-          throw new Error('更新失败');
+          const data = await response.json();
+          throw new Error(data.error || '更新失败');
         }
       } else {
         const response = await authFetch('/api/platform/customers', {
@@ -713,16 +727,19 @@ export default function App() {
           body: JSON.stringify(newCustomer)
         });
         if (!response.ok) {
-          throw new Error('创建失败');
+          const data = await response.json();
+          throw new Error(data.error || '创建失败');
         }
       }
       setShowCustomerModal(false);
       setNewCustomer({ name: '', short_name: '', contacts: [] });
       setEditingCustomer(null);
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save customer", error);
-      alert('保存失败: ' + error);
+      setErrorTitle('保存失败');
+      setErrorMessage(error.message || '未知错误');
+      setShowErrorModal(true);
     }
   };
 
@@ -981,6 +998,14 @@ export default function App() {
         show={!!deletingCustomerId}
         onClose={() => setDeletingCustomerId(null)}
         onConfirm={() => handleDeleteCustomer(deletingCustomerId!)}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        show={showErrorModal}
+        title={errorTitle}
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
       />
 
       {/* Advent Rule Modal */}

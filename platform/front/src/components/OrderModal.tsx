@@ -74,14 +74,24 @@ const OrderModal: React.FC<OrderModalProps> = ({
         <form onSubmit={onSubmit} className="p-6 space-y-6">
           {/* Common Order Header */}
           <div className="space-y-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-            {/* Row 1: 客户选择、订单号、优先级 */}
+            {/* Row 1: 订单名称、客户选择、联系人、订单号、优先级 */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="md:col-span-3 relative" ref={customerDropdownRef}>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单名称</label>
+                <input
+                  type="text"
+                  placeholder="订单名称..."
+                  value={newOrder.order_name || ''}
+                  onChange={e => setNewOrder({ ...newOrder, order_name: e.target.value })}
+                  className="w-full px-4 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none"
+                />
+              </div>
+              <div className="md:col-span-2 relative" ref={customerDropdownRef}>
                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">选择客户 *</label>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="搜索并选择客户..."
+                    placeholder="搜索客户..."
                     value={customerSearch || (newOrder.customer_id ? customers.find(c => c.id === newOrder.customer_id)?.short_name || customers.find(c => c.id === newOrder.customer_id)?.name || '' : '')}
                     onChange={e => {
                       setCustomerSearch(e.target.value);
@@ -106,7 +116,9 @@ const OrderModal: React.FC<OrderModalProps> = ({
                                 ...newOrder,
                                 customer_id: c.id,
                                 customer_name: c.name,
-                                customer_short_name: c.short_name
+                                customer_short_name: c.short_name,
+                                contact_id: undefined,
+                                contact_name: undefined
                               });
                               setCustomerSearch('');
                               setShowCustomerDropdown(false);
@@ -132,8 +144,31 @@ const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
                 )}
               </div>
-              <div className="md:col-span-3">
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单号(可选)</label>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">联系人</label>
+                <select
+                  value={newOrder.contact_id || ''}
+                  onChange={e => {
+                    const contactId = e.target.value ? parseInt(e.target.value) : undefined;
+                    const customer = customers.find(c => c.id === newOrder.customer_id);
+                    const contact = customer?.contacts?.find(ct => ct.id === contactId);
+                    setNewOrder({
+                      ...newOrder,
+                      contact_id: contactId,
+                      contact_name: contact ? contact.name : undefined
+                    });
+                  }}
+                  disabled={!newOrder.customer_id}
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none text-sm disabled:bg-zinc-100 disabled:text-zinc-400"
+                >
+                  <option value="">选择联系人</option>
+                  {customers.find(c => c.id === newOrder.customer_id)?.contacts?.map(ct => (
+                    <option key={ct.id} value={ct.id}>{ct.name} ({ct.contact})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单号</label>
                 <input
                   type="text"
                   placeholder="自动生成"

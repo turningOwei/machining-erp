@@ -41,6 +41,8 @@ type CreateOrderRequest struct {
 	CustomerName      *string            `json:"customer_name"`
 	CustomerShortName *string            `json:"customer_short_name"`
 	OrderNumber       string             `json:"order_number"`
+	OrderName         *string            `json:"order_name"`
+	ContactID         *int               `json:"contact_id"`
 	Priority          models.Priority    `json:"priority"`
 	StartDate         string             `json:"start_date"`
 	DueDate           string             `json:"due_date"`
@@ -98,6 +100,8 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		CustomerName:      req.CustomerName,
 		CustomerShortName: req.CustomerShortName,
 		OrderNumber:       orderNumber,
+		OrderName:         req.OrderName,
+		ContactID:         req.ContactID,
 		Priority:          req.Priority,
 		StartDate:         parseDate(req.StartDate),
 		DueDate:           parseDate(req.DueDate),
@@ -116,6 +120,8 @@ type UpdateOrderRequest struct {
 	CustomerID        *int               `json:"customer_id"`
 	CustomerName      *string            `json:"customer_name"`
 	CustomerShortName *string            `json:"customer_short_name"`
+	OrderName         *string            `json:"order_name"`
+	ContactID         *int               `json:"contact_id"`
 	Priority          models.Priority    `json:"priority"`
 	StartDate         string             `json:"start_date"`
 	DueDate           string             `json:"due_date"`
@@ -143,6 +149,8 @@ func (h *OrderHandler) Update(c *gin.Context) {
 		CustomerID:        req.CustomerID,
 		CustomerName:      req.CustomerName,
 		CustomerShortName: req.CustomerShortName,
+		OrderName:         req.OrderName,
+		ContactID:         req.ContactID,
 		Priority:          req.Priority,
 		StartDate:         parseDate(req.StartDate),
 		DueDate:           parseDate(req.DueDate),

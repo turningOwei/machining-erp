@@ -22,18 +22,21 @@ const (
 )
 
 type Order struct {
-	ID              int         `json:"id"`
-	CustomerID      *int        `json:"customer_id"`
-	CustomerName    *string     `json:"customer_name"`
-	CustomerShortName *string   `json:"customer_short_name"`
-	OrderNumber     string      `json:"order_number"`
-	Status          OrderStatus `json:"status"`
-	Priority        Priority    `json:"priority"`
-	StartDate       *time.Time  `json:"start_date"`
-	DueDate         *time.Time  `json:"due_date"`
-	Notes           *string     `json:"notes"`
-	CreatedAt       time.Time   `json:"created_at"`
-	Items           []OrderItem `json:"items"`
+	ID                int         `json:"id"`
+	CustomerID        *int        `json:"customer_id"`
+	CustomerName      *string     `json:"customer_name"`
+	CustomerShortName *string     `json:"customer_short_name"`
+	OrderNumber       string      `json:"order_number"`
+	OrderName         *string     `json:"order_name"`
+	ContactID         *int        `json:"contact_id"`
+	ContactName       *string     `json:"contact_name"`
+	Status            OrderStatus `json:"status"`
+	Priority          Priority    `json:"priority"`
+	StartDate         *time.Time  `json:"start_date"`
+	DueDate           *time.Time  `json:"due_date"`
+	Notes             *string     `json:"notes"`
+	CreatedAt         time.Time   `json:"created_at"`
+	Items             []OrderItem `json:"items"`
 }
 
 type OrderItem struct {

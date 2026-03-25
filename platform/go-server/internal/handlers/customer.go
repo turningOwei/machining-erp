@@ -45,6 +45,17 @@ func (h *CustomerHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// 检查客户名称是否已存在
+	exists, err := h.repo.NameExists(req.Name, 0)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	if exists {
+		c.JSON(400, gin.H{"error": "客户名称已存在"})
+		return
+	}
+
 	id, err := h.repo.Create(req.Name, req.ShortName, req.Contacts)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -72,6 +83,17 @@ func (h *CustomerHandler) Update(c *gin.Context) {
 	}
 	if req.ShortName == "" {
 		c.JSON(400, gin.H{"error": "客户简称不能为空"})
+		return
+	}
+
+	// 检查客户名称是否已存在（排除当前客户）
+	exists, err := h.repo.NameExists(req.Name, id)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	if exists {
+		c.JSON(400, gin.H{"error": "客户名称已存在"})
 		return
 	}
 

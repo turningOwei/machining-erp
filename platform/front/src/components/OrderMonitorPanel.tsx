@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { ChevronUp, ChevronDown, Settings, Eye, FileText, LucideIcon } from 'lucide-react';
+import { ChevronUp, ChevronDown, Settings, Eye, FileText, LucideIcon, Search, RefreshCw, Trash2 } from 'lucide-react';
 import { Order } from '../types';
 import { formatDate, PROCESS_COLORS, ProcessStatusBadge, StatusBadge, PriorityBadge } from './shared';
 import Pagination from './Pagination';
+
+export interface FilterConfig {
+  key: string;
+  label: string;
+  type: 'text' | 'date' | 'select';
+  placeholder?: string;
+  options?: { value: string; label: string }[];
+}
 
 interface OrderMonitorPanelProps {
   title: string;
@@ -10,20 +18,31 @@ interface OrderMonitorPanelProps {
   orders: Order[];
   filters: any;
   setFilters: (filters: any) => void;
+  filterConfigs?: FilterConfig[];
+  localFilter?: (orders: Order[], filters: any, getOrderMaxDueDate: (order: Order) => string) => Order[];
   page: number;
   setPage: (page: number) => void;
   pageSize: number;
   setPageSize: (size: number) => void;
   themeColor: string;
   editOrder: (order: Order) => void;
+  deleteOrder?: (order: Order) => void;
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
+  showOrderName?: boolean;
+  showContactName?: boolean;
+  showOrderNotes?: boolean;
+  showOutsourcingFee?: boolean;
+  onSearch?: () => void;
+  isSearching?: boolean;
 }
 
 const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
-  title, icon: Icon, orders, filters, setFilters, page, setPage, pageSize, setPageSize, themeColor,
-  editOrder, setShowDrawingModal, handleProcessClick, getOrderMaxDueDate
+  title, icon: Icon, orders, filters, setFilters, filterConfigs, localFilter, page, setPage, pageSize, setPageSize, themeColor,
+  editOrder, deleteOrder, setShowDrawingModal, handleProcessClick, getOrderMaxDueDate,
+  showOrderName = false, showContactName = false, showOrderNotes = false, showOutsourcingFee = true,
+  onSearch, isSearching = false
 }) => {
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
   const [allExpanded, setAllExpanded] = useState(true);
@@ -35,15 +54,18 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
     return dateA.localeCompare(dateB);
   });
 
-  const filteredOrders = sortedOrders.filter(o => {
-    const mDate = getOrderMaxDueDate(o);
-    const matchDueDate = !filters.dueDate || mDate === filters.dueDate;
-    const matchOrderNumber = !filters.orderNumber || String(o.order_number || o.id).toLowerCase().includes(filters.orderNumber.toLowerCase());
-    const matchCustomer = !filters.customerName || o.customer_name.toLowerCase().includes(filters.customerName.toLowerCase());
-    const matchPriority = !filters.priority || o.priority === filters.priority;
-    const matchPartNumber = !filters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(filters.partNumber.toLowerCase()));
-    return matchDueDate && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
-  });
+  // 使用自定义本地筛选或默认筛选
+  const filteredOrders = localFilter
+    ? localFilter(sortedOrders, filters, getOrderMaxDueDate)
+    : sortedOrders.filter(o => {
+        const mDate = getOrderMaxDueDate(o);
+        const matchDueDate = !filters.dueDate || mDate === filters.dueDate;
+        const matchOrderNumber = !filters.orderNumber || String(o.order_number || o.id).toLowerCase().includes(filters.orderNumber.toLowerCase());
+        const matchCustomer = !filters.customerName || (o.customer_name || '').toLowerCase().includes(filters.customerName.toLowerCase());
+        const matchPriority = !filters.priority || o.priority === filters.priority;
+        const matchPartNumber = !filters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(filters.partNumber.toLowerCase()));
+        return matchDueDate && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
+      });
 
   const displayOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize);
 
@@ -114,42 +136,81 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
 
       {/* Filters */}
       <div className={`${showFilters ? 'grid' : 'hidden'} md:grid px-4 md:px-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm`}>
-        {[
-          { label: '交货日期', key: 'dueDate', type: 'date', placeholder: '' },
-          { label: '订单号', key: 'orderNumber', type: 'text', placeholder: '搜索订单号...' },
-          { label: '零件号', key: 'partNumber', type: 'text', placeholder: '搜索零件或客户...' },
-          { label: '客户名称', key: 'customerName', type: 'text', placeholder: '搜索客户...' }
-        ].map(f => (
+        {(filterConfigs || [
+          { label: '交货日期', key: 'dueDate', type: 'date' as const, placeholder: '' },
+          { label: '订单号', key: 'orderNumber', type: 'text' as const, placeholder: '搜索订单号...' },
+          { label: '零件号', key: 'partNumber', type: 'text' as const, placeholder: '搜索零件或客户...' },
+          { label: '客户名称', key: 'customerName', type: 'text' as const, placeholder: '搜索客户...' }
+        ]).map(f => (
           <div key={f.key} className="space-y-1.5">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">{f.label}</label>
-            <input
-              type={f.type}
-              placeholder={f.placeholder}
-              value={filters[f.key]}
-              onChange={(e) => {
-                setFilters({ ...filters, [f.key]: e.target.value });
-                setPage(1);
-              }}
-              className={`w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 ${colors.focus}`}
-            />
+            {f.type === 'select' ? (
+              <select
+                value={filters[f.key] || ''}
+                onChange={(e) => {
+                  setFilters({ ...filters, [f.key]: e.target.value });
+                  setPage(1);
+                }}
+                className={`w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 ${colors.focus} bg-white`}
+              >
+                <option value="">{f.placeholder || '全部'}</option>
+                {f.options?.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type={f.type}
+                placeholder={f.placeholder}
+                value={filters[f.key] || ''}
+                onChange={(e) => {
+                  setFilters({ ...filters, [f.key]: e.target.value });
+                  setPage(1);
+                }}
+                className={`w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 ${colors.focus}`}
+              />
+            )}
           </div>
         ))}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">优先级</label>
-          <select
-            value={filters.priority}
-            onChange={(e) => {
-              setFilters({ ...filters, priority: e.target.value });
-              setPage(1);
-            }}
-            className={`w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 ${colors.focus} bg-white`}
-          >
+        {!filterConfigs && (
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">优先级</label>
+            <select
+              value={filters.priority}
+              onChange={(e) => {
+                setFilters({ ...filters, priority: e.target.value });
+                setPage(1);
+              }}
+              className={`w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 ${colors.focus} bg-white`}
+            >
             <option value="">全部优先级</option>
-            <option value="high">高优先级</option>
-            <option value="medium">普通</option>
-            <option value="low">较低</option>
-          </select>
-        </div>
+              <option value="high">高优先级</option>
+              <option value="medium">普通</option>
+              <option value="low">较低</option>
+            </select>
+          </div>
+        )}
+        {onSearch && (
+          <div className="space-y-1.5 flex items-end">
+            <button
+              onClick={onSearch}
+              disabled={isSearching}
+              className={`w-full ${colors.bg.includes('blue') ? 'bg-blue-600' : colors.bg.includes('rose') ? 'bg-rose-600' : colors.bg.includes('orange') ? 'bg-orange-600' : colors.bg.includes('amber') ? 'bg-amber-600' : 'bg-zinc-600'} text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {isSearching ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  查询中...
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" />
+                  查询
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Desktop Table View */}
@@ -217,11 +278,16 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                     </td>
                     <td className={`px-6 py-2 sticky left-[192px] ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-2 whitespace-nowrap">
-                        <span className="text-zinc-600 underline decoration-zinc-200 underline-offset-4 font-medium">{order.customer_short_name}</span>
+                        <span className={`${colors.text} underline decoration-zinc-200 underline-offset-4 font-medium`}>{order.customer_short_name}</span>
                         <PriorityBadge priority={order.priority} />
                       </div>
                     </td>
-                    <td colSpan={4} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]`}></td>
+                    <td colSpan={4} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)] ${colors.bg}`}>
+                      <div className="flex items-center gap-4 text-sm text-zinc-600">
+                        {showContactName && order.contact_name && <span className="text-zinc-500">{order.contact_name}</span>}
+                        {showOrderName && order.order_name && <span>{order.order_name}</span>}
+                      </div>
+                    </td>
                     <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                       {order.start_date && (
                         <div className="flex items-center gap-1.5 opacity-80">
@@ -230,9 +296,9 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className={`px-6 py-2 text-xs font-bold ${colors.text} whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
-                      <div className="flex items-center gap-1.5">
-                        <Icon className="w-4 h-4" />
+                    <td className={`px-6 py-2 text-xs font-bold text-zinc-600 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color)] ${colors.bg}`}>
+                      <div className="flex items-center gap-1.5 text-zinc-900">
+                        <span className="p-1 bg-zinc-900 text-white rounded text-[8px]">终</span>
                         {formatDate(getOrderMaxDueDate(order))}
                       </div>
                     </td>
@@ -279,14 +345,23 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       )}
                     </td>
                     <td className={`pl-4 pr-6 py-2 sticky right-2 ${colors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => editOrder(order)}
-                          className="inline-flex items-center gap-1.5 text-zinc-900 font-bold hover:text-blue-600 transition-colors py-1.5 px-3 hover:bg-white rounded-lg whitespace-nowrap"
+                          className={`p-2 ${colors.text} hover:text-blue-700 transition-colors hover:bg-white rounded-lg`}
+                          title="修改订单"
                         >
                           <Settings className="w-4 h-4" />
-                          <span className="text-xs">修改</span>
                         </button>
+                        {deleteOrder && (
+                          <button
+                            onClick={() => deleteOrder(order)}
+                            className="p-2 text-zinc-400 hover:text-red-600 transition-colors hover:bg-red-50 rounded-lg"
+                            title="删除"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td className="w-2 sticky right-0 bg-white z-10 !border-0"></td>
@@ -299,7 +374,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         </div>
                       </td>
                       <td className={`px-6 py-4 sticky left-[192px] bg-white z-[2] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
-                        <span className="text-xs text-zinc-500 font-mono whitespace-nowrap">{item.part_number || '-'}</span>
+                        <span className="text-xs text-zinc-500 font-mono break-words">{item.part_number || '-'}</span>
                       </td>
                       <td className={`px-6 py-4 text-zinc-900 font-medium whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.quantity}</td>
                       <td className={`px-6 py-4 font-medium whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] ${(item.scrap_quantity || 0) > 0 ? 'bg-white text-red-600' : 'text-zinc-900'}`}>{item.scrap_quantity || '-'}</td>
@@ -388,8 +463,11 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                 </div>
                 <div className="p-4 border-b border-zinc-100 space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-zinc-500">客户</span><span className="font-medium">{order.customer_short_name}</span></div>
+                  {showOrderName && order.order_name && <div className="flex justify-between"><span className="text-zinc-500">订单名称</span><span className="font-medium">{order.order_name}</span></div>}
+                  {showContactName && order.contact_name && <div className="flex justify-between"><span className="text-zinc-500">联系人</span><span className="font-medium">{order.contact_name}</span></div>}
                   <div className="flex justify-between"><span className="text-zinc-500">订单日期</span><span>{formatDate(order.start_date) || '-'}</span></div>
                   <div className="flex justify-between"><span className="text-zinc-500">交货日期</span><span className={`font-bold ${colors.text}`}>{formatDate(getOrderMaxDueDate(order))}</span></div>
+                  {showOrderNotes && order.notes && <div className="pt-2 text-zinc-500 text-xs italic">备注: {order.notes}</div>}
                 </div>
                 {isExpanded && sortedItems.map((item, idx) => (
                   <div key={item.id || idx} className="border-t border-zinc-100 p-4 bg-zinc-50">

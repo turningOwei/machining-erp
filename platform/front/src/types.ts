@@ -52,6 +52,9 @@ export interface Order {
   customer_name?: string;
   customer_short_name?: string;
   order_number?: string;
+  order_name?: string;
+  contact_id?: number;
+  contact_name?: string;
   status: 'pending' | 'processing' | 'completed' | 'delivered';
   priority: 'low' | 'medium' | 'high';
   start_date?: string;

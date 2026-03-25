@@ -21,7 +21,8 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 		SELECT
 			o.id, o.customer_id, COALESCE(o.customer_name, c.name) as customer_name,
 			COALESCE(o.customer_short_name, c.short_name) as customer_short_name,
-			o.order_number, o.status, o.priority, o.start_date, o.due_date,
+			o.order_number, o.order_name, o.contact_id, ct.name as contact_name,
+			o.status, o.priority, o.start_date, o.due_date,
 			o.notes, o.created_at,
 			oi.id as item_id, oi.part_name, oi.part_number, oi.quantity, oi.scrap_quantity,
 			oi.unit_price, oi.total_price, oi.status as item_status, oi.drawing_data, oi.notes as item_notes_data,
@@ -31,6 +32,7 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 			op.status as process_status, op.sort_order
 		FROM orders o
 		LEFT JOIN customers c ON o.customer_id = c.id
+		LEFT JOIN contacts ct ON o.contact_id = ct.id
 		LEFT JOIN order_items oi ON o.id = oi.order_id
 		LEFT JOIN order_processes op ON oi.id = op.order_item_id
 		ORDER BY o.start_date ASC, oi.due_date ASC, op.sort_order ASC
@@ -49,8 +51,8 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 	for rows.Next() {
 		var (
 			orderID, orderItemID, processID                                    sql.NullInt64
-			customerID                                                         sql.NullInt64
-			customerName, customerShortName, orderNumber, orderStatus, priority sql.NullString
+			customerID, contactID                                              sql.NullInt64
+			customerName, customerShortName, orderNumber, orderName, contactName, orderStatus, priority sql.NullString
 			orderStartDateRaw, orderDueDateRaw                                 sql.NullTime
 			orderNotes                                                         sql.NullString
 			createdAt                                                          time.Time
@@ -70,7 +72,7 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 		)
 
 		err := rows.Scan(
-			&orderID, &customerID, &customerName, &customerShortName, &orderNumber, &orderStatus, &priority,
+			&orderID, &customerID, &customerName, &customerShortName, &orderNumber, &orderName, &contactID, &contactName, &orderStatus, &priority,
 			&orderStartDateRaw, &orderDueDateRaw, &orderNotes, &createdAt,
 			&orderItemID, &partName, &partNumber, &quantity, &scrapQuantity,
 			&unitPrice, &totalPrice, &itemStatus, &drawingData, &itemNotesData,
@@ -106,6 +108,12 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 			}
 			order.CustomerName = strPtr(customerName)
 			order.CustomerShortName = strPtr(customerShortName)
+			order.OrderName = strPtr(orderName)
+			if contactID.Valid {
+				cid := int(contactID.Int64)
+				order.ContactID = &cid
+			}
+			order.ContactName = strPtr(contactName)
 			if orderStartDateRaw.Valid {
 				order.StartDate = &orderStartDateRaw.Time
 			}
@@ -203,8 +211,8 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 
 	// 插入订单
 	result, err := tx.Exec(
-		"INSERT INTO orders (customer_id, customer_name, customer_short_name, order_number, priority, start_date, due_date, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		order.CustomerID, order.CustomerName, order.CustomerShortName, order.OrderNumber, order.Priority, order.StartDate, order.DueDate, order.Notes, "pending",
+		"INSERT INTO orders (customer_id, customer_name, customer_short_name, order_number, order_name, contact_id, priority, start_date, due_date, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		order.CustomerID, order.CustomerName, order.CustomerShortName, order.OrderNumber, order.OrderName, order.ContactID, order.Priority, order.StartDate, order.DueDate, order.Notes, "pending",
 	)
 	if err != nil {
 		return 0, err
@@ -265,8 +273,8 @@ func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) 
 
 	// 更新订单
 	_, err = tx.Exec(
-		"UPDATE orders SET customer_id = ?, customer_name = ?, customer_short_name = ?, priority = ?, start_date = ?, due_date = ?, notes = ? WHERE id = ?",
-		order.CustomerID, order.CustomerName, order.CustomerShortName, order.Priority, order.StartDate, order.DueDate, order.Notes, order.ID,
+		"UPDATE orders SET customer_id = ?, customer_name = ?, customer_short_name = ?, order_name = ?, contact_id = ?, priority = ?, start_date = ?, due_date = ?, notes = ? WHERE id = ?",
+		order.CustomerID, order.CustomerName, order.CustomerShortName, order.OrderName, order.ContactID, order.Priority, order.StartDate, order.DueDate, order.Notes, order.ID,
 	)
 	if err != nil {
 		return err

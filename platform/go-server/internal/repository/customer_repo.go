@@ -145,3 +145,18 @@ func (r *CustomerRepository) Delete(id int) error {
 
 	return tx.Commit()
 }
+
+// NameExists 检查客户名称是否存在，excludeID 用于更新时排除当前客户
+func (r *CustomerRepository) NameExists(name string, excludeID int) (bool, error) {
+	var count int
+	var err error
+	if excludeID > 0 {
+		err = r.db.QueryRow("SELECT COUNT(*) FROM customers WHERE name = ? AND id != ?", name, excludeID).Scan(&count)
+	} else {
+		err = r.db.QueryRow("SELECT COUNT(*) FROM customers WHERE name = ?", name).Scan(&count)
+	}
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
