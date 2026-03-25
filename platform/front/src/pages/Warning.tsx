@@ -50,6 +50,8 @@ const Warning: React.FC<WarningProps> = ({
       setShowDrawingModal={setShowDrawingModal}
       handleProcessClick={handleProcessClick}
       getOrderMaxDueDate={getOrderMaxDueDate}
+      showOrderName={true}
+      showContactName={true}
     />
   );
 };

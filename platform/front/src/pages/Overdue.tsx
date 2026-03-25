@@ -51,6 +51,8 @@ const Overdue: React.FC<OverdueProps> = ({
       setShowDrawingModal={setShowDrawingModal}
       handleProcessClick={handleProcessClick}
       getOrderMaxDueDate={getOrderMaxDueDate}
+      showOrderName={true}
+      showContactName={true}
     />
   );
 };

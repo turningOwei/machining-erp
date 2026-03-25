@@ -50,6 +50,8 @@ const Imminent: React.FC<ImminentProps> = ({
       setShowDrawingModal={setShowDrawingModal}
       handleProcessClick={handleProcessClick}
       getOrderMaxDueDate={getOrderMaxDueDate}
+      showOrderName={true}
+      showContactName={true}
     />
   );
 };
