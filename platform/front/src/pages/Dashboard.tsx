@@ -63,13 +63,19 @@ const Dashboard: React.FC<DashboardProps> = ({
           <h2 className="text-3xl font-bold tracking-tight">工作看板</h2>
           <p className="text-zinc-500">今日共有 {orders.filter(o => o.status !== 'delivered').length} 个进行中的任务</p>
         </div>
-        <button
-          onClick={resetAndOpenModal}
-          className="bg-zinc-900 text-white px-6 py-3 rounded-none font-medium flex items-center justify-start gap-2 hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-200"
-        >
-          <Plus className="w-5 h-5" />
-          新建订单
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs text-zinc-500">
+            <span className="font-medium text-zinc-700">排序：</span>
+            订单日期<span className="text-emerald-500">↑</span> → 零件交期<span className="text-emerald-500">↑</span> → 工序顺序<span className="text-emerald-500">↑</span>
+          </div>
+          <button
+            onClick={resetAndOpenModal}
+            className="bg-zinc-900 text-white px-6 py-3 rounded-none font-medium flex items-center justify-start gap-2 hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-200"
+          >
+            <Plus className="w-5 h-5" />
+            新建订单
+          </button>
+        </div>
       </div>
 
       {/* Stats Grid */}

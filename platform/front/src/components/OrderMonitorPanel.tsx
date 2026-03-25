@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronUp, ChevronDown, Settings, Eye, FileText, LucideIcon, Search, RefreshCw, Trash2 } from 'lucide-react';
+import { ChevronUp, ChevronDown, Settings, Eye, FileText, LucideIcon, Search, RefreshCw, Trash2, Plus } from 'lucide-react';
 import { Order } from '../types';
 import { formatDate, PROCESS_COLORS, ProcessStatusBadge, StatusBadge, PriorityBadge } from './shared';
 import Pagination from './Pagination';
@@ -10,6 +10,7 @@ export interface FilterConfig {
   type: 'text' | 'date' | 'select';
   placeholder?: string;
   options?: { value: string; label: string }[];
+  width?: string;
 }
 
 interface OrderMonitorPanelProps {
@@ -36,16 +37,17 @@ interface OrderMonitorPanelProps {
   showOutsourcingFee?: boolean;
   onSearch?: () => void;
   isSearching?: boolean;
+  onNewOrder?: () => void;
 }
 
 const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
   title, icon: Icon, orders, filters, setFilters, filterConfigs, localFilter, page, setPage, pageSize, setPageSize, themeColor,
   editOrder, deleteOrder, setShowDrawingModal, handleProcessClick, getOrderMaxDueDate,
   showOrderName = false, showContactName = false, showOrderNotes = false, showOutsourcingFee = true,
-  onSearch, isSearching = false
+  onSearch, isSearching = false, onNewOrder
 }) => {
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
-  const [allExpanded, setAllExpanded] = useState(true);
+  const [allExpanded, setAllExpanded] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   const sortedOrders = [...orders].sort((a, b) => {
@@ -59,12 +61,13 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
     ? localFilter(sortedOrders, filters, getOrderMaxDueDate)
     : sortedOrders.filter(o => {
         const mDate = getOrderMaxDueDate(o);
-        const matchDueDate = !filters.dueDate || mDate === filters.dueDate;
+        const matchDueDateStart = !filters.dueDateStart || mDate >= filters.dueDateStart;
+        const matchDueDateEnd = !filters.dueDateEnd || mDate <= filters.dueDateEnd;
         const matchOrderNumber = !filters.orderNumber || String(o.order_number || o.id).toLowerCase().includes(filters.orderNumber.toLowerCase());
         const matchCustomer = !filters.customerName || (o.customer_name || '').toLowerCase().includes(filters.customerName.toLowerCase());
         const matchPriority = !filters.priority || o.priority === filters.priority;
         const matchPartNumber = !filters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(filters.partNumber.toLowerCase()));
-        return matchDueDate && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
+        return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
       });
 
   const displayOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize);
@@ -135,14 +138,14 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
       </div>
 
       {/* Filters */}
-      <div className={`${showFilters ? 'grid' : 'hidden'} md:grid px-4 md:px-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm`}>
+      <div className={`${showFilters ? 'flex' : 'hidden'} md:flex px-4 md:px-8 flex-wrap gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm`}>
         {(filterConfigs || [
-          { label: '交货日期', key: 'dueDate', type: 'date' as const, placeholder: '' },
+          { label: '订单交期', key: 'dueDate', type: 'date' as const, placeholder: '' },
           { label: '订单号', key: 'orderNumber', type: 'text' as const, placeholder: '搜索订单号...' },
           { label: '零件号', key: 'partNumber', type: 'text' as const, placeholder: '搜索零件或客户...' },
           { label: '客户名称', key: 'customerName', type: 'text' as const, placeholder: '搜索客户...' }
         ]).map(f => (
-          <div key={f.key} className="space-y-1.5">
+          <div key={f.key} className={`space-y-1.5 ${f.width || 'min-w-[140px] flex-1'}`}>
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">{f.label}</label>
             {f.type === 'select' ? (
               <select
@@ -173,7 +176,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
           </div>
         ))}
         {!filterConfigs && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 w-28">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">优先级</label>
             <select
               value={filters.priority}
@@ -191,11 +194,17 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
           </div>
         )}
         {onSearch && (
-          <div className="space-y-1.5 flex items-end">
+          <div className="space-y-1.5 flex items-end w-24">
             <button
               onClick={onSearch}
               disabled={isSearching}
-              className={`w-full ${colors.bg.includes('blue') ? 'bg-blue-600' : colors.bg.includes('rose') ? 'bg-rose-600' : colors.bg.includes('orange') ? 'bg-orange-600' : colors.bg.includes('amber') ? 'bg-amber-600' : 'bg-zinc-600'} text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`w-full ${
+                themeColor === 'blue' ? 'bg-blue-600 hover:bg-blue-700' :
+                themeColor === 'rose' ? 'bg-rose-600 hover:bg-rose-700' :
+                themeColor === 'orange' ? 'bg-orange-600 hover:bg-orange-700' :
+                themeColor === 'amber' ? 'bg-amber-600 hover:bg-amber-700' :
+                'bg-zinc-600 hover:bg-zinc-700'
+              } text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {isSearching ? (
                 <>
@@ -208,6 +217,17 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                   查询
                 </>
               )}
+            </button>
+          </div>
+        )}
+        {onNewOrder && (
+          <div className="space-y-1.5 flex items-end w-28">
+            <button
+              onClick={onNewOrder}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              新建订单
             </button>
           </div>
         )}
@@ -239,8 +259,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>单价 (¥)</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>总计 (¥)</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>订单日期</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.text} font-bold`}>交货日期</th>
-              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>完工日期</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.text} font-bold`}>订单交期</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-96 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>工序流程</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>外协共计 (¥)</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>状态</th>
@@ -250,6 +269,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>工装费用</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>材料费用</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-24 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>其他费用</th>
+              <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>完工日期</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-64 font-bold text-sm shadow-[inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>备注</th>
               <th className={`pl-4 pr-6 py-4 font-bold ${colors.headText} w-20 text-sm text-left sticky right-2 ${colors.headBg} z-20 shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>操作</th>
               <th className={`w-2 sticky right-0 bg-white z-20 border-none`}></th>
@@ -302,7 +322,6 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         {formatDate(getOrderMaxDueDate(order))}
                       </div>
                     </td>
-                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}></td>
                     <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
                       {(() => {
                         const allProcesses = (order.items || []).flatMap((item: any) => item.processes || []);
@@ -337,6 +356,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       <StatusBadge status={order.status} />
                     </td>
                     <td colSpan={6} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}></td>
+                    <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}></td>
                     <td className={`px-6 py-2 shadow-[inset_0_1px_0_0_var(--sep-color)]`}>
                       {order.notes && (
                         <div className="flex items-center gap-2 text-zinc-500 max-w-xl overflow-hidden">
@@ -384,7 +404,6 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       </td>
                       <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{formatDate(item.start_date || order.start_date) || '-'}</td>
                       <td className={`px-6 py-4 ${colors.text} font-bold whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] ${colors.bg}/20`}>{formatDate(item.due_date || order.due_date)}</td>
-                      <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{formatDate(item.completion_date) || '-'}</td>
                       <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                         {item.processes && item.processes.length > 0 && (
                           <div className="flex flex-wrap gap-2">
@@ -415,6 +434,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.fixture_cost || '0'}</td>
                       <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.material_cost || '0'}</td>
                       <td className={`px-6 py-4 text-zinc-500 font-mono text-xs whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.other_cost || '0'}</td>
+                      <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{formatDate(item.completion_date) || '-'}</td>
                       <td className={`px-6 py-4 border-b ${colors.sep}`}>
                         <div className="text-xs text-zinc-500 truncate max-w-[200px]" title={item.notes}>{item.notes || '-'}</div>
                       </td>
@@ -467,7 +487,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                   {showOrderName && order.order_name && <div className="flex justify-between"><span className="text-zinc-500">订单名称</span><span className="font-medium">{order.order_name}</span></div>}
                   {showContactName && order.contact_name && <div className="flex justify-between"><span className="text-zinc-500">联系人</span><span className="font-medium">{order.contact_name}</span></div>}
                   <div className="flex justify-between"><span className="text-zinc-500">订单日期</span><span>{formatDate(order.start_date) || '-'}</span></div>
-                  <div className="flex justify-between"><span className="text-zinc-500">交货日期</span><span className={`font-bold ${colors.text}`}>{formatDate(getOrderMaxDueDate(order))}</span></div>
+                  <div className="flex justify-between"><span className="text-zinc-500">订单交期</span><span className={`font-bold ${colors.text}`}>{formatDate(getOrderMaxDueDate(order))}</span></div>
                   {showOrderNotes && order.notes && <div className="pt-2 text-zinc-500 text-xs italic">备注: {order.notes}</div>}
                 </div>
                 {isExpanded && sortedItems.map((item, idx) => (
@@ -477,7 +497,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       <div className="flex justify-between"><span className="text-zinc-500">零件号</span><span>{item.part_number || '-'}</span></div>
                       <div className="flex justify-between"><span className="text-zinc-500">数量</span><span>{item.quantity}</span></div>
                       <div className="flex justify-between"><span className="text-zinc-500">单价</span><span>¥{item.unit_price}</span></div>
-                      <div className="flex justify-between"><span className="text-zinc-500">交货日期</span><span>{formatDate(item.due_date || order.due_date)}</span></div>
+                      <div className="flex justify-between"><span className="text-zinc-500">订单交期</span><span>{formatDate(item.due_date || order.due_date)}</span></div>
                     </div>
                     {item.processes && item.processes.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">

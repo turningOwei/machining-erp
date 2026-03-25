@@ -1,9 +1,10 @@
 import React from 'react';
 import { Plus, ClipboardList } from 'lucide-react';
 import { Order } from '../types';
-import OrderMonitorPanel, { FilterConfig } from '../components/OrderMonitorPanel';
+import OrderMonitorPanel from '../components/OrderMonitorPanel';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import { OrderFilters, filterOrdersLocal } from '../services/orderService';
+import { orderFilterConfigs } from '../configs/filterConfigs';
 
 interface OrdersProps {
   orders: Order[];
@@ -61,53 +62,8 @@ const Orders: React.FC<OrdersProps> = ({
     setShowDeleteConfirm(true);
   };
 
-  // Filter configs for Orders page
-  const filterConfigs: FilterConfig[] = [
-    { key: 'dueDateStart', label: '交货日期(起)', type: 'date' },
-    { key: 'dueDateEnd', label: '交货日期(止)', type: 'date' },
-    { key: 'orderNumber', label: '订单号', type: 'text', placeholder: '搜索订单号...' },
-    { key: 'partNumber', label: '零件号', type: 'text', placeholder: '搜索零件号...' },
-    { key: 'customerName', label: '客户名称', type: 'text', placeholder: '搜索客户...' },
-    {
-      key: 'priority',
-      label: '优先级',
-      type: 'select',
-      placeholder: '全部优先级',
-      options: [
-        { value: 'high', label: '高优先级' },
-        { value: 'medium', label: '普通' },
-        { value: 'low', label: '较低' }
-      ]
-    },
-    {
-      key: 'status',
-      label: '订单状态',
-      type: 'select',
-      placeholder: '全部状态',
-      options: [
-        { value: 'pending', label: '待加工' },
-        { value: 'processing', label: '加工中' },
-        { value: 'completed', label: '已完成' },
-        { value: 'delivered', label: '已送货' }
-      ]
-    }
-  ];
-
   return (
     <div className="flex-1 !w-full flex flex-col min-h-0">
-      {/* Header with New Order button */}
-      <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8 mb-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => resetAndOpenModal()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm shadow-blue-100"
-          >
-            <Plus className="w-4 h-4" />
-            新建订单
-          </button>
-        </div>
-      </div>
-
       {/* Shared Panel */}
       <OrderMonitorPanel
         title="订单管理"
@@ -115,7 +71,7 @@ const Orders: React.FC<OrdersProps> = ({
         orders={orders}
         filters={orderFilters}
         setFilters={setOrderFilters}
-        filterConfigs={filterConfigs}
+        filterConfigs={orderFilterConfigs}
         localFilter={(orders, filters, getMaxDueDate) => filterOrdersLocal(orders, filters as OrderFilters, getMaxDueDate)}
         page={currentPage}
         setPage={setCurrentPage}
@@ -133,6 +89,7 @@ const Orders: React.FC<OrdersProps> = ({
         showOutsourcingFee={true}
         onSearch={handleSearch}
         isSearching={isSearching}
+        onNewOrder={resetAndOpenModal}
       />
 
       {/* Delete Confirm Modal */}

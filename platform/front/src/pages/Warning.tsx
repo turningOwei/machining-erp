@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Order } from '../types';
 import OrderMonitorPanel from '../components/OrderMonitorPanel';
+import { simpleFilterConfigs } from '../configs/filterConfigs';
 
 interface WarningProps {
   orders: Order[];
@@ -41,6 +42,7 @@ const Warning: React.FC<WarningProps> = ({
       orders={warningOrders}
       filters={warningFilters}
       setFilters={setWarningFilters}
+      filterConfigs={simpleFilterConfigs}
       page={warningPage}
       setPage={setWarningPage}
       pageSize={warningPageSize}

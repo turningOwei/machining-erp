@@ -48,6 +48,7 @@ import ValidationAlertModal from './components/ValidationAlertModal';
 import RuleModal, { RuleForm } from './components/RuleModal';
 import Orders from './pages/Orders';
 import Dashboard from './pages/Dashboard';
+import { createEmptyFilters, createOrderFilters } from './configs/filterConfigs';
 import Overdue from './pages/Overdue';
 import Warning from './pages/Warning';
 import Imminent from './pages/Imminent';
@@ -170,50 +171,16 @@ export default function App() {
   const [pageSize, setPageSize] = useState(10);
   const [overduePage, setOverduePage] = useState(1);
   const [overduePageSize, setOverduePageSize] = useState(10);
-  const [overdueFilters, setOverdueFilters] = useState({
-    dueDate: '',
-    orderNumber: '',
-    partNumber: '',
-    customerName: '',
-    priority: ''
-  });
+  const [overdueFilters, setOverdueFilters] = useState(createEmptyFilters);
   const [warningPage, setWarningPage] = useState(1);
   const [warningPageSize, setWarningPageSize] = useState(10);
-  const [warningFilters, setWarningFilters] = useState({
-    dueDate: '',
-    orderNumber: '',
-    partNumber: '',
-    customerName: '',
-    priority: ''
-  });
+  const [warningFilters, setWarningFilters] = useState(createEmptyFilters);
   const [imminentPage, setImminentPage] = useState(1);
   const [imminentPageSize, setImminentPageSize] = useState(10);
-  const [imminentFilters, setImminentFilters] = useState({
-    dueDate: '',
-    orderNumber: '',
-    partNumber: '',
-    customerName: '',
-    priority: ''
-  });
+  const [imminentFilters, setImminentFilters] = useState(createEmptyFilters);
   // 订单管理筛选状态
-  const [orderFilters, setOrderFilters] = useState({
-    dueDateStart: '',
-    dueDateEnd: '',
-    orderNumber: '',
-    partNumber: '',
-    customerName: '',
-    priority: '',
-    status: ''
-  });
-  const [appliedOrderFilters, setAppliedOrderFilters] = useState({
-    dueDateStart: '',
-    dueDateEnd: '',
-    orderNumber: '',
-    partNumber: '',
-    customerName: '',
-    priority: '',
-    status: ''
-  });
+  const [orderFilters, setOrderFilters] = useState(createOrderFilters);
+  const [appliedOrderFilters, setAppliedOrderFilters] = useState(createOrderFilters);
   const [dashboardPage, setDashboardPage] = useState(1);
   const [dashboardPageSize, setDashboardPageSize] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
@@ -314,7 +281,7 @@ export default function App() {
       // 2. Check formula
       try {
         let processedFormula = rule.formula
-          .replace(/{交货日期}/g, d(maxDueDate).toString())
+          .replace(/{订单交期}/g, d(maxDueDate).toString())
           .replace(/{订单日期}/g, d(orderDate).toString())
           .replace(/{当天}/g, today.toString());
 
@@ -632,7 +599,7 @@ export default function App() {
     }
 
     if (!hasDueDate) {
-      errors.deliveryDate = "交货日期不能为空";
+      errors.deliveryDate = "订单交期不能为空";
     }
 
     if (!newOrder.items || newOrder.items.length === 0) {

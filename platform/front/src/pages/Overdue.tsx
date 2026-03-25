@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Order } from '../types';
 import OrderMonitorPanel from '../components/OrderMonitorPanel';
+import { simpleFilterConfigs } from '../configs/filterConfigs';
 
 interface OverdueProps {
   orders: Order[];
@@ -42,6 +43,7 @@ const Overdue: React.FC<OverdueProps> = ({
       orders={overdueOrders}
       filters={overdueFilters}
       setFilters={setOverdueFilters}
+      filterConfigs={simpleFilterConfigs}
       page={overduePage}
       setPage={setOverduePage}
       pageSize={overduePageSize}

@@ -2,6 +2,7 @@ import React from 'react';
 import { Clock } from 'lucide-react';
 import { Order } from '../types';
 import OrderMonitorPanel from '../components/OrderMonitorPanel';
+import { simpleFilterConfigs } from '../configs/filterConfigs';
 
 interface ImminentProps {
   orders: Order[];
@@ -41,6 +42,7 @@ const Imminent: React.FC<ImminentProps> = ({
       orders={imminentOrders}
       filters={imminentFilters}
       setFilters={setImminentFilters}
+      filterConfigs={simpleFilterConfigs}
       page={imminentPage}
       setPage={setImminentPage}
       pageSize={imminentPageSize}

@@ -71,23 +71,12 @@ const OrderModal: React.FC<OrderModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="p-6 space-y-6">
+        <form onSubmit={onSubmit} className="p-6 pt-2 space-y-2">
           {/* Common Order Header */}
-          <div className="space-y-4 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-            {/* Row 1: 订单名称、客户选择、联系人、订单号、优先级 */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单名称</label>
-                <input
-                  type="text"
-                  placeholder="订单名称..."
-                  value={newOrder.order_name || ''}
-                  onChange={e => setNewOrder({ ...newOrder, order_name: e.target.value })}
-                  className="w-full px-4 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none"
-                />
-              </div>
-              <div className="md:col-span-2 relative" ref={customerDropdownRef}>
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">选择客户 *</label>
+          <div className="bg-zinc-50 px-2.5 py-2 rounded-2xl border border-zinc-100 flex items-end gap-3">
+            <div className="grid grid-cols-4 md:grid-cols-[100px_80px_80px_160px_140px_200px_140px] gap-3 flex-1">
+              <div className="relative" ref={customerDropdownRef}>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">选择客户 *</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -98,10 +87,10 @@ const OrderModal: React.FC<OrderModalProps> = ({
                       setShowCustomerDropdown(true);
                     }}
                     onFocus={() => setShowCustomerDropdown(true)}
-                    className={`w-full px-4 py-2 bg-white border ${formErrors.customer ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none`}
+                    className={`w-full px-3 py-1.5 bg-white border ${formErrors.customer ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]`}
                   />
                   {showCustomerDropdown && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {customers
                         .filter(c => {
                           const searchLower = (customerSearch || '').toLowerCase();
@@ -110,7 +99,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                         .map(c => (
                           <div
                             key={c.id}
-                            className="px-4 py-2 hover:bg-zinc-100 cursor-pointer text-sm"
+                            className="px-3 py-2 hover:bg-zinc-100 cursor-pointer text-sm"
                             onClick={() => {
                               setNewOrder({
                                 ...newOrder,
@@ -132,20 +121,20 @@ const OrderModal: React.FC<OrderModalProps> = ({
                         const searchLower = (customerSearch || '').toLowerCase();
                         return c.short_name && c.short_name.toLowerCase().includes(searchLower);
                       }).length === 0 && (
-                        <div className="px-4 py-2 text-zinc-400 text-sm">未找到匹配的客户</div>
+                        <div className="px-3 py-2 text-zinc-400 text-sm">未找到匹配的客户</div>
                       )}
                     </div>
                   )}
                 </div>
                 {formErrors.customer && (
-                  <div className="mt-1 flex items-center gap-1.5 text-red-500 text-[10px] font-bold">
+                  <div className="mt-1 flex items-center gap-1 text-red-500 text-[10px] font-bold">
                     <AlertCircle className="w-3 h-3" />
                     {formErrors.customer}
                   </div>
                 )}
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">联系人</label>
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">联系人</label>
                 <select
                   value={newOrder.contact_id || ''}
                   onChange={e => {
@@ -159,29 +148,19 @@ const OrderModal: React.FC<OrderModalProps> = ({
                     });
                   }}
                   disabled={!newOrder.customer_id}
-                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none text-sm disabled:bg-zinc-100 disabled:text-zinc-400"
+                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm disabled:bg-zinc-100 disabled:text-zinc-400 h-[34px]"
                 >
-                  <option value="">选择联系人</option>
+                  <option value="">选择</option>
                   {customers.find(c => c.id === newOrder.customer_id)?.contacts?.map(ct => (
-                    <option key={ct.id} value={ct.id}>{ct.name} ({ct.contact})</option>
+                    <option key={ct.id} value={ct.id}>{ct.name}</option>
                   ))}
                 </select>
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单号</label>
-                <input
-                  type="text"
-                  placeholder="自动生成"
-                  value={newOrder.order_number || ''}
-                  className="w-full px-4 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none"
-                  onChange={e => setNewOrder({ ...newOrder, order_number: e.target.value })}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">优先级</label>
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">优先级</label>
                 <select
                   value={newOrder.priority || 'medium'}
-                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]"
                   onChange={e => setNewOrder({ ...newOrder, priority: e.target.value as any })}
                 >
                   <option value="low">较低</option>
@@ -189,15 +168,25 @@ const OrderModal: React.FC<OrderModalProps> = ({
                   <option value="high">紧急</option>
                 </select>
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单日期 *</label>
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单号</label>
+                <input
+                  type="text"
+                  placeholder="自动生成"
+                  value={newOrder.order_number || ''}
+                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]"
+                  onChange={e => setNewOrder({ ...newOrder, order_number: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单日期 *</label>
                 <div className="relative flex items-center group cursor-pointer">
-                  <Calendar className="absolute left-3 w-4 h-4 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
+                  <Calendar className="absolute left-2.5 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
                   <input
                     required
                     type="date"
                     value={newOrder.start_date || ''}
-                    className={`w-full pl-10 pr-2 py-2 bg-white border ${formErrors.orderDate ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none transition-all cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
+                    className={`w-full pl-8 pr-2 py-1.5 bg-white border ${formErrors.orderDate ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none transition-all cursor-pointer text-sm h-[34px] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
                     onChange={e => {
                       const newDate = e.target.value;
                       const updatedItems = (newOrder.items || []).map(item => ({
@@ -214,56 +203,84 @@ const OrderModal: React.FC<OrderModalProps> = ({
                   />
                 </div>
                 {formErrors.orderDate && (
-                  <div className="mt-1 flex items-center gap-1.5 text-red-500 text-[10px] font-bold">
+                  <div className="mt-1 flex items-center gap-1 text-red-500 text-[10px] font-bold">
                     <AlertCircle className="w-3 h-3" />
                     {formErrors.orderDate}
                   </div>
                 )}
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">订单备注</label>
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单名称</label>
+                <input
+                  type="text"
+                  placeholder="订单名称..."
+                  value={newOrder.order_name || ''}
+                  onChange={e => setNewOrder({ ...newOrder, order_name: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单备注</label>
                 <input
                   type="text"
                   placeholder="备注..."
                   value={newOrder.notes || ''}
                   onChange={e => setNewOrder({ ...newOrder, notes: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]"
                 />
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                const items = [...(newOrder.items || [])];
+                items.push({
+                  part_name: '',
+                  quantity: 1,
+                  unit_price: 0,
+                  processes: [],
+                  start_date: newOrder.start_date || ''
+                });
+                setNewOrder({ ...newOrder, items });
+              }}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors whitespace-nowrap h-[34px]"
+            >
+              <Plus className="w-4 h-4" />
+              添加一行
+            </button>
           </div>
 
           <div className="space-y-4">
-            <div className="overflow-x-auto border border-zinc-200 rounded-2xl bg-white shadow-inner">
-              <table className="min-w-[2100px] w-full text-left text-xs table-fixed border-collapse">
-                <thead className="bg-zinc-50 border-b border-zinc-200 sticky top-0 z-10">
+            <div className="overflow-x-auto overflow-y-auto h-[480px] border border-zinc-200 rounded-2xl bg-white shadow-inner">
+              <table className="min-w-[2400px] w-full text-left text-xs table-fixed border-collapse">
+                <thead className="bg-zinc-50 sticky top-0 z-20">
                   <tr>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-12 text-center shadow-[inset_-1px_0_0_0_#e4e4e7]">#</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-[192px] sticky left-0 bg-zinc-50 border-b border-zinc-200 z-[15] shadow-[inset_-1px_0_0_0_#e4e4e7]">零件名称 *</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-[160px] sticky left-[192px] bg-zinc-50 border-b border-zinc-200 z-[15] shadow-[inset_-1px_0_0_0_#e4e4e7]">零件号(P/N)</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24">数量</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24">报废数量</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24">单价 (¥)</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24">总计 (¥)</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-32">订单日期</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-32">交货日期</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-32">完工日期</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24">交货数量</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24">刀具费用</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24">工装费用</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24">材料费用</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24">其他费用</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-96">工序流程</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 text-right">外协共计 (¥)</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-48">备注</th>
-                    <th className="pl-4 pr-6 py-3 font-bold text-zinc-500 w-20 text-left sticky right-2 bg-zinc-50 border-l border-b border-zinc-200 z-10 shadow-[inset_1px_0_0_0_#e4e4e7]">操作</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-12 text-center sticky top-0 bg-zinc-50 border border-zinc-200">#</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-[192px] sticky left-0 top-0 bg-zinc-50 border border-zinc-200 z-[25]">零件名称 *</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-[160px] sticky left-[192px] top-0 bg-zinc-50 border border-zinc-200 z-[25]">零件号(P/N)</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">数量</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">单价 (¥)</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">总计 (¥)</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 border border-zinc-200">订单日期</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 border border-zinc-200">订单交期</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-96 sticky top-0 bg-zinc-50 border border-zinc-200">工序流程</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 text-right sticky top-0 bg-zinc-50 border border-zinc-200">外协共计 (¥)</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">交货数量</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">刀具费用</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">工装费用</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">材料费用</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">其他费用</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">报废数量</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 border border-zinc-200">完工日期</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-48 sticky top-0 bg-zinc-50 border border-zinc-200">备注</th>
+                    <th className="pl-4 pr-6 py-3 font-bold text-zinc-500 w-20 text-left sticky right-2 top-0 bg-zinc-50 border border-zinc-200 z-[25]">操作</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-100">
+                <tbody className="divide-y divide-zinc-200">
                   {newOrder.items?.map((item, idx) => (
                     <tr key={idx} className="hover:bg-zinc-50/50">
-                      <td className="px-4 py-2 font-mono text-zinc-400">{idx + 1}</td>
-                      <td className="px-2 py-2 sticky left-0 bg-white z-[15] border-b border-zinc-200 shadow-[inset_-1px_0_0_0_#e4e4e7]">
+                      <td className="px-4 py-2 font-mono text-zinc-400 border border-zinc-200">{idx + 1}</td>
+                      <td className="px-2 py-2 sticky left-0 bg-white z-[25] border border-zinc-200">
                         <input
                           type="text"
                           required
@@ -277,7 +294,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2 sticky left-[192px] bg-white z-[15] border-b border-zinc-200 shadow-[inset_-1px_0_0_0_#e4e4e7]">
+                      <td className="px-2 py-2 sticky left-[192px] bg-white z-[15] border border-zinc-200">
                         <input
                           type="text"
                           placeholder="P/N..."
@@ -290,7 +307,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border border-zinc-200">
                         <input
                           type="number"
                           value={item.quantity || ''}
@@ -302,19 +319,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className={`px-2 py-2 ${(item.scrap_quantity || 0) > 0 ? 'bg-white' : ''}`}>
-                        <input
-                          type="number"
-                          value={item.scrap_quantity || ''}
-                          onChange={e => {
-                            const items = [...newOrder.items!];
-                            items[idx] = { ...items[idx], scrap_quantity: parseInt(e.target.value) || 0 };
-                            setNewOrder({ ...newOrder, items });
-                          }}
-                          className={`w-full px-3 py-1.5 border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all ${(item.scrap_quantity || 0) > 0 ? 'text-red-600 font-bold' : 'bg-transparent'}`}
-                        />
-                      </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border border-zinc-200">
                         <input
                           type="number"
                           step="0.01"
@@ -327,17 +332,17 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border border-zinc-200">
                         <div className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-500 font-medium">
                           ¥{((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border border-zinc-200">
                         <div className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-400 font-medium text-sm overflow-hidden whitespace-nowrap">
                           {formatDate(item.start_date)}
                         </div>
                       </td>
-                      <td className="px-2 py-2 overflow-hidden">
+                      <td className="px-2 py-2 overflow-hidden border border-zinc-200">
                         <div className="space-y-1">
                           <div className="relative flex items-center group cursor-pointer">
                             <Calendar className="absolute left-2 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
@@ -357,12 +362,103 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           {formErrors.deliveryDate && !item.due_date && (
                             <div className="flex items-center gap-1 text-red-500 text-[9px] font-bold">
                               <AlertCircle className="w-2.5 h-2.5" />
-                              交货日期不能为空
+                              订单交期不能为空
                             </div>
                           )}
                         </div>
                       </td>
-                      <td className="px-2 py-2 overflow-hidden">
+                      <td className="px-2 py-2 border border-zinc-200">
+                        <ProcessCell
+                          processes={item.processes || []}
+                          onUpdate={(processes) => {
+                            const items = [...newOrder.items!];
+                            items[idx] = { ...items[idx], processes };
+                            setNewOrder({ ...newOrder, items });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2 border border-zinc-200">
+                        <div className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-500 font-bold text-right">
+                          ¥{(item.processes || []).reduce((sum, p) => sum + Number(p.outsourcing_fee || 0), 0).toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 border border-zinc-200">
+                        <input
+                          type="number"
+                          value={item.delivered_quantity || ''}
+                          onChange={e => {
+                            const items = [...newOrder.items!];
+                            items[idx] = { ...items[idx], delivered_quantity: parseInt(e.target.value) };
+                            setNewOrder({ ...newOrder, items });
+                          }}
+                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
+                        />
+                      </td>
+                      <td className="px-2 py-2 border border-zinc-200">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.tool_cost || ''}
+                          onChange={e => {
+                            const items = [...newOrder.items!];
+                            items[idx] = { ...items[idx], tool_cost: parseFloat(e.target.value) };
+                            setNewOrder({ ...newOrder, items });
+                          }}
+                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
+                        />
+                      </td>
+                      <td className="px-2 py-2 border border-zinc-200">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.fixture_cost || ''}
+                          onChange={e => {
+                            const items = [...newOrder.items!];
+                            items[idx] = { ...items[idx], fixture_cost: parseFloat(e.target.value) };
+                            setNewOrder({ ...newOrder, items });
+                          }}
+                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
+                        />
+                      </td>
+                      <td className="px-2 py-2 border border-zinc-200">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.material_cost || ''}
+                          onChange={e => {
+                            const items = [...newOrder.items!];
+                            items[idx] = { ...items[idx], material_cost: parseFloat(e.target.value) };
+                            setNewOrder({ ...newOrder, items });
+                          }}
+                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
+                        />
+                      </td>
+                      <td className="px-2 py-2 border border-zinc-200">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.other_cost || ''}
+                          onChange={e => {
+                            const items = [...newOrder.items!];
+                            items[idx] = { ...items[idx], other_cost: parseFloat(e.target.value) };
+                            setNewOrder({ ...newOrder, items });
+                          }}
+                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
+                        />
+                      </td>
+                      <td className={`px-2 py-2 border border-zinc-200 ${(item.scrap_quantity || 0) > 0 ? 'bg-white' : ''}`}>
+                        <input
+                          type="number"
+                          value={item.scrap_quantity || ''}
+                          onChange={e => {
+                            const items = [...newOrder.items!];
+                            items[idx] = { ...items[idx], scrap_quantity: parseInt(e.target.value) || 0 };
+                            setNewOrder({ ...newOrder, items });
+                          }}
+                          className={`w-full px-3 py-1.5 border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all ${(item.scrap_quantity || 0) > 0 ? 'text-red-600 font-bold' : 'bg-transparent'}`}
+                        />
+                      </td>
+                      <td className="px-2 py-2 overflow-hidden border border-zinc-200">
                         <div className="relative flex items-center group cursor-pointer">
                           <Calendar className="absolute left-2 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
                           <input
@@ -377,86 +473,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           />
                         </div>
                       </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="number"
-                          value={item.delivered_quantity || ''}
-                          onChange={e => {
-                            const items = [...newOrder.items!];
-                            items[idx] = { ...items[idx], delivered_quantity: parseInt(e.target.value) };
-                            setNewOrder({ ...newOrder, items });
-                          }}
-                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={item.tool_cost || ''}
-                          onChange={e => {
-                            const items = [...newOrder.items!];
-                            items[idx] = { ...items[idx], tool_cost: parseFloat(e.target.value) };
-                            setNewOrder({ ...newOrder, items });
-                          }}
-                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={item.fixture_cost || ''}
-                          onChange={e => {
-                            const items = [...newOrder.items!];
-                            items[idx] = { ...items[idx], fixture_cost: parseFloat(e.target.value) };
-                            setNewOrder({ ...newOrder, items });
-                          }}
-                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={item.material_cost || ''}
-                          onChange={e => {
-                            const items = [...newOrder.items!];
-                            items[idx] = { ...items[idx], material_cost: parseFloat(e.target.value) };
-                            setNewOrder({ ...newOrder, items });
-                          }}
-                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={item.other_cost || ''}
-                          onChange={e => {
-                            const items = [...newOrder.items!];
-                            items[idx] = { ...items[idx], other_cost: parseFloat(e.target.value) };
-                            setNewOrder({ ...newOrder, items });
-                          }}
-                          className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <ProcessCell
-                          processes={item.processes || []}
-                          onUpdate={(processes) => {
-                            const items = [...newOrder.items!];
-                            items[idx] = { ...items[idx], processes };
-                            setNewOrder({ ...newOrder, items });
-                          }}
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-500 font-bold text-right">
-                          ¥{(item.processes || []).reduce((sum, p) => sum + Number(p.outsourcing_fee || 0), 0).toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border border-zinc-200">
                         <input
                           type="text"
                           placeholder="添加备注..."
@@ -469,7 +486,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all text-xs"
                         />
                       </td>
-                      <td className="pl-4 pr-6 py-2 text-left sticky right-2 bg-white/90 backdrop-blur-sm border-b border-zinc-100 shadow-[inset_1px_0_0_0_#e4e4e7] z-10">
+                      <td className="pl-4 pr-6 py-2 text-left sticky right-2 bg-white border border-zinc-200 z-[25]">
                         <button
                           type="button"
                           onClick={() => {
@@ -482,30 +499,11 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </td>
-                      <td className="w-2 sticky right-0 bg-white z-10 !border-0"></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                const items = [...(newOrder.items || [])];
-                items.push({
-                  part_name: '',
-                  quantity: 1,
-                  unit_price: 0,
-                  processes: [],
-                  start_date: newOrder.start_date || ''
-                });
-                setNewOrder({ ...newOrder, items });
-              }}
-              className="w-full py-3 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 font-bold hover:border-zinc-400 hover:text-zinc-600 transition-all flex items-center justify-start gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              添加一行
-            </button>
           </div>
 
           <div className="pt-6 flex gap-3">
