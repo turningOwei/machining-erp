@@ -251,36 +251,36 @@ const OrderModal: React.FC<OrderModalProps> = ({
           </div>
 
           <div className="space-y-4">
-            <div className="overflow-x-auto overflow-y-auto h-[480px] border border-zinc-200 rounded-2xl bg-white shadow-inner">
-              <table className="min-w-[2400px] w-full text-left text-xs table-fixed border-collapse">
+            <div className="overflow-x-auto overflow-y-auto h-[480px] border border-zinc-200 rounded-2xl bg-white shadow-inner" style={{ '--sep-color': '#d4d4d8' } as React.CSSProperties}>
+              <table className="min-w-[2400px] w-full text-left text-xs table-fixed border-collapse border-b border-zinc-200">
                 <thead className="bg-zinc-50 sticky top-0 z-30">
                   <tr>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-12 text-center sticky top-0 bg-zinc-50 border border-zinc-200">#</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-[192px] sticky left-0 top-0 bg-zinc-50 border border-zinc-200 z-[35]">零件名称 *</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-[160px] sticky left-[192px] top-0 bg-zinc-50 border border-zinc-200 z-[35]">零件号(P/N)</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">数量</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">单价 (¥)</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">总计 (¥)</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 border border-zinc-200">订单日期</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 border border-zinc-200">订单交期</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-96 sticky top-0 bg-zinc-50 border border-zinc-200">工序流程</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 text-right sticky top-0 bg-zinc-50 border border-zinc-200">外协共计 (¥)</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">交货数量</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">刀具费用</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">工装费用</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">材料费用</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">其他费用</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">报废数量</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 border border-zinc-200">完工日期</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-48 sticky top-0 bg-zinc-50 border border-zinc-200">备注</th>
-                    <th className="pl-4 pr-6 py-3 font-bold text-zinc-500 w-20 text-left sticky right-2 top-0 bg-zinc-50 border border-zinc-200 z-[35]">操作</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-12 text-center sticky left-0 top-0 bg-zinc-50 z-[35] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">#</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-[192px] sticky left-[48px] top-0 bg-zinc-50 z-[35] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">零件名称 *</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-[160px] sticky left-[240px] top-0 bg-zinc-50 z-[35] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">零件号(P/N)</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">数量</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">单价 (¥)</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">总计 (¥)</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">订单日期</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">订单交期</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-96 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">工序流程</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 text-right sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">外协共计 (¥)</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">交货数量</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">刀具费用</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">工装费用</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">材料费用</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">其他费用</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">报废数量</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">完工日期</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-48 sticky top-0 bg-zinc-50 shadow-[inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">备注</th>
+                    <th className="pl-4 pr-4 py-3 font-bold text-zinc-500 w-20 text-left sticky right-0 top-0 bg-zinc-50 z-[35] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200">
                   {newOrder.items?.map((item, idx) => (
                     <tr key={idx} className="hover:bg-zinc-50/50">
-                      <td className="px-4 py-2 font-mono text-zinc-400 border border-zinc-200">{idx + 1}</td>
-                      <td className="px-2 py-2 sticky left-0 bg-white z-[25] border border-zinc-200">
+                      <td className="px-4 py-2 font-mono text-zinc-400 sticky left-0 bg-white z-[25] shadow-[inset_-1px_0_0_0_var(--sep-color)]">{idx + 1}</td>
+                      <td className="px-2 py-2 sticky left-[48px] bg-white z-[25] shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <input
                           type="text"
                           required
@@ -294,7 +294,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2 sticky left-[192px] bg-white z-[15] border border-zinc-200">
+                      <td className="px-2 py-2 sticky left-[240px] bg-white z-[15] shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <input
                           type="text"
                           placeholder="P/N..."
@@ -307,7 +307,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <input
                           type="number"
                           value={item.quantity || ''}
@@ -319,7 +319,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <input
                           type="number"
                           step="0.01"
@@ -332,17 +332,17 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <div className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-500 font-medium">
                           ¥{((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <div className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-400 font-medium text-sm overflow-hidden whitespace-nowrap">
                           {formatDate(item.start_date)}
                         </div>
                       </td>
-                      <td className="px-2 py-2 overflow-hidden border border-zinc-200">
+                      <td className="px-2 py-2 overflow-hidden shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <div className="space-y-1">
                           <div className="relative flex items-center group cursor-pointer">
                             <Calendar className="absolute left-2 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
@@ -367,7 +367,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           )}
                         </div>
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <ProcessCell
                           processes={item.processes || []}
                           onUpdate={(processes) => {
@@ -377,12 +377,12 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           }}
                         />
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <div className="w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-500 font-bold text-right">
                           ¥{(item.processes || []).reduce((sum, p) => sum + Number(p.outsourcing_fee || 0), 0).toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <input
                           type="number"
                           value={item.delivered_quantity || ''}
@@ -394,7 +394,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <input
                           type="number"
                           step="0.01"
@@ -407,7 +407,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <input
                           type="number"
                           step="0.01"
@@ -420,7 +420,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <input
                           type="number"
                           step="0.01"
@@ -433,7 +433,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <input
                           type="number"
                           step="0.01"
@@ -446,7 +446,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all"
                         />
                       </td>
-                      <td className={`px-2 py-2 border border-zinc-200 ${(item.scrap_quantity || 0) > 0 ? 'bg-white' : ''}`}>
+                      <td className={`px-2 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color)] ${(item.scrap_quantity || 0) > 0 ? 'bg-white' : ''}`}>
                         <input
                           type="number"
                           value={item.scrap_quantity || ''}
@@ -458,7 +458,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className={`w-full px-3 py-1.5 border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all ${(item.scrap_quantity || 0) > 0 ? 'text-red-600 font-bold' : 'bg-transparent'}`}
                         />
                       </td>
-                      <td className="px-2 py-2 overflow-hidden border border-zinc-200">
+                      <td className="px-2 py-2 overflow-hidden shadow-[inset_-1px_0_0_0_var(--sep-color)]">
                         <div className="relative flex items-center group cursor-pointer">
                           <Calendar className="absolute left-2 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
                           <input
@@ -473,7 +473,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           />
                         </div>
                       </td>
-                      <td className="px-2 py-2 border border-zinc-200">
+                      <td className="px-2 py-2">
                         <input
                           type="text"
                           placeholder="添加备注..."
@@ -486,7 +486,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                           className="w-full px-3 py-1.5 bg-transparent border border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:bg-white rounded-lg outline-none transition-all text-xs"
                         />
                       </td>
-                      <td className="pl-4 pr-6 py-2 text-left sticky right-2 bg-white border border-zinc-200 z-[25]">
+                      <td className="pl-4 pr-4 py-2 text-left sticky right-0 bg-white z-[25] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color)]">
                         <button
                           type="button"
                           onClick={() => {
