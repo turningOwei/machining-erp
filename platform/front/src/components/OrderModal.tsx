@@ -253,11 +253,11 @@ const OrderModal: React.FC<OrderModalProps> = ({
           <div className="space-y-4">
             <div className="overflow-x-auto overflow-y-auto h-[480px] border border-zinc-200 rounded-2xl bg-white shadow-inner">
               <table className="min-w-[2400px] w-full text-left text-xs table-fixed border-collapse">
-                <thead className="bg-zinc-50 sticky top-0 z-20">
+                <thead className="bg-zinc-50 sticky top-0 z-30">
                   <tr>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-12 text-center sticky top-0 bg-zinc-50 border border-zinc-200">#</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-[192px] sticky left-0 top-0 bg-zinc-50 border border-zinc-200 z-[25]">零件名称 *</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-[160px] sticky left-[192px] top-0 bg-zinc-50 border border-zinc-200 z-[25]">零件号(P/N)</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-[192px] sticky left-0 top-0 bg-zinc-50 border border-zinc-200 z-[35]">零件名称 *</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-[160px] sticky left-[192px] top-0 bg-zinc-50 border border-zinc-200 z-[35]">零件号(P/N)</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">数量</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">单价 (¥)</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">总计 (¥)</th>
@@ -273,7 +273,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                     <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 border border-zinc-200">报废数量</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 border border-zinc-200">完工日期</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-48 sticky top-0 bg-zinc-50 border border-zinc-200">备注</th>
-                    <th className="pl-4 pr-6 py-3 font-bold text-zinc-500 w-20 text-left sticky right-2 top-0 bg-zinc-50 border border-zinc-200 z-[25]">操作</th>
+                    <th className="pl-4 pr-6 py-3 font-bold text-zinc-500 w-20 text-left sticky right-2 top-0 bg-zinc-50 border border-zinc-200 z-[35]">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200">
