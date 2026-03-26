@@ -74,7 +74,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
         <form onSubmit={onSubmit} className="p-6 pt-2 space-y-2">
           {/* Common Order Header */}
           <div className="bg-zinc-50 px-2.5 py-2 rounded-2xl border border-zinc-100 flex items-end gap-3">
-            <div className="grid grid-cols-4 md:grid-cols-[100px_80px_80px_160px_140px_200px_140px] gap-3 flex-1">
+            <div className="grid grid-cols-4 md:grid-cols-[100px_80px_80px_180px_140px_200px_140px] gap-3 flex-1">
               <div className="relative" ref={customerDropdownRef}>
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">选择客户 *</label>
                 <div className="relative">
@@ -252,7 +252,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
 
           <div className="space-y-4">
             <div className="overflow-x-auto overflow-y-auto h-[480px] border border-zinc-200 rounded-2xl bg-white shadow-inner" style={{ '--sep-color': '#d4d4d8' } as React.CSSProperties}>
-              <table className="min-w-[2400px] w-full text-left text-xs table-fixed border-collapse border-b border-zinc-200">
+              <table className="min-w-[2402px] w-full text-left text-xs table-fixed border-collapse border-b border-zinc-200">
                 <thead className="bg-zinc-50 sticky top-0 z-30">
                   <tr>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-12 text-center sticky left-0 top-0 bg-zinc-50 z-[35] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">#</th>
@@ -262,7 +262,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                     <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">单价 (¥)</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">总计 (¥)</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">订单日期</th>
-                    <th className="px-4 py-3 font-bold text-zinc-500 w-32 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">订单交期</th>
+                    <th className="px-4 py-3 font-bold text-zinc-500 w-[130px] sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">订单交期</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-96 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">工序流程</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-32 text-right sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">外协共计 (¥)</th>
                     <th className="px-4 py-3 font-bold text-zinc-500 w-24 sticky top-0 bg-zinc-50 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]">交货数量</th>
