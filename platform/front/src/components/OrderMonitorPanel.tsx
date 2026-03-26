@@ -397,9 +397,9 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       <td className={`px-6 py-4 sticky left-[192px] bg-white z-[2] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                         <span className="text-xs text-zinc-500 font-mono break-words">{item.part_number || '-'}</span>
                       </td>
-                      <td className={`px-6 py-4 text-zinc-900 font-medium whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{item.quantity}</td>
-                      <td className={`px-6 py-4 text-zinc-600 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>¥{item.unit_price}</td>
-                      <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
+                      <td className={`px-6 py-4 text-zinc-900 font-medium whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] w-24`}>{item.quantity}</td>
+                      <td className={`px-6 py-4 text-zinc-600 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] w-24`}>¥{item.unit_price}</td>
+                      <td className={`px-6 py-4 whitespace-nowrap border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)] w-32`}>
                         <div className="text-zinc-900 font-bold">¥{(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)}</div>
                       </td>
                       <td className={`px-6 py-4 text-zinc-500 whitespace-nowrap text-[10px] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>{formatDate(item.start_date || order.start_date) || '-'}</td>

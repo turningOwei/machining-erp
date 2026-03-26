@@ -4,10 +4,11 @@
 
 ```bash
 # 前端
-cd platform/front && npm run build
+Push-Location platform/front; npm run build; Pop-Location
 
 # 后端 (Windows 交叉编译 Linux)
-cd platform/go-server && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/server_linux ./cmd/server/main.go
+Push-Location platform/go-server; $env:CGO_ENABLED="0"; $env:GOOS="linux"; $env:GOARCH="amd64"; go build -o bin/server_linux ./cmd/server/main.go; Pop-Location
+
 
 $env:CGO_ENABLED=0; $env:GOOS="linux"; $env:GOARCH="amd64"; go build -o bin/server_linux ./cmd/server
 
@@ -32,7 +33,7 @@ scp -r platform/front/dist/* root@8.145.45.155:/var/www/erp/
 ssh root@8.145.45.155
 
 # 删除旧进程
-pkill -f '/opt/erp/server'
+pkill -f './server'
 
 # 赋予权限
 chmod +x /opt/erp/server
