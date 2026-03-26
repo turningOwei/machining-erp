@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Users, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Users, Edit, Trash2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Customer, Contact } from '../types';
 
 interface CustomersProps {
@@ -8,6 +8,7 @@ interface CustomersProps {
   setNewCustomer: (customer: { name: string; short_name: string; contacts: Contact[] }) => void;
   setShowCustomerModal: (show: boolean) => void;
   setDeletingCustomerId: (id: number | null) => void;
+  fetchData: () => void;
 }
 
 const Customers: React.FC<CustomersProps> = ({
@@ -15,9 +16,11 @@ const Customers: React.FC<CustomersProps> = ({
   setEditingCustomer,
   setNewCustomer,
   setShowCustomerModal,
-  setDeletingCustomerId
+  setDeletingCustomerId,
+  fetchData
 }) => {
   const [expandedCustomers, setExpandedCustomers] = useState<Set<number>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const toggleExpand = (customerId: number) => {
     setExpandedCustomers(prev => {
@@ -31,8 +34,26 @@ const Customers: React.FC<CustomersProps> = ({
     });
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col min-h-0 space-y-8 animate-in fade-in duration-500 py-4 md:py-8 !w-full !max-w-none !m-0 !p-0">
+    <div className="flex-1 flex flex-col min-h-0 space-y-8 animate-in fade-in duration-500 py-4 md:py-8 !w-full !max-w-none !m-0 !p-0 relative">
+      {/* 加载遮罩 */}
+      {isRefreshing && (
+        <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm">
+          <div className="flex items-center gap-3 text-zinc-600 bg-white px-6 py-3 rounded-xl shadow-lg border border-zinc-200">
+            <RefreshCw className="w-5 h-5 animate-spin" />
+            <span className="font-medium">数据加载中...</span>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
@@ -41,17 +62,27 @@ const Customers: React.FC<CustomersProps> = ({
           </h2>
           <p className="text-zinc-500">管理客户信息，修改客户名称不会影响历史订单</p>
         </div>
-        <button
-          onClick={() => {
-            setEditingCustomer(null);
-            setNewCustomer({ name: '', short_name: '', contacts: [] });
-            setShowCustomerModal(true);
-          }}
-          className="bg-zinc-900 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          新建客户
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-500 transition-colors disabled:opacity-50"
+            title="刷新数据"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={() => {
+              setEditingCustomer(null);
+              setNewCustomer({ name: '', short_name: '', contacts: [] });
+              setShowCustomerModal(true);
+            }}
+            className="bg-zinc-900 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            新建客户
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 bg-white rounded-none border-y border-zinc-200 overflow-auto">

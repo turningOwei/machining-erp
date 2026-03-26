@@ -17,6 +17,7 @@ interface WarningProps {
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
   checkOrderAgainstRules: (order: Order, type: 'warning' | 'imminent') => boolean;
+  fetchData: () => void;
 }
 
 const Warning: React.FC<WarningProps> = ({
@@ -31,8 +32,20 @@ const Warning: React.FC<WarningProps> = ({
   setShowDrawingModal,
   handleProcessClick,
   getOrderMaxDueDate,
-  checkOrderAgainstRules
+  checkOrderAgainstRules,
+  fetchData
 }) => {
+  const [isSearching, setIsSearching] = React.useState(false);
+
+  const handleSearch = async () => {
+    setIsSearching(true);
+    try {
+      await fetchData();
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const warningOrders = orders.filter(o => checkOrderAgainstRules(o, 'warning'));
 
   return (
@@ -54,6 +67,8 @@ const Warning: React.FC<WarningProps> = ({
       getOrderMaxDueDate={getOrderMaxDueDate}
       showOrderName={true}
       showContactName={true}
+      onSearch={handleSearch}
+      isSearching={isSearching}
     />
   );
 };

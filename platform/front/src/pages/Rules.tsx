@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, Settings2, Search, Settings, Trash2, Link as LinkIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Settings2, Search, Settings, Trash2, Link as LinkIcon, RefreshCw } from 'lucide-react';
 import { AdventRule } from '../types';
 
 interface RuleForm {
@@ -25,6 +25,7 @@ interface RulesProps {
   setRuleForm: (form: RuleForm) => void;
   setShowRuleModal: (show: boolean) => void;
   setDeletingRuleId: (id: number | null) => void;
+  fetchData: () => void;
 }
 
 const Rules: React.FC<RulesProps> = ({
@@ -36,10 +37,31 @@ const Rules: React.FC<RulesProps> = ({
   ruleForm,
   setRuleForm,
   setShowRuleModal,
-  setDeletingRuleId
+  setDeletingRuleId,
+  fetchData
 }) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col min-h-0 space-y-8 animate-in fade-in duration-500 py-4 md:py-8 !w-full !max-w-none !m-0 !p-0">
+    <div className="flex-1 flex flex-col min-h-0 space-y-8 animate-in fade-in duration-500 py-4 md:py-8 !w-full !max-w-none !m-0 !p-0 relative">
+      {/* 加载遮罩 */}
+      {isRefreshing && (
+        <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm">
+          <div className="flex items-center gap-3 text-zinc-600 bg-white px-6 py-3 rounded-xl shadow-lg border border-zinc-200">
+            <RefreshCw className="w-5 h-5 animate-spin" />
+            <span className="font-medium">数据加载中...</span>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
@@ -59,6 +81,14 @@ const Rules: React.FC<RulesProps> = ({
               className="pl-9 pr-4 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 w-64"
             />
           </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-500 transition-colors disabled:opacity-50"
+            title="刷新数据"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
           <button
             onClick={() => {
               setEditingRuleId(null);

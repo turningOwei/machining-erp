@@ -21,6 +21,7 @@ interface OrdersProps {
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
+  fetchData: () => void;
 }
 
 const Orders: React.FC<OrdersProps> = ({
@@ -37,7 +38,8 @@ const Orders: React.FC<OrdersProps> = ({
   deleteOrder,
   setShowDrawingModal,
   handleProcessClick,
-  getOrderMaxDueDate
+  getOrderMaxDueDate,
+  fetchData
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
@@ -48,7 +50,7 @@ const Orders: React.FC<OrdersProps> = ({
     setIsSearching(true);
     try {
       setCurrentPage(1);
-      // API search would go here if needed
+      await fetchData();
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     } finally {

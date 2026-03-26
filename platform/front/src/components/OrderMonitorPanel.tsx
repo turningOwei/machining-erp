@@ -98,7 +98,16 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
   }[themeColor as 'blue' | 'rose' | 'orange' | 'amber'] || { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-100', sep: 'border-zinc-300', sepHex: '#a1a1aa', pseudoSep: 'after:bg-zinc-300', headText: 'text-zinc-900', headBg: 'bg-zinc-50', listBorder: 'border-l-zinc-500', focus: 'focus:ring-zinc-900', pageActive: 'bg-zinc-600 text-white shadow-zinc-100', pageBtn: 'hover:bg-zinc-50' };
 
   return (
-    <div className="flex-1 !w-full flex flex-col min-h-0 animate-in fade-in duration-500 !max-w-none !m-0 !p-0">
+    <div className="flex-1 !w-full flex flex-col min-h-0 animate-in fade-in duration-500 !max-w-none !m-0 !p-0 relative">
+      {/* 加载遮罩 */}
+      {isSearching && (
+        <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm">
+          <div className="flex items-center gap-3 text-zinc-600 bg-white px-6 py-3 rounded-xl shadow-lg border border-zinc-200">
+            <RefreshCw className="w-5 h-5 animate-spin" />
+            <span className="font-medium">数据加载中...</span>
+          </div>
+        </div>
+      )}
       {/* Desktop Header */}
       <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-8">
         <div>
@@ -206,17 +215,8 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                 'bg-zinc-600 hover:bg-zinc-700'
               } text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {isSearching ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  查询中...
-                </>
-              ) : (
-                <>
-                  <Search className="w-4 h-4" />
-                  查询
-                </>
-              )}
+              <Search className="w-4 h-4" />
+              查询
             </button>
           </div>
         )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -33,11 +33,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
-import { Order, OrderItem, OrderProcess, Customer, Material, Remnant, Reconciliation } from './types';
+import { Order, Customer, Material, Remnant } from './types';
 import LoginPage from './LoginPage';
 import Sidebar from './components/Sidebar';
-import OrderMonitorPanel from './components/OrderMonitorPanel';
-import ProcessCell from './components/ProcessCell';
 import OrderModal from './components/OrderModal';
 import AiDrawingModal from './components/AiDrawingModal';
 import DrawingViewerModal from './components/DrawingViewerModal';
@@ -56,9 +54,21 @@ import Customers from './pages/Customers';
 import Inventory from './pages/Inventory';
 import Finance from './pages/Finance';
 import Rules from './pages/Rules';
-import { formatDate, formatDateForInput, authFetch } from './components/shared';
-import { deleteOrder as deleteOrderApi } from './services/orderService';
+import { formatDate, authFetch } from './components/shared';
 import { NAV_ITEMS } from './constants/navigation';
+import { useOrders } from './hooks/useOrders';
+import {
+  fetchOrdersApi,
+  fetchCustomersApi,
+  fetchDashboardDataApi,
+  fetchInventoryDataApi,
+  fetchFinanceApi,
+  fetchRulesApi,
+  deleteOrderApi,
+  createRuleApi,
+  updateRuleApi,
+  deleteRuleApi
+} from './services/api';
 
 // --- AI Service ---
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
@@ -126,6 +136,7 @@ export default function App() {
   const handleLoginSuccess = (token: string, user: { username: string }) => {
     setIsAuthenticated(true);
     setAuthUser(user);
+    fetchDashboardData();
   };
 
   const handleLogout = async () => {
@@ -238,148 +249,6 @@ export default function App() {
       return next;
     });
   };
- 
-  const getOrderMaxDueDate = (order: Order) => {
-    let max = order.due_date || '';
-    if (order.items && order.items.length > 0) {
-      const dates = order.items.map(i => i.due_date).filter(Boolean);
-      if (dates.length > 0) {
-        max = dates.sort().reverse()[0];
-      }
-    }
-    return max;
-  };
-
-  const checkOrderAgainstRules = (order: Order, ruleType: 'warning' | 'imminent') => {
-    // Only non-delivered orders can be warning/imminent
-    if (order.status === 'delivered') return false;
-
-    const rules = adventRules.filter(r => r.ruleType === ruleType);
-    if (rules.length === 0) return false;
-
-    const maxDueDate = getOrderMaxDueDate(order);
-    const todayStr = new Date().toISOString().split('T')[0];
-    
-    // If it's already overdue, it should go to 'overdue' panel instead of warning/imminent
-    if (maxDueDate && maxDueDate < todayStr) return false;
-
-    const orderDate = order.start_date || (order.created_at ? order.created_at.split('T')[0] : '');
-
-    // Helper to extract days since epoch
-    const d = (dateStr: string) => Math.floor(new Date(dateStr).getTime() / 86400000);
-    const today = Math.floor(new Date().getTime() / 86400000);
-
-    return rules.some(rule => {
-      // 1. Check scope
-      if (rule.scopeType === 'specific') {
-        // For specific rules, we might need a link table, 
-        // but currently we check if the rule name matches order number or customer (simulated logic)
-        // or just skip for now and only handle 'general'
-        if (rule.name !== order.order_number && rule.name !== order.customer_name) return false;
-      }
-
-      // 2. Check formula
-      try {
-        let processedFormula = rule.formula
-          .replace(/{订单交期}/g, d(maxDueDate).toString())
-          .replace(/{订单日期}/g, d(orderDate).toString())
-          .replace(/{当天}/g, today.toString());
-
-        const result = new Function(`return ${processedFormula}`)();
-        return !!result;
-      } catch (e) {
-        return false;
-      }
-    });
-  };
-
-  const getItemStatusFromProcesses = (processes: OrderProcess[]): OrderItem['status'] => {
-    if (!processes || processes.length === 0) return 'pending';
-    
-    const statuses = processes.map(p => p.status || 'pending');
-    
-    // Rule: All completed -> completed
-    if (statuses.every(s => s === 'completed')) return 'completed';
-    
-    // Rule: All pending -> pending
-    if (statuses.every(s => s === 'pending')) return 'pending';
-    
-    // Everything else is processing
-    return 'processing';
-  };
-
-  const getOrderStatusFromItems = (items: OrderItem[]): Order['status'] => {
-    if (!items || items.length === 0) return 'pending';
-    
-    const statuses = items.map(i => i.status || 'pending');
-    
-    // Rule: All completed/delivered -> completed
-    if (statuses.every(s => s === 'completed' || s === 'delivered')) {
-      return 'completed';
-    }
-    
-    // Rule: All pending -> pending
-    if (statuses.every(s => s === 'pending')) {
-      return 'pending';
-    }
-    
-    // Everything else is processing
-    return 'processing';
-  };
-
-  const updateProcessStatus = async (itemId: number, processId: number, status: string) => {
-    try {
-      const response = await authFetch(`/api/platform/order-items/${itemId}/processes/${processId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-      
-      // Only fetch after success to ensure sync
-      fetchData();
-    } catch (err) {
-      console.error("Failed to update process status:", err);
-      // Revert data on error
-      fetchData();
-    }
-  };
-
-  const handleProcessClick = (orderId: number, itemId: number, processId: number, currentStatus: string, processName: string) => {
-    const nextStatus = currentStatus === 'pending' ? 'processing' : currentStatus === 'processing' ? 'completed' : 'pending';
-    
-    // Local optimistic update
-    setOrders(prevOrders => prevOrders.map(o => {
-      if (Number(o.id) !== Number(orderId)) return o;
-      if (!o.items) return o;
-      
-      const updatedItems = o.items.map(i => {
-        if (Number(i.id) !== Number(itemId)) return i;
-        if (!i.processes) return i;
-        
-        const updatedProcesses = i.processes.map(prevP => 
-          Number(prevP.id) === Number(processId) ? { ...prevP, status: nextStatus } : prevP
-        );
-        return {
-          ...i,
-          processes: updatedProcesses,
-          status: getItemStatusFromProcesses(updatedProcesses)
-        };
-      });
-      return {
-        ...o,
-        items: updatedItems,
-        status: getOrderStatusFromItems(updatedItems)
-      };
-    }));
-
-    updateProcessStatus(itemId, processId, nextStatus);
-  };
 
   // AI State
   const [aiPrompt, setAiPrompt] = useState('');
@@ -426,34 +295,17 @@ export default function App() {
     }
   };
 
-  const fetchAdventRules = async () => {
-    try {
-      const qs = new URLSearchParams(ruleFilters).toString();
-      const response = await authFetch(`/api/platform/advent-rules?${qs}`);
-      const data = await response.json();
-      setAdventRules(data);
-    } catch (err) {
-      console.error("Failed to fetch advent rules:", err);
-    }
-  };
-
   const [validationAlert, setValidationAlert] = useState<string | null>(null);
 
   const handleRuleSubmit = async () => {
     try {
-      const method = editingRuleId ? 'PATCH' : 'POST';
-      const url = editingRuleId ? `/api/platform/advent-rules/${editingRuleId}` : '/api/platform/advent-rules';
-
-      const response = await authFetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ruleForm)
-      });
-
-      if (response.ok) {
-        setShowRuleModal(false);
-        fetchAdventRules();
+      if (editingRuleId) {
+        await updateRuleApi(editingRuleId, ruleForm);
+      } else {
+        await createRuleApi(ruleForm);
       }
+      setShowRuleModal(false);
+      fetchRulesData();
     } catch (err) {
       console.error("Failed to save rule:", err);
     }
@@ -461,20 +313,129 @@ export default function App() {
 
   const deleteRule = async (id: number) => {
     try {
-      const response = await authFetch(`/api/platform/advent-rules/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        setDeletingRuleId(null);
-        fetchAdventRules();
-      }
+      await deleteRuleApi(id);
+      setDeletingRuleId(null);
+      fetchRulesData();
     } catch (err) {
       console.error("Failed to delete rule:", err);
     }
   };
 
   useEffect(() => {
-    fetchData();
-    fetchAdventRules();
+    if (!isAuthenticated) return;
+    fetchRulesData();
   }, [ruleFilters.name]);
+
+  // 只获取工作看板需要的数据（订单和规则）
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      const { orders, rules } = await fetchDashboardDataApi();
+      setOrders(orders);
+      setAdventRules(rules);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 只获取订单数据（订单管理、逾期/告警/临期订单页面使用）
+  const fetchOrdersData = async () => {
+    try {
+      const data = await fetchOrdersApi();
+      setOrders(data);
+    } catch (error) {
+      console.error("Failed to fetch orders", error);
+    }
+  };
+
+  // 使用 useOrders hook
+  const {
+    getOrderMaxDueDate,
+    checkOrderAgainstRules,
+    handleProcessClick,
+    editOrder: editOrderFromHook,
+    resetAndOpenModal: resetAndOpenModalFromHook
+  } = useOrders(orders, setOrders, adventRules, fetchOrdersData);
+
+  const editOrder = (order: Order) => {
+    editOrderFromHook(order, setNewOrder, setShowOrderModal);
+  };
+
+  const resetAndOpenModal = () => {
+    resetAndOpenModalFromHook(setNewOrder, setShowOrderModal);
+  };
+
+  // 获取客户数据
+  const fetchCustomersData = async () => {
+    try {
+      const data = await fetchCustomersApi();
+      setCustomers(data);
+    } catch (error) {
+      console.error("Failed to fetch customers", error);
+    }
+  };
+
+  // 获取库存数据
+  const fetchInventoryData = async () => {
+    try {
+      const { materials, remnants } = await fetchInventoryDataApi();
+      setMaterials(materials);
+      setRemnants(remnants);
+    } catch (error) {
+      console.error("Failed to fetch inventory data", error);
+    }
+  };
+
+  // 获取财务数据
+  const fetchFinanceData = async () => {
+    try {
+      const data = await fetchFinanceApi();
+      setReconciliation(data);
+    } catch (error) {
+      console.error("Failed to fetch finance data", error);
+    }
+  };
+
+  // 获取规则数据
+  const fetchRulesData = async () => {
+    try {
+      const data = await fetchRulesApi(ruleFilters);
+      setAdventRules(data);
+    } catch (error) {
+      console.error("Failed to fetch rules data", error);
+    }
+  };
+
+  // 监听菜单切换，按需加载数据
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    switch (activeTab) {
+      case 'dashboard':
+        fetchDashboardData();
+        break;
+      case 'orders':
+      case 'overdue':
+      case 'warning_orders':
+      case 'imminent_orders':
+        fetchOrdersData();
+        break;
+      case 'customers':
+        fetchCustomersData();
+        break;
+      case 'inventory':
+        fetchInventoryData();
+        break;
+      case 'finance':
+        fetchFinanceData();
+        break;
+      case 'advent_rules':
+        fetchRulesData();
+        break;
+    }
+  }, [activeTab, isAuthenticated]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -504,43 +465,6 @@ export default function App() {
     }
   };
 
-  const editOrder = (order: Order) => {
-    // 订单日期优先从订单级别获取，如果为空则从第一个订单项获取
-    const orderStartDate = order.start_date || (order.items && order.items.length > 0 ? order.items[0].start_date : null);
-    const orderDueDate = order.due_date || (order.items && order.items.length > 0 ? order.items[0].due_date : null);
-
-    setNewOrder({
-      id: order.id,
-      order_number: order.order_number,
-      order_name: order.order_name,
-      customer_id: order.customer_id,
-      customer_name: order.customer_name,
-      customer_short_name: order.customer_short_name,
-      contact_id: order.contact_id,
-      contact_name: order.contact_name,
-      priority: order.priority,
-      start_date: formatDateForInput(orderStartDate),
-      due_date: formatDateForInput(orderDueDate),
-      notes: order.notes,
-      items: (order.items || []).map(item => ({
-        ...item,
-        part_number: item.part_number || '',
-        scrap_quantity: item.scrap_quantity || 0,
-        delivered_quantity: item.delivered_quantity || 0,
-        tool_cost: item.tool_cost || 0,
-        fixture_cost: item.fixture_cost || 0,
-        material_cost: item.material_cost || 0,
-        other_cost: item.other_cost || 0,
-        item_notes: item.item_notes || '',
-        start_date: formatDateForInput(item.start_date || orderStartDate),
-        due_date: formatDateForInput(item.due_date || orderDueDate),
-        completion_date: formatDateForInput(item.completion_date),
-        processes: (item.processes || []).map(p => ({ ...p }))
-      }))
-    });
-    setShowOrderModal(true);
-  };
-
   const deleteOrder = async (orderId: number) => {
     try {
       await deleteOrderApi(orderId);
@@ -549,36 +473,6 @@ export default function App() {
       console.error('Failed to delete order:', error);
       alert(error instanceof Error ? error.message : '删除失败');
     }
-  };
-
-  const resetAndOpenModal = () => {
-    const today = new Date();
-    const dateStr = today.getFullYear().toString() + 
-                    (today.getMonth() + 1).toString().padStart(2, '0') + 
-                    today.getDate().toString().padStart(2, '0');
-    const prefix = `YHS-${dateStr}-`;
-    
-    const todayOrders = orders.filter(o => o.order_number?.startsWith(prefix));
-    let nextSuffix = 1;
-    if (todayOrders.length > 0) {
-      const suffixes = todayOrders.map(o => {
-        const parts = o.order_number!.split('-');
-        const lastPart = parts[parts.length - 1];
-        return parseInt(lastPart) || 0;
-      });
-      nextSuffix = Math.max(...suffixes) + 1;
-    }
-    const generatedOrderNumber = `${prefix}${nextSuffix.toString().padStart(3, '0')}`;
-
-    setNewOrder({ 
-      priority: 'medium', 
-      status: 'pending',
-      start_date: '',
-      due_date: '',
-      order_number: generatedOrderNumber,
-      items: [{ part_name: '', quantity: 1, unit_price: 0, processes: [] }]
-    });
-    setShowOrderModal(true);
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
@@ -756,6 +650,7 @@ export default function App() {
     setShowDrawingModal,
     handleProcessClick,
     getOrderMaxDueDate,
+    fetchData: fetchOrdersData,
   };
 
   const orderWithRulesProps = {
@@ -852,6 +747,7 @@ export default function App() {
             setNewCustomer={setNewCustomer}
             setShowCustomerModal={setShowCustomerModal}
             setDeletingCustomerId={setDeletingCustomerId}
+            fetchData={fetchCustomersData}
           />
         );
       case 'inventory':
@@ -879,6 +775,7 @@ export default function App() {
             setRuleForm={setRuleForm}
             setShowRuleModal={setShowRuleModal}
             setDeletingRuleId={setDeletingRuleId}
+            fetchData={fetchRulesData}
           />
         );
       default:
