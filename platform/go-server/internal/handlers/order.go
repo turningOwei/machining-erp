@@ -28,7 +28,18 @@ func NewOrderHandler(repo *repository.OrderRepository, itemRepo *repository.Orde
 }
 
 func (h *OrderHandler) List(c *gin.Context) {
-	orders, err := h.repo.GetAllWithItems()
+	// 获取筛选参数
+	filters := repository.OrderFilters{
+		DueDateStart: c.Query("dueDateStart"),
+		DueDateEnd:   c.Query("dueDateEnd"),
+		OrderNumber:  c.Query("orderNumber"),
+		PartNumber:   c.Query("partNumber"),
+		CustomerName: c.Query("customerName"),
+		Priority:     c.Query("priority"),
+		Status:       c.Query("status"),
+	}
+
+	orders, err := h.repo.GetWithFilters(filters)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

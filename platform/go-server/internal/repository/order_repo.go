@@ -15,9 +15,20 @@ func NewOrderRepository(db *sql.DB) *OrderRepository {
 	return &OrderRepository{db: db}
 }
 
-func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
-	// 一次查询获取所有数据
-	query := `
+// OrderFilters 订单筛选条件
+type OrderFilters struct {
+	DueDateStart string
+	DueDateEnd   string
+	OrderNumber  string
+	PartNumber   string
+	CustomerName string
+	Priority     string
+	Status       string
+}
+
+func (r *OrderRepository) GetWithFilters(filters OrderFilters) ([]models.Order, error) {
+	// 基础查询
+	baseQuery := `
 		SELECT
 			o.id, o.customer_id, COALESCE(o.customer_name, c.name) as customer_name,
 			COALESCE(o.customer_short_name, c.short_name) as customer_short_name,
@@ -35,15 +46,68 @@ func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
 		LEFT JOIN contacts ct ON o.contact_id = ct.id
 		LEFT JOIN order_items oi ON o.id = oi.order_id
 		LEFT JOIN order_processes op ON oi.id = op.order_item_id
-		ORDER BY o.start_date ASC, oi.due_date ASC, op.sort_order ASC
 	`
 
-	rows, err := r.db.Query(query)
+	// 构建 WHERE 条件
+	var whereConditions []string
+	var args []interface{}
+
+	if filters.DueDateStart != "" {
+		whereConditions = append(whereConditions, "oi.due_date >= ?")
+		args = append(args, filters.DueDateStart)
+	}
+	if filters.DueDateEnd != "" {
+		whereConditions = append(whereConditions, "oi.due_date <= ?")
+		args = append(args, filters.DueDateEnd)
+	}
+	if filters.OrderNumber != "" {
+		whereConditions = append(whereConditions, "o.order_number LIKE ?")
+		args = append(args, "%"+filters.OrderNumber+"%")
+	}
+	if filters.PartNumber != "" {
+		whereConditions = append(whereConditions, "oi.part_number LIKE ?")
+		args = append(args, "%"+filters.PartNumber+"%")
+	}
+	if filters.CustomerName != "" {
+		whereConditions = append(whereConditions, "(c.name LIKE ? OR c.short_name LIKE ?)")
+		args = append(args, "%"+filters.CustomerName+"%", "%"+filters.CustomerName+"%")
+	}
+	if filters.Priority != "" {
+		whereConditions = append(whereConditions, "o.priority = ?")
+		args = append(args, filters.Priority)
+	}
+	if filters.Status != "" {
+		whereConditions = append(whereConditions, "o.status = ?")
+		args = append(args, filters.Status)
+	}
+
+	query := baseQuery
+	if len(whereConditions) > 0 {
+		query += " WHERE "
+		for i, cond := range whereConditions {
+			if i > 0 {
+				query += " AND "
+			}
+			query += cond
+		}
+	}
+	query += " ORDER BY o.start_date ASC, oi.due_date ASC, op.sort_order ASC"
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	// 使用与 GetAllWithItems 相同的扫描逻辑
+	return r.scanOrders(rows)
+}
+
+func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
+	return r.GetWithFilters(OrderFilters{})
+}
+
+func (r *OrderRepository) scanOrders(rows *sql.Rows) ([]models.Order, error) {
 	orderMap := make(map[int]int) // orderID -> index in orders slice
 	itemMap := make(map[int]int)  // itemID -> index in items slice of its order
 	var orders []models.Order

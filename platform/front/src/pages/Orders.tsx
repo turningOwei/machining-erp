@@ -22,6 +22,7 @@ interface OrdersProps {
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
   fetchData: () => void;
+  fetchOrdersWithFilters: (filters: OrderFilters) => Promise<void>;
 }
 
 const Orders: React.FC<OrdersProps> = ({
@@ -39,7 +40,8 @@ const Orders: React.FC<OrdersProps> = ({
   setShowDrawingModal,
   handleProcessClick,
   getOrderMaxDueDate,
-  fetchData
+  fetchData,
+  fetchOrdersWithFilters
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
@@ -50,7 +52,7 @@ const Orders: React.FC<OrdersProps> = ({
     setIsSearching(true);
     try {
       setCurrentPage(1);
-      await fetchData();
+      await fetchOrdersWithFilters(orderFilters);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     } finally {

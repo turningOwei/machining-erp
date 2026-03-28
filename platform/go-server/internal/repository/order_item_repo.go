@@ -52,6 +52,15 @@ func (r *OrderItemRepository) UpdateStatus(id int, status string) error {
 	return err
 }
 
+func (r *OrderItemRepository) UpdateCompletionDate(id int, completionDate string) error {
+	if completionDate == "" {
+		_, err := r.db.Exec("UPDATE order_items SET completion_date = NULL WHERE id = ?", id)
+		return err
+	}
+	_, err := r.db.Exec("UPDATE order_items SET completion_date = ? WHERE id = ?", completionDate, id)
+	return err
+}
+
 func (r *OrderItemRepository) GetOrderID(itemID int) int {
 	var orderID int
 	r.db.QueryRow("SELECT order_id FROM order_items WHERE id = ?", itemID).Scan(&orderID)

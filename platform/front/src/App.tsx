@@ -228,6 +228,7 @@ export default function App() {
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [validationAlert, setValidationAlert] = useState<string | null>(null);
   
   const [newOrder, setNewOrder] = useState<Partial<Order>>({
     priority: 'medium',
@@ -294,8 +295,6 @@ export default function App() {
       setIsGenerating(false);
     }
   };
-
-  const [validationAlert, setValidationAlert] = useState<string | null>(null);
 
   const handleRuleSubmit = async () => {
     try {
@@ -447,7 +446,7 @@ export default function App() {
         authFetch('/api/platform/remnants'),
         authFetch('/api/platform/finance/reconciliation')
       ]);
-      
+
       const ordersData = await ordersRes.json();
       setOrders(Array.isArray(ordersData) ? ordersData : []);
       const customersData = await customersRes.json();
@@ -463,6 +462,23 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 带筛选条件的订单查询
+  const fetchOrdersWithFilters = async (filters: typeof orderFilters) => {
+    const params = new URLSearchParams();
+    if (filters.dueDateStart) params.append('dueDateStart', filters.dueDateStart);
+    if (filters.dueDateEnd) params.append('dueDateEnd', filters.dueDateEnd);
+    if (filters.orderNumber) params.append('orderNumber', filters.orderNumber);
+    if (filters.partNumber) params.append('partNumber', filters.partNumber);
+    if (filters.customerName) params.append('customerName', filters.customerName);
+    if (filters.priority) params.append('priority', filters.priority);
+    if (filters.status) params.append('status', filters.status);
+
+    const url = `/api/platform/orders${params.toString() ? '?' + params.toString() : ''}`;
+    const res = await authFetch(url);
+    const data = await res.json();
+    setOrders(Array.isArray(data) ? data : []);
   };
 
   const deleteOrder = async (orderId: number) => {
@@ -498,6 +514,19 @@ export default function App() {
 
     if (!newOrder.items || newOrder.items.length === 0) {
       errors.items = "请添加至少一个零件";
+    }
+
+    // 验证每个零件的工序流程中必须有送货工序
+    if (newOrder.items && newOrder.items.length > 0) {
+      const itemsWithoutDelivery = newOrder.items.filter(item => {
+        const processes = item.processes || [];
+        const deliveryCount = processes.filter(p => p.name === '送货').length;
+        return deliveryCount !== 1;
+      });
+      if (itemsWithoutDelivery.length > 0) {
+        setValidationAlert(`有 ${itemsWithoutDelivery.length} 个零件缺少送货工序或送货工序重复，请检查工序流程`);
+        return;
+      }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -701,6 +730,7 @@ export default function App() {
             resetAndOpenModal={resetAndOpenModal}
             deleteOrder={deleteOrder}
             toggleOrderMgr={toggleOrderMgr}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
           />
         );
       case 'overdue':
@@ -897,6 +927,7 @@ export default function App() {
       <ValidationAlertModal
         show={validationAlert}
         onClose={() => setValidationAlert(null)}
+        title="工序流程验证"
       />
     </div>
   );

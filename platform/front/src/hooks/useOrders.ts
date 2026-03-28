@@ -110,29 +110,36 @@ export function useOrders(
     const nextStatus = currentStatus === 'pending' ? 'processing' : currentStatus === 'processing' ? 'completed' : 'pending';
 
     // 本地乐观更新
-    setOrders(prevOrders => prevOrders.map(o => {
-      if (Number(o.id) !== Number(orderId)) return o;
-      if (!o.items) return o;
+    setOrders(prevOrders => {
+      return prevOrders.map(o => {
+        if (Number(o.id) !== Number(orderId)) return o;
+        if (!o.items) return o;
 
-      const updatedItems = o.items.map(i => {
-        if (Number(i.id) !== Number(itemId)) return i;
-        if (!i.processes) return i;
+        const updatedItems = o.items.map(i => {
+          if (Number(i.id) !== Number(itemId)) return i;
+          if (!i.processes) return i;
 
-        const updatedProcesses = i.processes.map(prevP =>
-          Number(prevP.id) === Number(processId) ? { ...prevP, status: nextStatus } : prevP
-        );
+          const newProcesses = i.processes.map(prevP =>
+            Number(prevP.id) === Number(processId) ? { ...prevP, status: nextStatus } : prevP
+          );
+          const newItemStatus = getItemStatusFromProcesses(newProcesses);
+          // 根据零件状态更新完工日期
+          const today = new Date().toISOString().split('T')[0];
+          const completionDate = newItemStatus === 'completed' ? today : '';
+          return {
+            ...i,
+            processes: newProcesses,
+            status: newItemStatus,
+            completion_date: completionDate
+          };
+        });
         return {
-          ...i,
-          processes: updatedProcesses,
-          status: getItemStatusFromProcesses(updatedProcesses)
+          ...o,
+          items: updatedItems,
+          status: getOrderStatusFromItems(updatedItems)
         };
       });
-      return {
-        ...o,
-        items: updatedItems,
-        status: getOrderStatusFromItems(updatedItems)
-      };
-    }));
+    });
 
     updateProcessStatus(itemId, processId, nextStatus);
   }, [setOrders, updateProcessStatus, getItemStatusFromProcesses, getOrderStatusFromItems]);

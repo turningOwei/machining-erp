@@ -51,6 +51,10 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
   const [showFilters, setShowFilters] = useState(false);
 
   const sortedOrders = [...orders].sort((a, b) => {
+    // 已完工排最后
+    if (a.status === 'completed' && b.status !== 'completed') return 1;
+    if (b.status === 'completed' && a.status !== 'completed') return -1;
+    // 其他按订单日期排序
     const dateA = a.start_date || '';
     const dateB = b.start_date || '';
     return dateA.localeCompare(dateB);
@@ -324,29 +328,40 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                     </td>
                     <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
                       {(() => {
-                        const allProcesses = (order.items || []).flatMap((item: any) => item.processes || []);
-                        if (allProcesses.length === 0) return null;
+                        const items = order.items || [];
+                        if (items.length === 0) return <span className="text-xs text-zinc-400">无零件</span>;
+
+                        // 计算各状态零件数量
+                        const pendingCount = items.filter((i: any) => i.status === 'pending').length;
+                        const processingCount = items.filter((i: any) => i.status === 'processing').length;
+                        const completedCount = items.filter((i: any) => i.status === 'completed' || i.status === 'delivered').length;
+
                         return (
-                          <div className="flex gap-1">
-                            {allProcesses.map((p: any, idx: number) => {
-                              const statusColors: Record<string, { border: string; bg: string }> = {
-                                pending: { border: 'border-zinc-300', bg: 'bg-white' },
-                                processing: { border: 'border-blue-400', bg: 'bg-white' },
-                                completed: { border: 'border-emerald-400', bg: 'bg-emerald-400' }
-                              };
-                              const sc = statusColors[p.status] || statusColors.pending;
-                              return (
-                                <div
-                                  key={idx}
-                                  className={`w-3 h-5 rounded-sm border ${sc.border} ${sc.bg} relative overflow-hidden`}
-                                  title={`${p.name || '工序'}: ${p.status === 'pending' ? '待加工' : p.status === 'processing' ? '加工中' : '已完成'}`}
-                                >
-                                  {p.status === 'processing' && (
-                                    <div className="absolute inset-y-0 left-0 w-1/2 bg-blue-400" />
-                                  )}
-                                </div>
-                              );
-                            })}
+                          <div className="flex items-center gap-2 w-full">
+                            {/* 分段进度条 - 每个零件一个小段 */}
+                            <div className="flex h-5 gap-0.5 flex-1 max-w-[280px]">
+                              {items.map((item: any, idx: number) => {
+                                let bgColor = 'bg-zinc-300'; // 待加工 - 灰色
+                                if (item.status === 'processing') {
+                                  bgColor = 'bg-blue-400'; // 加工中 - 蓝色
+                                } else if (item.status === 'completed' || item.status === 'delivered') {
+                                  bgColor = 'bg-emerald-500'; // 已完成 - 绿色
+                                }
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`flex-1 h-full ${bgColor} rounded-sm`}
+                                    title={`${item.part_name}: ${item.status === 'pending' ? '待加工' : item.status === 'processing' ? '加工中' : '已完成'}`}
+                                  />
+                                );
+                              })}
+                            </div>
+                            {/* 数字统计 */}
+                            <div className="flex items-center gap-1.5 text-xs whitespace-nowrap shrink-0">
+                              <span className="text-zinc-500">待:{pendingCount}</span>
+                              <span className="text-blue-600">进:{processingCount}</span>
+                              <span className="text-emerald-600">完:{completedCount}</span>
+                            </div>
                           </div>
                         );
                       })()}

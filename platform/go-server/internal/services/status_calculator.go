@@ -2,6 +2,7 @@ package services
 
 import (
 	"machining-erp/internal/models"
+	"time"
 )
 
 // CalculateStatus 根据子项状态计算父项状态
@@ -51,4 +52,9 @@ func CalculateOrderStatus(items []models.OrderItem) string {
 		statuses[i] = string(item.Status)
 	}
 	return CalculateStatus(statuses)
+}
+
+// FormatDateNow 返回当前日期的 YYYY-MM-DD 格式字符串
+func FormatDateNow() string {
+	return time.Now().Format("2006-01-02")
 }

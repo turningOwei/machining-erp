@@ -44,8 +44,7 @@ export const orderFilterConfigs: FilterConfig[] = [
     options: [
       { value: 'pending', label: '待加工' },
       { value: 'processing', label: '加工中' },
-      { value: 'completed', label: '已完成' },
-      { value: 'delivered', label: '已送货' }
+      { value: 'completed', label: '已完成' }
     ]
   }
 ];

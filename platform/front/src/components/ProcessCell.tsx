@@ -20,8 +20,15 @@ const ProcessCell: React.FC<ProcessCellProps> = ({ processes, onUpdate }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [manualInput, setManualInput] = useState('');
 
+  // 检查是否有送货工序
+  const hasDelivery = processes.some(p => p.name === '送货');
+
   const addProcess = (name: string) => {
     if (!name.trim()) return;
+    // 送货工序只能有一个
+    if (name === '送货' && processes.some(p => p.name === '送货')) {
+      return;
+    }
     const newProcesses = [...processes, { name: name.trim(), is_outsourced: false, outsourcing_fee: 0, status: 'pending' }];
     onUpdate(newProcesses);
     setManualInput('');
@@ -32,12 +39,17 @@ const ProcessCell: React.FC<ProcessCellProps> = ({ processes, onUpdate }) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-2 py-1.5 text-left bg-zinc-50 border border-zinc-100 rounded-lg hover:bg-zinc-100 transition-colors flex items-center justify-between gap-1 min-w-[100px]"
+        className={`w-full px-2 py-1.5 text-left rounded-lg transition-colors flex items-center justify-between gap-1 min-w-[100px] ${
+          hasDelivery
+            ? 'bg-zinc-50 border border-zinc-100 hover:bg-zinc-100'
+            : 'bg-red-50 border border-red-300 hover:bg-red-100'
+        }`}
       >
-        <span className="truncate text-[10px] font-medium text-zinc-600">
+        <span className={`truncate text-[10px] font-medium ${hasDelivery ? 'text-zinc-600' : 'text-red-600'}`}>
           {processes.length > 0 ? processes.map(p => p.name).join('、') : '点击添加工序'}
+          {!hasDelivery && processes.length > 0 && <span className="ml-1">（缺少送货）</span>}
         </span>
-        <Plus className="w-3 h-3 text-zinc-400 flex-shrink-0" />
+        <Plus className={`w-3 h-3 flex-shrink-0 ${hasDelivery ? 'text-zinc-400' : 'text-red-400'}`} />
       </button>
 
       {isOpen && (
@@ -55,16 +67,20 @@ const ProcessCell: React.FC<ProcessCellProps> = ({ processes, onUpdate }) => {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {PROCESS_OPTIONS.map(opt => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => addProcess(opt)}
-                  className={`px-3 py-1.5 rounded text-sm font-bold transition-all hover:scale-105 ${PROCESS_COLORS[opt] || 'bg-zinc-100 text-zinc-600'}`}
-                >
-                  + {opt}
-                </button>
-              ))}
+              {PROCESS_OPTIONS.map(opt => {
+                const isDisabled = opt === '送货' && hasDelivery;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => addProcess(opt)}
+                    disabled={isDisabled}
+                    className={`px-3 py-1.5 rounded text-sm font-bold transition-all hover:scale-105 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${PROCESS_COLORS[opt] || 'bg-zinc-100 text-zinc-600'}`}
+                  >
+                    + {opt} {opt === '送货' && hasDelivery ? '(已添加)' : ''}
+                  </button>
+                );
+              })}
               <div className="flex items-center gap-2 ml-4 border-l border-zinc-200 pl-4">
                 <input
                   type="text"
