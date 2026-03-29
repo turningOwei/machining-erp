@@ -1,5 +1,5 @@
 import { authFetch } from '../components/shared';
-import { Order, Customer, Material, Remnant, AdventRule } from '../types';
+import { Order, Customer, AdventRule } from '../types';
 
 // 获取订单数据
 export const fetchOrdersApi = async (): Promise<Order[]> => {
@@ -11,20 +11,6 @@ export const fetchOrdersApi = async (): Promise<Order[]> => {
 // 获取客户数据
 export const fetchCustomersApi = async (): Promise<Customer[]> => {
   const res = await authFetch('/api/platform/customers');
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
-};
-
-// 获取物料数据
-export const fetchMaterialsApi = async (): Promise<Material[]> => {
-  const res = await authFetch('/api/platform/materials');
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
-};
-
-// 获取余料数据
-export const fetchRemnantsApi = async (): Promise<Remnant[]> => {
-  const res = await authFetch('/api/platform/remnants');
   const data = await res.json();
   return Array.isArray(data) ? data : [];
 };
@@ -94,7 +80,7 @@ export const fetchDashboardItemsApi = async (): Promise<DashboardItem[]> => {
 };
 
 // 获取库存数据（物料 + 余料）
-export const fetchInventoryDataApi = async (): Promise<{ materials: Material[]; remnants: Remnant[] }> => {
+export const fetchInventoryDataApi = async (): Promise<{ materials: any[]; remnants: any[] }> => {
   const [materialsRes, remnantsRes] = await Promise.all([
     authFetch('/api/platform/materials'),
     authFetch('/api/platform/remnants')
@@ -107,30 +93,6 @@ export const fetchInventoryDataApi = async (): Promise<{ materials: Material[]; 
     materials: Array.isArray(materialsData) ? materialsData : [],
     remnants: Array.isArray(remnantsData) ? remnantsData : []
   };
-};
-
-// 创建订单
-export const createOrderApi = async (order: Partial<Order>): Promise<void> => {
-  const response = await authFetch('/api/platform/orders', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(order)
-  });
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-};
-
-// 更新订单
-export const updateOrderApi = async (id: number, order: Partial<Order>): Promise<void> => {
-  const response = await authFetch(`/api/platform/orders/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(order)
-  });
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
 };
 
 // 删除订单
