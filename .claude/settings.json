@@ -2,7 +2,18 @@
   "permissions": {
     "allow": [
       "Bash(curl -s -X POST http://localhost:3000/api/login -H \"Content-Type: application/json\" -d '{\"\"username\"\":\"\"admin\"\",\"\"password\"\":\"\"yhs@2026\"\"}')",
-      "Bash(curl -s http://localhost:3000/api/orders -H \"Authorization: Bearer b5dd74b2b467ea7a3d03725a1480bc32fa87366c8f1631a3a4e4c5decf17fe92\")"
+      "Bash(curl -s http://localhost:3000/api/orders -H \"Authorization: Bearer b5dd74b2b467ea7a3d03725a1480bc32fa87366c8f1631a3a4e4c5decf17fe92\")",
+      "Bash(e:/vsCodeWorkspace/machining-erp/portal/go-server/internal/repository/errors.go:*)",
+      "Bash(go run:*)",
+      "Bash(go mod:*)",
+      "Bash(export GOPROXY=https://goproxy.cn,direct)",
+      "Bash(go build:*)",
+      "Bash(curl -s -X POST http://localhost:38080/api/portal/login -H \"Content-Type: application/json\" -d '{\"\"username\"\":\"\"admin\"\",\"\"password\"\":\"\"admin@portal2026\"\"}')",
+      "Bash(curl -s http://localhost:4000 -o /dev/null -w \"%{http_code}\")",
+      "Bash(d:/nvm/v24.14.0/npm.cmd install:*)",
+      "Bash(mysql -h8.145.45.155 -uappuser -pyuhesen@2026bruecelee portal -e \":*)",
+      "Bash(curl -s http://localhost:28080/api/platform/health)",
+      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"Frontend: %{http_code}\\\\n\")"
     ]
   }
 }
