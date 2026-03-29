@@ -61,6 +61,7 @@ import {
   fetchOrdersApi,
   fetchCustomersApi,
   fetchDashboardDataApi,
+  fetchDashboardItemsApi,
   fetchInventoryDataApi,
   fetchFinanceApi,
   fetchRulesApi,
@@ -157,6 +158,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'inventory' | 'finance' | 'overdue' | 'warning_orders' | 'imminent_orders' | 'advent_rules' | 'customers'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
+  const [dashboardItems, setDashboardItems] = useState<any[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [remnants, setRemnants] = useState<Remnant[]>([]);
@@ -329,9 +331,13 @@ export default function App() {
   const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
-      const { orders, rules } = await fetchDashboardDataApi();
+      const [{ orders, rules }, items] = await Promise.all([
+        fetchDashboardDataApi(),
+        fetchDashboardItemsApi()
+      ]);
       setOrders(orders);
       setAdventRules(rules);
+      setDashboardItems(items);
     } catch (error) {
       console.error("Failed to fetch dashboard data", error);
     } finally {
@@ -694,6 +700,7 @@ export default function App() {
         return (
           <Dashboard
             {...baseOrderProps}
+            dashboardItems={dashboardItems}
             dashboardPage={dashboardPage}
             dashboardPageSize={dashboardPageSize}
             setDashboardPage={setDashboardPage}

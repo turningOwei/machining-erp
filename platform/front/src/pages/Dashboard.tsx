@@ -14,11 +14,13 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { Order, OrderItem } from '../types';
+import { Order } from '../types';
 import { StatusBadge, PriorityBadge, ProcessStatusBadge, PROCESS_COLORS } from '../components/shared';
+import { DashboardItem } from '../services/api';
 
 interface DashboardProps {
   orders: Order[];
+  dashboardItems: DashboardItem[];
   dashboardPage: number;
   dashboardPageSize: number;
   setDashboardPage: (page: number) => void;
@@ -39,6 +41,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({
   orders,
+  dashboardItems,
   dashboardPage,
   dashboardPageSize,
   setDashboardPage,
@@ -66,7 +69,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center gap-4">
           <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs text-zinc-500">
             <span className="font-medium text-zinc-700">排序：</span>
-            订单日期<span className="text-emerald-500">↑</span> → 零件交期<span className="text-emerald-500">↑</span> → 工序顺序<span className="text-emerald-500">↑</span>
+            订单日期<span className="text-emerald-500">↑</span> → 零件交期<span className="text-emerald-500">↑</span> → 零件状态<span className="text-emerald-500">↑</span>
           </div>
           <button
             onClick={resetAndOpenModal}
@@ -158,27 +161,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
         <div className="grid gap-3">
           {(() => {
-            const allItems = orders
-              .flatMap(o => (o.items || []).map(item => ({ ...item, order: o })))
-              .filter(item => item.status !== 'delivered' && item.status !== 'completed')
-              .sort((a, b) => {
-                // 1. 优先级排序 (High > Medium > Low)
-                const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-                const pA = priorityOrder[a.order.priority] ?? 1;
-                const pB = priorityOrder[b.order.priority] ?? 1;
-                if (pA !== pB) return pA - pB;
-
-                // 2. 交期排序 (从小到大)
-                const dateA = a.due_date || a.order.due_date || '9999-12-31';
-                const dateB = b.due_date || b.order.due_date || '9999-12-31';
-                if (dateA !== dateB) return dateA.localeCompare(dateB);
-
-                // 3. 状态排序 (待加工 > 加工中)
-                const statusOrder: Record<string, number> = { pending: 0, processing: 1 };
-                const sA = statusOrder[a.status] ?? 2;
-                const sB = statusOrder[b.status] ?? 2;
-                return sA - sB;
-              });
+            const allItems = dashboardItems;
             const paginatedItems = allItems.slice((dashboardPage - 1) * dashboardPageSize, dashboardPage * dashboardPageSize);
 
             if (paginatedItems.length > 0) {
@@ -187,7 +170,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   {paginatedItems.map((item) => (
                     <motion.div
                       layout
-                      key={`${item.order.id}-${item.id}`}
+                      key={`${item.order_id}-${item.item_id}`}
                       className="bg-white p-4 rounded-xl border border-zinc-200 flex flex-col sm:flex-row sm:items-start gap-2 hover:border-zinc-300 transition-colors shadow-sm"
                     >
                       <div className="flex items-start gap-4 w-[420px] shrink-0">
@@ -197,16 +180,16 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="font-bold">{item.part_name}</h4>
-                            <PriorityBadge priority={item.order.priority} />
-                            <span className="text-[10px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded">订单: {item.order.order_number || item.order.id}</span>
-                            <span className="text-xs text-zinc-500">{item.order.customer_short_name}</span>
+                            <PriorityBadge priority={item.priority as any} />
+                            <span className="text-[10px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded">订单: {item.order_number || item.order_id}</span>
+                            <span className="text-xs text-zinc-500">{item.customer_short_name}</span>
                             <span className="text-xs text-zinc-400">数量: {item.quantity}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <Clock className="w-3 h-3 text-zinc-400" />
                             <span className="text-xs text-zinc-400">
-                              {(item.start_date || item.order.start_date) && `订单: ${formatDate(item.start_date || item.order.start_date)} · `}
-                              交期: {formatDate(item.due_date || item.order.due_date)}
+                              {item.start_date && `订单: ${formatDate(item.start_date)} · `}
+                              交期: {formatDate(item.due_date)}
                             </span>
                             {item.part_number && (
                               <>
@@ -224,7 +207,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           <div
                             key={p.id}
                             className={`flex items-center gap-1 border rounded px-2 py-1 cursor-pointer transition-colors ${PROCESS_COLORS[p.name] || 'bg-zinc-50 border-zinc-100 hover:bg-zinc-100'}`}
-                            onClick={() => handleProcessClick(item.order.id, item.id, p.id, p.status, p.name)}
+                            onClick={() => handleProcessClick(item.order_id, item.item_id, p.id, p.status, p.name)}
                           >
                             <span className="text-[10px] font-bold">{p.name}</span>
                             <ProcessStatusBadge status={p.status} />
@@ -240,7 +223,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                       <div className="flex items-center gap-2 self-end sm:self-center">
                         <button
-                          onClick={() => editOrder(item.order)}
+                          onClick={() => {
+                            const order = orders.find(o => o.id === item.order_id);
+                            if (order) editOrder(order);
+                          }}
                           className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900"
                           title="修改订单"
                         >
@@ -248,7 +234,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </button>
                         {item.drawing_data && (
                           <button
-                            onClick={() => setShowDrawingModal(item.drawing_data!)}
+                            onClick={() => setShowDrawingModal(item.drawing_data)}
                             className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900"
                           >
                             <Eye className="w-5 h-5" />

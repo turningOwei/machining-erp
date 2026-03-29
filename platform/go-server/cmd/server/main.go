@@ -133,6 +133,9 @@ func main() {
 		api.PATCH("/orders/:id", orderHandler.Update)
 		api.DELETE("/orders/:id", orderHandler.Delete)
 
+		// 工作看板
+		api.GET("/dashboard/items", orderHandler.GetDashboardItems)
+
 		// 订单项
 		api.PATCH("/order-items/:itemId", itemHandler.Update)
 

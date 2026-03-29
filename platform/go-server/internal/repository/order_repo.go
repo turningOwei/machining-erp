@@ -91,7 +91,7 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) ([]models.Order, 
 			query += cond
 		}
 	}
-	query += " ORDER BY o.start_date ASC, oi.due_date ASC, op.sort_order ASC"
+	query += " ORDER BY o.start_date ASC, oi.due_date ASC, oi.status ASC"
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
@@ -470,4 +470,119 @@ func parseDatePtr(s string) *time.Time {
 		return nil
 	}
 	return &t
+}
+
+// DashboardItem 工作看板零件数据
+type DashboardItem struct {
+	OrderID            int                    `json:"order_id"`
+	OrderNumber        string                 `json:"order_number"`
+	CustomerShortName  string                 `json:"customer_short_name"`
+	Priority           string                 `json:"priority"`
+	ItemID             int                    `json:"item_id"`
+	PartName           string                 `json:"part_name"`
+	PartNumber         string                 `json:"part_number"`
+	Quantity           int                    `json:"quantity"`
+	Status             string                 `json:"status"`
+	StartDate          *time.Time             `json:"start_date"`
+	DueDate            *time.Time             `json:"due_date"`
+	DrawingData        string                 `json:"drawing_data"`
+	Processes          []models.OrderProcess  `json:"processes"`
+}
+
+// GetDashboardItems 获取工作看板零件数据（排除已交货和已完成的零件）
+func (r *OrderRepository) GetDashboardItems() ([]DashboardItem, error) {
+	query := `
+		SELECT
+			o.id, o.order_number, COALESCE(o.customer_short_name, '') as customer_short_name, o.priority,
+			oi.id as item_id, oi.part_name, COALESCE(oi.part_number, '') as part_number, oi.quantity, oi.status as item_status,
+			oi.start_date as item_start_date, oi.due_date as item_due_date, COALESCE(oi.drawing_data, '') as drawing_data,
+			op.id as process_id, op.name as process_name, op.is_outsourced, op.outsourcing_fee, op.status as process_status, op.sort_order
+		FROM orders o
+		LEFT JOIN order_items oi ON o.id = oi.order_id
+		LEFT JOIN order_processes op ON oi.id = op.order_item_id
+		WHERE oi.status NOT IN ('delivered', 'completed')
+		ORDER BY oi.start_date ASC, oi.due_date ASC, oi.status ASC
+	`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	itemMap := make(map[int]*DashboardItem)
+	var items []DashboardItem
+
+	for rows.Next() {
+		var (
+			orderID, itemID, processID              sql.NullInt64
+			orderNumber, customerShortName, priority sql.NullString
+			partName, partNumber                     sql.NullString
+			quantity                                 sql.NullInt64
+			itemStatus, drawingData                  sql.NullString
+			itemStartDate, itemDueDate               sql.NullTime
+			processName                              sql.NullString
+			isOutsourced                             sql.NullInt64
+			outsourcingFee                           sql.NullFloat64
+			processStatus                            sql.NullString
+			sortOrder                                sql.NullInt64
+		)
+
+		err := rows.Scan(
+			&orderID, &orderNumber, &customerShortName, &priority,
+			&itemID, &partName, &partNumber, &quantity, &itemStatus,
+			&itemStartDate, &itemDueDate, &drawingData,
+			&processID, &processName, &isOutsourced, &outsourcingFee, &processStatus, &sortOrder,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if !itemID.Valid {
+			continue
+		}
+
+		iid := int(itemID.Int64)
+
+		// 添加或获取零件
+		if _, exists := itemMap[iid]; !exists {
+			item := DashboardItem{
+				ItemID:            iid,
+				OrderID:           int(orderID.Int64),
+				OrderNumber:       orderNumber.String,
+				CustomerShortName: customerShortName.String,
+				Priority:          priority.String,
+				PartName:          partName.String,
+				PartNumber:        partNumber.String,
+				Quantity:          int(quantity.Int64),
+				Status:            itemStatus.String,
+				DrawingData:       drawingData.String,
+				Processes:         []models.OrderProcess{},
+			}
+			if itemStartDate.Valid {
+				item.StartDate = &itemStartDate.Time
+			}
+			if itemDueDate.Valid {
+				item.DueDate = &itemDueDate.Time
+			}
+			itemMap[iid] = &item
+			items = append(items, item)
+		}
+
+		// 添加工序
+		if processID.Valid {
+			process := models.OrderProcess{
+				ID:             int(processID.Int64),
+				OrderItemID:    iid,
+				Name:           processName.String,
+				IsOutsourced:   isOutsourced.Int64 == 1,
+				OutsourcingFee: outsourcingFee.Float64,
+				Status:         models.ProcessStatus(processStatus.String),
+				SortOrder:      int(sortOrder.Int64),
+			}
+			itemMap[iid].Processes = append(itemMap[iid].Processes, process)
+		}
+	}
+
+	return items, nil
 }

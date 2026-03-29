@@ -184,3 +184,13 @@ func (h *OrderHandler) Delete(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"success": true})
 }
+
+// GetDashboardItems 获取工作看板零件数据
+func (h *OrderHandler) GetDashboardItems(c *gin.Context) {
+	items, err := h.repo.GetDashboardItems()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, items)
+}

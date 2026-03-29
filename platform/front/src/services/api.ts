@@ -61,6 +61,38 @@ export const fetchDashboardDataApi = async (): Promise<{ orders: Order[]; rules:
   };
 };
 
+// 工作看板零件数据类型
+export interface DashboardItem {
+  order_id: number;
+  order_number: string;
+  customer_short_name: string;
+  priority: string;
+  item_id: number;
+  part_name: string;
+  part_number: string;
+  quantity: number;
+  status: 'pending' | 'processing' | 'completed' | 'delivered';
+  start_date: string | null;
+  due_date: string | null;
+  drawing_data: string;
+  processes: Array<{
+    id: number;
+    order_item_id: number;
+    name: string;
+    is_outsourced: boolean;
+    outsourcing_fee: number;
+    status: 'pending' | 'processing' | 'completed';
+    sort_order: number;
+  }>;
+}
+
+// 获取工作看板零件数据
+export const fetchDashboardItemsApi = async (): Promise<DashboardItem[]> => {
+  const res = await authFetch('/api/platform/dashboard/items');
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+};
+
 // 获取库存数据（物料 + 余料）
 export const fetchInventoryDataApi = async (): Promise<{ materials: Material[]; remnants: Remnant[] }> => {
   const [materialsRes, remnantsRes] = await Promise.all([
