@@ -1,11 +1,13 @@
 export interface Contact {
   id?: number;
+  corp_id?: number;
   name: string;
   contact: string;
 }
 
 export interface Customer {
   id: number;
+  corp_id?: number;
   name: string;
   short_name: string;
   contacts: Contact[];
@@ -14,6 +16,7 @@ export interface Customer {
 
 export interface OrderProcess {
   id: number;
+  corp_id?: number;
   order_id: number;
   name: string;
   is_outsourced: boolean;
@@ -24,6 +27,7 @@ export interface OrderProcess {
 
 export interface OrderItem {
   id: number;
+  corp_id?: number;
   order_id: number;
   part_name: string;
   part_number?: string;
@@ -48,6 +52,7 @@ export interface OrderItem {
 
 export interface Order {
   id: number;
+  corp_id?: number;
   customer_id: number;
   customer_name?: string;
   customer_short_name?: string;
@@ -66,6 +71,7 @@ export interface Order {
 
 export interface Material {
   id: number;
+  corp_id?: number;
   name: string;
   spec: string;
   quantity: number;
@@ -74,6 +80,7 @@ export interface Material {
 
 export interface Remnant {
   id: number;
+  corp_id?: number;
   material_id: number;
   material_name?: string;
   dimensions: string;
@@ -91,6 +98,7 @@ export interface Reconciliation {
 
 export interface AdventRule {
   id: number;
+  corp_id?: number;
   name: string;
   description?: string;
   formula: string;

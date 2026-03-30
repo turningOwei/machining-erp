@@ -1,21 +1,29 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type Material struct {
-	ID       int     `json:"id"`
-	Name     string  `json:"name"`
-	Spec     string  `json:"spec,omitempty"`
-	Quantity float64 `json:"quantity"`
-	Unit     string  `json:"unit"`
+	ID       int     `gorm:"primaryKey;autoIncrement" json:"id"`
+	CorpID   int     `gorm:"column:corp_id;default:0" json:"corp_id"`
+	Name     string  `gorm:"column:name" json:"name"`
+	Spec     string  `gorm:"column:spec" json:"spec,omitempty"`
+	Quantity float64 `gorm:"column:quantity" json:"quantity"`
+	Unit     string  `gorm:"column:unit" json:"unit"`
 }
 
+func (Material) TableName() string { return "materials" }
+
 type Remnant struct {
-	ID          int       `json:"id"`
-	MaterialID  int       `json:"material_id"`
-	MaterialName string   `json:"material_name,omitempty"`
-	Dimensions  string    `json:"dimensions"`
-	PhotoData   string    `json:"photo_data,omitempty"`
-	Notes       string    `json:"notes,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           int       `gorm:"primaryKey;autoIncrement" json:"id"`
+	CorpID       int       `gorm:"column:corp_id;default:0" json:"corp_id"`
+	MaterialID   int       `gorm:"column:material_id;index" json:"material_id"`
+	MaterialName string    `gorm:"-" json:"material_name,omitempty"`
+	Dimensions   string    `gorm:"column:dimensions" json:"dimensions"`
+	PhotoData    string    `gorm:"column:photo_data" json:"photo_data,omitempty"`
+	Notes        string    `gorm:"column:notes" json:"notes,omitempty"`
+	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
+
+func (Remnant) TableName() string { return "remnants" }

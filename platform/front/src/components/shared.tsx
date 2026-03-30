@@ -133,6 +133,18 @@ export const authFetch = async (url: string, options: RequestInit = {}): Promise
     ...options.headers,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
-  return fetch(url, { ...options, headers });
+  const response = await fetch(url, { ...options, headers });
+
+  // 处理token失效
+  if (response.status === 401) {
+    const data = await response.clone().json().catch(() => ({}));
+    // 错误码 4003 或 4004 表示token无效/过期
+    if (data.code === 4003 || data.code === 4004) {
+      localStorage.removeItem('auth_token');
+      window.location.href = '/';
+    }
+  }
+
+  return response;
 };
 

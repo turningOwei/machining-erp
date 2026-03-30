@@ -1,10 +1,11 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 
 	_ "github.com/go-sql-driver/mysql"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 type Config struct {
@@ -15,7 +16,7 @@ type Config struct {
 	Port     int
 }
 
-func Connect(cfg *Config) (*sql.DB, error) {
+func Connect(cfg *Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Local&charset=utf8mb4",
 		cfg.User,
 		cfg.Password,
@@ -24,17 +25,20 @@ func Connect(cfg *Config) (*sql.DB, error) {
 		cfg.Database,
 	)
 
-	db, err := sql.Open("mysql", dsn)
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		SkipDefaultTransaction: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
-
-	if err := db.Ping(); err != nil {
+	sqlDB, err := db.DB()
+	if err != nil {
 		return nil, err
 	}
+
+	sqlDB.SetMaxOpenConns(10)
+	sqlDB.SetMaxIdleConns(5)
 
 	return db, nil
 }

@@ -1,21 +1,26 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type AdventRule struct {
-	ID           int       `json:"id"`
-	Name         string    `json:"name"`
-	Description  string    `json:"description,omitempty"`
-	Formula      string    `json:"formula"`
-	TargetStatus string    `json:"target_status"`
-	ScopeType    string    `json:"scopeType"`
-	RuleType     string    `json:"ruleType"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID           int       `gorm:"primaryKey;autoIncrement" json:"id"`
+	CorpID       int       `gorm:"column:corp_id;default:0" json:"corp_id"`
+	Name         string    `gorm:"column:name" json:"name"`
+	Description  string    `gorm:"column:description" json:"description,omitempty"`
+	Formula      string    `gorm:"column:formula" json:"formula"`
+	TargetStatus string    `gorm:"column:target_status" json:"target_status"`
+	ScopeType    string    `gorm:"column:scopeType" json:"scopeType"`
+	RuleType     string    `gorm:"column:ruleType" json:"ruleType"`
+	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 
+func (AdventRule) TableName() string { return "advent_rules" }
+
 type Reconciliation struct {
-	Month           string  `json:"month"`
-	TotalAmount     float64 `json:"total_amount"`
-	OrderCount      int     `json:"order_count"`
-	DeliveredAmount float64 `json:"delivered_amount"`
+	Month           string  `gorm:"-" json:"month"`
+	TotalAmount     float64 `gorm:"-" json:"total_amount"`
+	OrderCount      int     `gorm:"-" json:"order_count"`
+	DeliveredAmount float64 `gorm:"-" json:"delivered_amount"`
 }

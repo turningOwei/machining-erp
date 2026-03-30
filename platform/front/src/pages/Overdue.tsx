@@ -44,12 +44,7 @@ const Overdue: React.FC<OverdueProps> = ({
     }
   };
 
-  const overdueOrders = orders.filter(o => {
-    const maxDueDate = getOrderMaxDueDate(o);
-    const today = new Date().toISOString().split('T')[0];
-    // 已交货或已完成的订单不显示
-    return (maxDueDate || '') < today && o.status !== 'delivered' && o.status !== 'completed';
-  });
+  const overdueOrders = orders; // 后端已通过 dateType='overdue' 筛选
 
   return (
     <OrderMonitorPanel

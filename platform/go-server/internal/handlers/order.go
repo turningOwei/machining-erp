@@ -28,7 +28,15 @@ func NewOrderHandler(repo *repository.OrderRepository, itemRepo *repository.Orde
 }
 
 func (h *OrderHandler) List(c *gin.Context) {
-	// 获取筛选参数
+	page, _ := strconv.Atoi(c.Query("page"))
+	pageSize, _ := strconv.Atoi(c.Query("pageSize"))
+	if pageSize <= 0 {
+		pageSize = 20 // 默认每页20条
+	}
+	if page <= 0 {
+		page = 1
+	}
+
 	filters := repository.OrderFilters{
 		DueDateStart: c.Query("dueDateStart"),
 		DueDateEnd:   c.Query("dueDateEnd"),
@@ -37,6 +45,9 @@ func (h *OrderHandler) List(c *gin.Context) {
 		CustomerName: c.Query("customerName"),
 		Priority:     c.Query("priority"),
 		Status:       c.Query("status"),
+		DateType:     c.Query("dateType"), // overdue, warning, near_due
+		Page:         page,
+		PageSize:     pageSize,
 	}
 
 	orders, err := h.repo.GetWithFilters(filters)
@@ -44,21 +55,40 @@ func (h *OrderHandler) List(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, orders)
+	c.JSON(200, gin.H{
+		"data":     orders,
+		"page":     page,
+		"pageSize": pageSize,
+	})
 }
 
 type CreateOrderRequest struct {
-	CustomerID        *int               `json:"customer_id"`
-	CustomerName      *string            `json:"customer_name"`
-	CustomerShortName *string            `json:"customer_short_name"`
-	OrderNumber       string             `json:"order_number"`
-	OrderName         *string            `json:"order_name"`
-	ContactID         *int               `json:"contact_id"`
-	Priority          models.Priority    `json:"priority"`
-	StartDate         string             `json:"start_date"`
-	DueDate           string             `json:"due_date"`
-	Notes             *string            `json:"notes"`
-	Items             []models.OrderItem `json:"items"`
+	CustomerID        *int            `json:"customer_id"`
+	CustomerName      *string         `json:"customer_name"`
+	CustomerShortName *string         `json:"customer_short_name"`
+	OrderNumber       string          `json:"order_number"`
+	OrderName         *string         `json:"order_name"`
+	ContactID         *int            `json:"contact_id"`
+	Priority          models.Priority `json:"priority"`
+	StartDate         string          `json:"start_date"`
+	DueDate           string          `json:"due_date"`
+	Notes             *string         `json:"notes"`
+	Items             []CreateOrderItemRequest `json:"items"`
+}
+
+// CreateOrderItemRequest 创建订单项请求结构体（日期用string避免解析问题）
+type CreateOrderItemRequest struct {
+	PartName       string                  `json:"part_name"`
+	PartNumber     *string                 `json:"part_number"`
+	Quantity       int                     `json:"quantity"`
+	ScrapQuantity  int                     `json:"scrap_quantity"`
+	UnitPrice      float64                 `json:"unit_price"`
+	TotalPrice     float64                 `json:"total_price"`
+	DrawingData    *string                 `json:"drawing_data"`
+	Notes          *string                 `json:"notes"`
+	StartDate      string                  `json:"start_date"`
+	DueDate        string                  `json:"due_date"`
+	Processes      []models.OrderProcess   `json:"processes"`
 }
 
 func parseDate(s string) *time.Time {
@@ -119,7 +149,25 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		Notes:             req.Notes,
 	}
 
-	id, err := h.repo.Create(order, req.Items)
+	// 转换请求结构体为models
+	items := make([]models.OrderItem, len(req.Items))
+	for i, reqItem := range req.Items {
+		items[i] = models.OrderItem{
+			PartName:       reqItem.PartName,
+			PartNumber:     reqItem.PartNumber,
+			Quantity:       reqItem.Quantity,
+			ScrapQuantity:  reqItem.ScrapQuantity,
+			UnitPrice:      reqItem.UnitPrice,
+			TotalPrice:     reqItem.TotalPrice,
+			DrawingData:    reqItem.DrawingData,
+			Notes:          reqItem.Notes,
+			StartDate:      parseDate(reqItem.StartDate),
+			DueDate:        parseDate(reqItem.DueDate),
+			Processes:      reqItem.Processes,
+		}
+	}
+
+	id, err := h.repo.Create(order, items)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -128,17 +176,17 @@ func (h *OrderHandler) Create(c *gin.Context) {
 }
 
 type UpdateOrderRequest struct {
-	CustomerID        *int               `json:"customer_id"`
-	CustomerName      *string            `json:"customer_name"`
-	CustomerShortName *string            `json:"customer_short_name"`
-	OrderName         *string            `json:"order_name"`
-	ContactID         *int               `json:"contact_id"`
-	Priority          models.Priority    `json:"priority"`
-	StartDate         string             `json:"start_date"`
-	DueDate           string             `json:"due_date"`
-	Notes             *string            `json:"notes"`
+	CustomerID        *int            `json:"customer_id"`
+	CustomerName      *string         `json:"customer_name"`
+	CustomerShortName *string         `json:"customer_short_name"`
+	OrderName         *string         `json:"order_name"`
+	ContactID         *int            `json:"contact_id"`
+	Priority          models.Priority `json:"priority"`
+	StartDate         string          `json:"start_date"`
+	DueDate           string          `json:"due_date"`
+	Notes             *string         `json:"notes"`
 	Status            models.OrderStatus `json:"status"`
-	Items             []models.OrderItem `json:"items"`
+	Items             []CreateOrderItemRequest `json:"items"`
 }
 
 func (h *OrderHandler) Update(c *gin.Context) {
@@ -168,7 +216,25 @@ func (h *OrderHandler) Update(c *gin.Context) {
 		Notes:             req.Notes,
 	}
 
-	if err := h.repo.Update(order, req.Items); err != nil {
+	// 转换请求结构体为models
+	items := make([]models.OrderItem, len(req.Items))
+	for i, reqItem := range req.Items {
+		items[i] = models.OrderItem{
+			PartName:       reqItem.PartName,
+			PartNumber:     reqItem.PartNumber,
+			Quantity:       reqItem.Quantity,
+			ScrapQuantity:  reqItem.ScrapQuantity,
+			UnitPrice:      reqItem.UnitPrice,
+			TotalPrice:     reqItem.TotalPrice,
+			DrawingData:    reqItem.DrawingData,
+			Notes:          reqItem.Notes,
+			StartDate:      parseDate(reqItem.StartDate),
+			DueDate:        parseDate(reqItem.DueDate),
+			Processes:      reqItem.Processes,
+		}
+	}
+
+	if err := h.repo.Update(order, items); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -187,10 +253,29 @@ func (h *OrderHandler) Delete(c *gin.Context) {
 
 // GetDashboardItems 获取工作看板零件数据
 func (h *OrderHandler) GetDashboardItems(c *gin.Context) {
-	items, err := h.repo.GetDashboardItems()
+	page, _ := strconv.Atoi(c.Query("page"))
+	pageSize, _ := strconv.Atoi(c.Query("pageSize"))
+
+	result, err := h.repo.GetDashboardItems(page, pageSize)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, items)
+	c.JSON(200, gin.H{
+		"code": 0,
+		"data": result,
+	})
+}
+
+// GetDashboardStats 获取看板卡片统计数据
+func (h *OrderHandler) GetDashboardStats(c *gin.Context) {
+	stats, err := h.repo.GetDashboardStats()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{
+		"code": 0,
+		"data": stats,
+	})
 }

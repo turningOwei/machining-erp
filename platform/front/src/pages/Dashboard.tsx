@@ -21,8 +21,17 @@ import { DashboardItem } from '../services/api';
 interface DashboardProps {
   orders: Order[];
   dashboardItems: DashboardItem[];
+  dashboardStats: {
+    pending_count: number;
+    processing_count: number;
+    completed_count: number;
+    overdue_count: number;
+    warning_count: number;
+    near_due_count: number;
+  };
   dashboardPage: number;
   dashboardPageSize: number;
+  dashboardTotal: number;
   setDashboardPage: (page: number) => void;
   setDashboardPageSize: (size: number) => void;
   setActiveTab: (tab: string) => void;
@@ -34,16 +43,16 @@ interface DashboardProps {
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   fetchData: () => void;
-  getOrderMaxDueDate: (order: Order) => string;
-  checkOrderAgainstRules: (order: Order, type: 'warning' | 'imminent') => boolean;
   formatDate: (date: string | null | undefined) => string;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
   orders,
   dashboardItems,
+  dashboardStats,
   dashboardPage,
   dashboardPageSize,
+  dashboardTotal,
   setDashboardPage,
   setDashboardPageSize,
   setActiveTab,
@@ -55,8 +64,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   setShowDrawingModal,
   handleProcessClick,
   fetchData,
-  getOrderMaxDueDate,
-  checkOrderAgainstRules,
   formatDate
 }) => {
   return (
@@ -82,14 +89,14 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 px-4 md:px-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 px-4 md:px-8">
         {[
-          { label: '待加工', count: orders.filter(o => o.status === 'pending').length, color: 'amber', icon: Clock, action: 'filter', filterStatus: 'pending' },
-          { label: '加工中', count: orders.filter(o => o.status === 'processing').length, color: 'blue', icon: TrendingUp, action: 'filter', filterStatus: 'processing' },
-          { label: '逾期订单', count: orders.filter(o => (getOrderMaxDueDate(o) || '') < new Date().toISOString().split('T')[0] && o.status !== 'delivered').length, color: 'rose', icon: AlertCircle, action: 'tab', tab: 'overdue' },
-          { label: '告警订单', count: orders.filter(o => checkOrderAgainstRules(o, 'warning')).length, color: 'orange', icon: AlertTriangle, action: 'tab', tab: 'warning_orders' },
-          { label: '临期订单', count: orders.filter(o => checkOrderAgainstRules(o, 'imminent')).length, color: 'yellow', icon: Clock, action: 'tab', tab: 'imminent_orders' },
-          { label: '已完成', count: orders.filter(o => o.status === 'completed').length, color: 'emerald', icon: CheckCircle2, action: 'filter', filterStatus: 'completed' },
+          { label: '待加工', count: dashboardStats.pending_count, color: 'amber', icon: Clock, action: 'filter', filterStatus: 'pending' },
+          { label: '加工中', count: dashboardStats.processing_count, color: 'blue', icon: TrendingUp, action: 'filter', filterStatus: 'processing' },
+          { label: '逾期订单', count: dashboardStats.overdue_count, color: 'rose', icon: AlertCircle, action: 'tab', tab: 'overdue' },
+          { label: '告警订单', count: dashboardStats.warning_count, color: 'orange', icon: AlertTriangle, action: 'tab', tab: 'warning_orders' },
+          { label: '临期订单', count: dashboardStats.near_due_count, color: 'yellow', icon: Clock, action: 'tab', tab: 'imminent_orders' },
+          { label: '已完成', count: dashboardStats.completed_count, color: 'emerald', icon: CheckCircle2, action: 'filter', filterStatus: 'completed' },
         ].map((stat, i) => {
           const colorStyles: Record<string, { bg: string; text: string; hover: string }> = {
             amber: { bg: 'bg-amber-50', text: 'text-amber-600', hover: 'hover:bg-amber-100' },
@@ -161,13 +168,13 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
         <div className="grid gap-3">
           {(() => {
-            const allItems = dashboardItems;
-            const paginatedItems = allItems.slice((dashboardPage - 1) * dashboardPageSize, dashboardPage * dashboardPageSize);
+            // API已返回分页数据，无需再次slice
+            const totalPages = Math.ceil(dashboardTotal / dashboardPageSize);
 
-            if (paginatedItems.length > 0) {
+            if (dashboardItems.length > 0) {
               return (
                 <>
-                  {paginatedItems.map((item) => (
+                  {dashboardItems.map((item) => (
                     <motion.div
                       layout
                       key={`${item.order_id}-${item.item_id}`}
@@ -248,7 +255,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   {/* Dashboard Pagination */}
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 pt-4 border-t border-zinc-100">
                     <div className="flex items-center gap-4 text-sm text-zinc-500">
-                      <span>共<span className="font-bold text-zinc-900">{allItems.length}</span> 个待办零件</span>
+                      <span>共<span className="font-bold text-zinc-900">{dashboardTotal}</span> 个待办零件</span>
                       <select
                         value={dashboardPageSize}
                         onChange={(e) => {
@@ -271,8 +278,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <ChevronLeft className="w-5 h-5" />
                       </button>
                       <div className="flex items-center gap-1">
-                        {Array.from({ length: Math.ceil(allItems.length / dashboardPageSize) }, (_, i) => i + 1)
-                          .filter(p => p === 1 || p === Math.ceil(allItems.length / dashboardPageSize) || Math.abs(p - dashboardPage) <= 1)
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter(p => p === 1 || p === totalPages || Math.abs(p - dashboardPage) <= 1)
                           .map((p, i, arr) => (
                             <React.Fragment key={p}>
                               {i > 0 && arr[i-1] !== p - 1 && <span className="px-2 text-zinc-400">...</span>}
@@ -287,7 +294,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         }
                       </div>
                       <button
-                        disabled={dashboardPage === Math.ceil(allItems.length / dashboardPageSize) || allItems.length === 0}
+                        disabled={dashboardPage === totalPages || dashboardTotal === 0}
                         onClick={() => setDashboardPage(prev => prev + 1)}
                         className="p-2 border border-zinc-200 rounded-none hover:bg-zinc-50 disabled:opacity-30 transition-colors"
                       >

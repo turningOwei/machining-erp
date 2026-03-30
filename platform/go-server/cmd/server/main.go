@@ -32,14 +32,13 @@ func main() {
 			log.Printf("Loaded config from %s", envFile)
 		}
 	} else {
-		// 回退到默认 .env
 		godotenv.Load()
 	}
 
 	// 加载配置
 	cfg := config.Load()
 
-	// 连接数据库
+	// 连接数据库 (GORM)
 	db, err := database.Connect(&database.Config{
 		Host:     cfg.MySQLHost,
 		User:     cfg.MySQLUser,
@@ -50,7 +49,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to get underlying sql.DB: %v", err)
+	}
+	defer sqlDB.Close()
 
 	// 初始化服务
 	authService := services.NewAuthService(
@@ -104,7 +108,7 @@ func main() {
 	r.GET("/api/platform/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "ok",
-			"version": "go-gin",
+			"version": "go-gorm",
 			"time":    time.Now().Format(time.RFC3339),
 		})
 	})
@@ -135,6 +139,7 @@ func main() {
 
 		// 工作看板
 		api.GET("/dashboard/items", orderHandler.GetDashboardItems)
+		api.GET("/dashboard/stats", orderHandler.GetDashboardStats)
 
 		// 订单项
 		api.PATCH("/order-items/:itemId", itemHandler.Update)

@@ -1,152 +1,88 @@
 package repository
 
 import (
-	"database/sql"
+	"time"
+
+	"gorm.io/gorm"
 	"machining-erp/internal/models"
+	"machining-erp/internal/services"
 )
 
 type OrderItemRepository struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func NewOrderItemRepository(db *sql.DB) *OrderItemRepository {
+func NewOrderItemRepository(db *gorm.DB) *OrderItemRepository {
 	return &OrderItemRepository{db: db}
 }
 
 func (r *OrderItemRepository) GetByOrderID(orderID int) ([]models.OrderItem, error) {
-	rows, err := r.db.Query(`
-		SELECT id, order_id, part_name, part_number, quantity, scrap_quantity, unit_price, total_price,
-		       status, drawing_data, notes, completion_date, start_date, due_date, delivered_quantity,
-		       tool_cost, fixture_cost, material_cost, other_cost, item_notes
-		FROM order_items WHERE order_id = ? ORDER BY due_date ASC
-	`, orderID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var items []models.OrderItem = []models.OrderItem{} // 初始化为空数组，避免 null
-	for rows.Next() {
-		var item models.OrderItem
-		err := rows.Scan(
-			&item.ID, &item.OrderID, &item.PartName, &item.PartNumber, &item.Quantity, &item.ScrapQuantity,
-			&item.UnitPrice, &item.TotalPrice, &item.Status, &item.DrawingData, &item.Notes,
-			&item.CompletionDate, &item.StartDate, &item.DueDate, &item.DeliveredQty,
-			&item.ToolCost, &item.FixtureCost, &item.MaterialCost, &item.OtherCost, &item.ItemNotes,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		// 获取工序
-		processRepo := NewOrderProcessRepository(r.db)
-		item.Processes, _ = processRepo.GetByOrderItemID(item.ID)
-
-		items = append(items, item)
-	}
-	return items, nil
+	var items []models.OrderItem
+	err := r.db.Where("order_id = ?", orderID).Order("due_date ASC").Preload("Processes").Find(&items).Error
+	return items, err
 }
 
 func (r *OrderItemRepository) UpdateStatus(id int, status string) error {
-	_, err := r.db.Exec("UPDATE order_items SET status = ? WHERE id = ?", status, id)
-	return err
+	return r.db.Model(&models.OrderItem{}).Where("id = ?", id).Update("status", status).Error
 }
 
 func (r *OrderItemRepository) UpdateCompletionDate(id int, completionDate string) error {
 	if completionDate == "" {
-		_, err := r.db.Exec("UPDATE order_items SET completion_date = NULL WHERE id = ?", id)
+		return r.db.Model(&models.OrderItem{}).Where("id = ?", id).Update("completion_date", nil).Error
+	}
+	t, err := time.Parse("2006-01-02", completionDate)
+	if err != nil {
 		return err
 	}
-	_, err := r.db.Exec("UPDATE order_items SET completion_date = ? WHERE id = ?", completionDate, id)
-	return err
+	return r.db.Model(&models.OrderItem{}).Where("id = ?", id).Update("completion_date", t).Error
 }
 
 func (r *OrderItemRepository) GetOrderID(itemID int) int {
-	var orderID int
-	r.db.QueryRow("SELECT order_id FROM order_items WHERE id = ?", itemID).Scan(&orderID)
-	return orderID
+	var item models.OrderItem
+	r.db.First(&item, itemID)
+	return item.OrderID
 }
 
 type OrderProcessRepository struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func NewOrderProcessRepository(db *sql.DB) *OrderProcessRepository {
+func NewOrderProcessRepository(db *gorm.DB) *OrderProcessRepository {
 	return &OrderProcessRepository{db: db}
 }
 
 func (r *OrderProcessRepository) GetByOrderItemID(itemID int) ([]models.OrderProcess, error) {
-	rows, err := r.db.Query(`
-		SELECT id, order_item_id, name, is_outsourced, outsourcing_fee, status, sort_order
-		FROM order_processes WHERE order_item_id = ? ORDER BY sort_order ASC
-	`, itemID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var processes []models.OrderProcess = []models.OrderProcess{} // 初始化为空数组，避免 null
-	for rows.Next() {
-		var p models.OrderProcess
-		var isOutsourced int
-		err := rows.Scan(&p.ID, &p.OrderItemID, &p.Name, &isOutsourced, &p.OutsourcingFee, &p.Status, &p.SortOrder)
-		if err != nil {
-			return nil, err
-		}
-		p.IsOutsourced = isOutsourced == 1
-		processes = append(processes, p)
-	}
-	return processes, nil
+	var processes []models.OrderProcess
+	err := r.db.Where("order_item_id = ?", itemID).Order("sort_order ASC").Find(&processes).Error
+	return processes, err
 }
 
 func (r *OrderProcessRepository) Update(processID int, status *string, isOutsourced *bool, outsourcingFee *float64) error {
-	var updates []string
-	var args []interface{}
-
+	updates := map[string]interface{}{}
 	if status != nil {
-		updates = append(updates, "status = ?")
-		args = append(args, *status)
+		updates["status"] = *status
 	}
 	if isOutsourced != nil {
-		updates = append(updates, "is_outsourced = ?")
-		if *isOutsourced {
-			args = append(args, 1)
-		} else {
-			args = append(args, 0)
-		}
+		updates["is_outsourced"] = *isOutsourced
 	}
 	if outsourcingFee != nil {
-		updates = append(updates, "outsourcing_fee = ?")
-		args = append(args, *outsourcingFee)
+		updates["outsourcing_fee"] = *outsourcingFee
 	}
-
-	if len(updates) == 0 {
-		return nil
-	}
-
-	args = append(args, processID)
-	query := "UPDATE order_processes SET " + updates[0]
-	for i := 1; i < len(updates); i++ {
-		query += ", " + updates[i]
-	}
-	query += " WHERE id = ?"
-
-	_, err := r.db.Exec(query, args...)
-	return err
+	return r.db.Model(&models.OrderProcess{}).Where("id = ?", processID).Updates(updates).Error
 }
 
 func (r *OrderProcessRepository) GetStatusesByItemID(itemID int) ([]string, error) {
-	rows, err := r.db.Query("SELECT status FROM order_processes WHERE order_item_id = ?", itemID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	var statuses []string
+	err := r.db.Model(&models.OrderProcess{}).Where("order_item_id = ?", itemID).Pluck("status", &statuses).Error
+	return statuses, err
+}
 
-	var statuses []string = []string{} // 初始化为空数组，避免 null
-	for rows.Next() {
-		var s string
-		rows.Scan(&s)
-		statuses = append(statuses, s)
+// RecalculateItemStatus 重新计算订单项状态并更新
+func (r *OrderProcessRepository) RecalculateItemStatus(itemID int) error {
+	statuses, err := r.GetStatusesByItemID(itemID)
+	if err != nil {
+		return err
 	}
-	return statuses, nil
+	newStatus := services.CalculateStatus(statuses)
+	return r.db.Model(&models.OrderItem{}).Where("id = ?", itemID).Update("status", newStatus).Error
 }

@@ -22,56 +22,52 @@ const (
 )
 
 type Order struct {
-	ID                int         `json:"id"`
-	CustomerID        *int        `json:"customer_id"`
-	CustomerName      *string     `json:"customer_name"`
-	CustomerShortName *string     `json:"customer_short_name"`
-	OrderNumber       string      `json:"order_number"`
-	OrderName         *string     `json:"order_name"`
-	ContactID         *int        `json:"contact_id"`
-	ContactName       *string     `json:"contact_name"`
-	Status            OrderStatus `json:"status"`
-	Priority          Priority    `json:"priority"`
-	StartDate         *time.Time  `json:"start_date"`
-	DueDate           *time.Time  `json:"due_date"`
-	Notes             *string     `json:"notes"`
-	CreatedAt         time.Time   `json:"created_at"`
-	Items             []OrderItem `json:"items"`
+	ID                int           `gorm:"primaryKey;autoIncrement" json:"id"`
+	CorpID            int           `gorm:"column:corp_id;default:0" json:"corp_id"`
+	CustomerID        *int          `gorm:"column:customer_id" json:"customer_id"`
+	CustomerName      *string       `gorm:"column:customer_name" json:"customer_name"`
+	CustomerShortName *string       `gorm:"column:customer_short_name" json:"customer_short_name"`
+	OrderNumber       string        `gorm:"column:order_number" json:"order_number"`
+	OrderName         *string       `gorm:"column:order_name" json:"order_name"`
+	ContactID         *int          `gorm:"column:contact_id" json:"contact_id"`
+	ContactName       *string       `gorm:"column:contact_name" json:"contact_name"`
+	Status            OrderStatus   `gorm:"column:status;type:varchar(20);default:pending" json:"status"`
+	Priority          Priority      `gorm:"column:priority;type:varchar(20);default:medium" json:"priority"`
+	StartDate         *time.Time    `gorm:"column:start_date" json:"start_date"`
+	DueDate           *time.Time    `gorm:"column:due_date" json:"due_date"`
+	Notes             *string       `gorm:"column:notes" json:"notes"`
+	CreatedAt         time.Time     `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	Items             []OrderItem   `gorm:"foreignKey:OrderID" json:"items"`
 }
+
+func (Order) TableName() string { return "orders" }
 
 type OrderItem struct {
-	ID             int           `json:"id"`
-	OrderID        int           `json:"order_id"`
-	PartName       string        `json:"part_name"`
-	PartNumber     NullString    `json:"part_number"`
-	Quantity       int           `json:"quantity"`
-	ScrapQuantity  int           `json:"scrap_quantity"`
-	UnitPrice      float64       `json:"unit_price"`
-	TotalPrice     float64       `json:"total_price"`
-	Status         OrderStatus   `json:"status"`
-	DrawingData    NullString    `json:"drawing_data,omitempty"`
-	Notes          NullString    `json:"notes,omitempty"`
-	CompletionDate Date          `json:"completion_date,omitempty"`
-	StartDate      Date          `json:"start_date,omitempty"`
-	DueDate        Date          `json:"due_date,omitempty"`
-	DeliveredQty   NullInt64     `json:"delivered_quantity,omitempty"`
-	ToolCost       NullFloat64   `json:"tool_cost,omitempty"`
-	FixtureCost    NullFloat64   `json:"fixture_cost,omitempty"`
-	MaterialCost   NullFloat64   `json:"material_cost,omitempty"`
-	OtherCost      NullFloat64   `json:"other_cost,omitempty"`
-	ItemNotes      NullString    `json:"item_notes,omitempty"`
-	Processes      []OrderProcess `json:"processes"`
+	ID             int            `gorm:"primaryKey;autoIncrement" json:"id"`
+	OrderID        int            `gorm:"column:order_id;index" json:"order_id"`
+	CorpID         int            `gorm:"column:corp_id;default:0" json:"corp_id"`
+	PartName       string         `gorm:"column:part_name" json:"part_name"`
+	PartNumber     *string        `gorm:"column:part_number" json:"part_number"`
+	Quantity       int            `gorm:"column:quantity" json:"quantity"`
+	ScrapQuantity  int            `gorm:"column:scrap_quantity;default:0" json:"scrap_quantity"`
+	UnitPrice      float64        `gorm:"column:unit_price" json:"unit_price"`
+	TotalPrice     float64        `gorm:"column:total_price" json:"total_price"`
+	Status         OrderStatus    `gorm:"column:status;type:varchar(20);default:pending" json:"status"`
+	DrawingData    *string        `gorm:"column:drawing_data" json:"drawing_data,omitempty"`
+	Notes          *string        `gorm:"column:notes" json:"notes,omitempty"`
+	CompletionDate *time.Time     `gorm:"column:completion_date" json:"completion_date,omitempty"`
+	StartDate      *time.Time     `gorm:"column:start_date" json:"start_date,omitempty"`
+	DueDate        *time.Time     `gorm:"column:due_date" json:"due_date,omitempty"`
+	DeliveredQty   *int           `gorm:"column:delivered_quantity" json:"delivered_quantity,omitempty"`
+	ToolCost       *float64       `gorm:"column:tool_cost" json:"tool_cost,omitempty"`
+	FixtureCost    *float64       `gorm:"column:fixture_cost" json:"fixture_cost,omitempty"`
+	MaterialCost   *float64       `gorm:"column:material_cost" json:"material_cost,omitempty"`
+	OtherCost      *float64       `gorm:"column:other_cost" json:"other_cost,omitempty"`
+	ItemNotes      *string        `gorm:"column:item_notes" json:"item_notes,omitempty"`
+	Processes      []OrderProcess `gorm:"foreignKey:OrderItemID" json:"processes"`
 }
 
-type OrderProcess struct {
-	ID             int           `json:"id"`
-	OrderItemID    int           `json:"order_item_id"`
-	Name           string        `json:"name"`
-	IsOutsourced   bool          `json:"is_outsourced"`
-	OutsourcingFee float64       `json:"outsourcing_fee"`
-	Status         ProcessStatus `json:"status"`
-	SortOrder      int           `json:"sort_order"`
-}
+func (OrderItem) TableName() string { return "order_items" }
 
 type ProcessStatus string
 
@@ -80,3 +76,16 @@ const (
 	ProcessStatusProcessing ProcessStatus = "processing"
 	ProcessStatusCompleted  ProcessStatus = "completed"
 )
+
+type OrderProcess struct {
+	ID             int           `gorm:"primaryKey;autoIncrement" json:"id"`
+	OrderItemID    int           `gorm:"column:order_item_id;index" json:"order_item_id"`
+	CorpID         int           `gorm:"column:corp_id;default:0" json:"corp_id"`
+	Name           string        `gorm:"column:name" json:"name"`
+	IsOutsourced   bool          `gorm:"column:is_outsourced;default:false" json:"is_outsourced"`
+	OutsourcingFee float64       `gorm:"column:outsourcing_fee;default:0" json:"outsourcing_fee"`
+	Status         ProcessStatus `gorm:"column:status;type:varchar(20);default:pending" json:"status"`
+	SortOrder      int           `gorm:"column:sort_order;default:0" json:"sort_order"`
+}
+
+func (OrderProcess) TableName() string { return "order_processes" }

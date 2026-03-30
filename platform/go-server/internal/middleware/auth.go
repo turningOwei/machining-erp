@@ -13,7 +13,8 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 		// 检查账户是否锁定
 		if locked, remaining := authService.IsLocked(); locked {
 			response.Error(c, 403, gin.H{
-				"error":            "账户已锁定",
+				"code":             response.CodeAccountLocked,
+				"message":          response.CodeAccountLocked.GetMessage(),
 				"locked":           true,
 				"remainingMinutes": remaining,
 			})
@@ -26,7 +27,7 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 
 		if token == "" || !authService.ValidateToken(token) {
-			response.Error(c, 401, gin.H{"error": "未授权访问"})
+			response.Unauthorized(c, response.CodeTokenInvalid, response.CodeTokenInvalid.GetMessage())
 			c.Abort()
 			return
 		}

@@ -60,8 +60,7 @@ import { useOrders } from './hooks/useOrders';
 import {
   fetchOrdersApi,
   fetchCustomersApi,
-  fetchDashboardDataApi,
-  fetchDashboardItemsApi,
+  fetchDashboardDataApiNew,
   fetchInventoryDataApi,
   fetchFinanceApi,
   fetchRulesApi,
@@ -159,6 +158,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'inventory' | 'finance' | 'overdue' | 'warning_orders' | 'imminent_orders' | 'advent_rules' | 'customers'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<{
+    pending_count: number;
+    processing_count: number;
+    completed_count: number;
+    overdue_count: number;
+    warning_count: number;
+    near_due_count: number;
+  }>({ pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 });
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [remnants, setRemnants] = useState<Remnant[]>([]);
@@ -196,6 +203,7 @@ export default function App() {
   const [appliedOrderFilters, setAppliedOrderFilters] = useState(createOrderFilters);
   const [dashboardPage, setDashboardPage] = useState(1);
   const [dashboardPageSize, setDashboardPageSize] = useState(10);
+  const [dashboardTotal, setDashboardTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modals
@@ -327,17 +335,14 @@ export default function App() {
     fetchRulesData();
   }, [ruleFilters.name]);
 
-  // 只获取工作看板需要的数据（订单和规则）
+  // 获取工作看板数据（零件 + 订单 + 统计）
   const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [{ orders, rules }, items] = await Promise.all([
-        fetchDashboardDataApi(),
-        fetchDashboardItemsApi()
-      ]);
-      setOrders(orders);
-      setAdventRules(rules);
+      const { items, stats, total } = await fetchDashboardDataApiNew(dashboardPage, dashboardPageSize);
       setDashboardItems(items);
+      setDashboardStats(stats);
+      setDashboardTotal(total);
     } catch (error) {
       console.error("Failed to fetch dashboard data", error);
     } finally {
@@ -346,9 +351,9 @@ export default function App() {
   };
 
   // 只获取订单数据（订单管理、逾期/告警/临期订单页面使用）
-  const fetchOrdersData = async () => {
+  const fetchOrdersData = async (dateType?: string) => {
     try {
-      const data = await fetchOrdersApi();
+      const data = await fetchOrdersApi(dateType);
       setOrders(data);
     } catch (error) {
       console.error("Failed to fetch orders", error);
@@ -358,7 +363,6 @@ export default function App() {
   // 使用 useOrders hook
   const {
     getOrderMaxDueDate,
-    checkOrderAgainstRules,
     handleProcessClick,
     editOrder: editOrderFromHook,
     resetAndOpenModal: resetAndOpenModalFromHook
@@ -422,10 +426,16 @@ export default function App() {
         fetchDashboardData();
         break;
       case 'orders':
-      case 'overdue':
-      case 'warning_orders':
-      case 'imminent_orders':
         fetchOrdersData();
+        break;
+      case 'overdue':
+        fetchOrdersData('overdue');
+        break;
+      case 'warning_orders':
+        fetchOrdersData('warning');
+        break;
+      case 'imminent_orders':
+        fetchOrdersData('near_due');
         break;
       case 'customers':
         fetchCustomersData();
@@ -441,6 +451,12 @@ export default function App() {
         break;
     }
   }, [activeTab, isAuthenticated]);
+
+  // 监听工作看板分页变化
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'dashboard') return;
+    fetchDashboardData();
+  }, [dashboardPage, dashboardPageSize]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -690,7 +706,6 @@ export default function App() {
 
   const orderWithRulesProps = {
     ...baseOrderProps,
-    checkOrderAgainstRules,
   };
 
   // Render active tab based on activeTab state
@@ -701,8 +716,10 @@ export default function App() {
           <Dashboard
             {...baseOrderProps}
             dashboardItems={dashboardItems}
+            dashboardStats={dashboardStats}
             dashboardPage={dashboardPage}
             dashboardPageSize={dashboardPageSize}
+            dashboardTotal={dashboardTotal}
             setDashboardPage={setDashboardPage}
             setDashboardPageSize={setDashboardPageSize}
             setActiveTab={setActiveTab}
@@ -711,7 +728,6 @@ export default function App() {
             setCurrentPage={setCurrentPage}
             resetAndOpenModal={resetAndOpenModal}
             fetchData={fetchData}
-            checkOrderAgainstRules={checkOrderAgainstRules}
             formatDate={formatDate}
           />
         );

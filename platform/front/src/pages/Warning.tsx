@@ -16,7 +16,6 @@ interface WarningProps {
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
-  checkOrderAgainstRules: (order: Order, type: 'warning' | 'imminent') => boolean;
   fetchData: () => void;
 }
 
@@ -32,7 +31,6 @@ const Warning: React.FC<WarningProps> = ({
   setShowDrawingModal,
   handleProcessClick,
   getOrderMaxDueDate,
-  checkOrderAgainstRules,
   fetchData
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
@@ -46,7 +44,7 @@ const Warning: React.FC<WarningProps> = ({
     }
   };
 
-  const warningOrders = orders.filter(o => checkOrderAgainstRules(o, 'warning'));
+  const warningOrders = orders; // 后端已通过 dateType='warning' 筛选
 
   return (
     <OrderMonitorPanel

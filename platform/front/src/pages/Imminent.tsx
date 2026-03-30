@@ -16,7 +16,6 @@ interface ImminentProps {
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
-  checkOrderAgainstRules: (order: Order, type: 'warning' | 'imminent') => boolean;
   fetchData: () => void;
 }
 
@@ -32,7 +31,6 @@ const Imminent: React.FC<ImminentProps> = ({
   setShowDrawingModal,
   handleProcessClick,
   getOrderMaxDueDate,
-  checkOrderAgainstRules,
   fetchData
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
@@ -46,7 +44,7 @@ const Imminent: React.FC<ImminentProps> = ({
     }
   };
 
-  const imminentOrders = orders.filter(o => checkOrderAgainstRules(o, 'imminent'));
+  const imminentOrders = orders; // 后端已通过 dateType='near_due' 筛选
 
   return (
     <OrderMonitorPanel

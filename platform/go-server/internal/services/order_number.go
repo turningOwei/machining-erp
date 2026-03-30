@@ -1,20 +1,18 @@
 package services
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
+
+	"gorm.io/gorm"
+	"machining-erp/internal/models"
 )
 
-type OrderNumberRepository interface {
-	GetMaxSuffixToday(prefix string) (int, error)
-}
-
 type OrderNumberService struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func NewOrderNumberService(db *sql.DB) *OrderNumberService {
+func NewOrderNumberService(db *gorm.DB) *OrderNumberService {
 	return &OrderNumberService{db: db}
 }
 
@@ -23,20 +21,16 @@ func (s *OrderNumberService) Generate() (string, error) {
 	today := time.Now().Format("20060102")
 	prefix := fmt.Sprintf("YHS-%s-", today)
 
-	var maxSuffix int
-	query := "SELECT order_number FROM orders WHERE order_number LIKE ?"
-	rows, err := s.db.Query(query, prefix+"%")
+	var orderNumbers []string
+	err := s.db.Model(&models.Order{}).
+		Where("order_number LIKE ?", prefix+"%").
+		Pluck("order_number", &orderNumbers).Error
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var orderNumber string
-		if err := rows.Scan(&orderNumber); err != nil {
-			continue
-		}
-		// 解析后缀
+	maxSuffix := 0
+	for _, orderNumber := range orderNumbers {
 		var suffix int
 		n, _ := fmt.Sscanf(orderNumber, prefix+"%d", &suffix)
 		if n == 1 && suffix > maxSuffix {

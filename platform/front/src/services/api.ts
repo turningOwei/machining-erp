@@ -2,24 +2,25 @@ import { authFetch } from '../components/shared';
 import { Order, Customer, AdventRule } from '../types';
 
 // 获取订单数据
-export const fetchOrdersApi = async (): Promise<Order[]> => {
-  const res = await authFetch('/api/platform/orders');
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+export const fetchOrdersApi = async (dateType?: string): Promise<Order[]> => {
+  const url = dateType ? `/api/platform/orders?dateType=${dateType}` : '/api/platform/orders';
+  const res = await authFetch(url);
+  const result = await res.json();
+  return Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
 };
 
 // 获取客户数据
 export const fetchCustomersApi = async (): Promise<Customer[]> => {
   const res = await authFetch('/api/platform/customers');
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+  const result = await res.json();
+  return Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
 };
 
 // 获取财务数据
 export const fetchFinanceApi = async (): Promise<any[]> => {
   const res = await authFetch('/api/platform/finance/reconciliation');
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+  const result = await res.json();
+  return Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
 };
 
 // 获取规则数据
@@ -27,23 +28,37 @@ export const fetchRulesApi = async (filters?: { name?: string }): Promise<Advent
   const qs = filters ? new URLSearchParams(filters as Record<string, string>).toString() : '';
   const url = qs ? `/api/platform/advent-rules?${qs}` : '/api/platform/advent-rules';
   const res = await authFetch(url);
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+  const result = await res.json();
+  return Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
 };
 
-// 获取工作看板数据（订单 + 规则）
-export const fetchDashboardDataApi = async (): Promise<{ orders: Order[]; rules: AdventRule[] }> => {
-  const [ordersRes, rulesRes] = await Promise.all([
-    authFetch('/api/platform/orders'),
-    authFetch('/api/platform/advent-rules')
+// 获取工作看板数据（零件 + 订单 + 统计）
+export const fetchDashboardDataApiNew = async (page: number = 1, pageSize: number = 20): Promise<{
+  items: DashboardItem[];
+  orders: OrderInfo[];
+  total: number;
+  stats: {
+    pending_count: number;
+    processing_count: number;
+    completed_count: number;
+    overdue_count: number;
+    warning_count: number;
+    near_due_count: number;
+  }
+}> => {
+  const [itemsRes, statsRes] = await Promise.all([
+    authFetch(`/api/platform/dashboard/items?page=${page}&pageSize=${pageSize}`),
+    authFetch('/api/platform/dashboard/stats')
   ]);
 
-  const ordersData = await ordersRes.json();
-  const rulesData = await rulesRes.json();
+  const itemsResult = await itemsRes.json();
+  const statsResult = await statsRes.json();
 
   return {
-    orders: Array.isArray(ordersData) ? ordersData : [],
-    rules: Array.isArray(rulesData) ? rulesData : []
+    items: itemsResult.data?.items || [],
+    orders: itemsResult.data?.orders || [],
+    total: itemsResult.data?.total || 0,
+    stats: statsResult.data || { pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 }
   };
 };
 
@@ -72,11 +87,44 @@ export interface DashboardItem {
   }>;
 }
 
+// 订单简要信息类型
+export interface OrderInfo {
+  id: number;
+  order_number: string;
+  customer_name: string;
+  customer_short_name: string;
+  status: string;
+  priority: string;
+}
+
 // 获取工作看板零件数据
-export const fetchDashboardItemsApi = async (): Promise<DashboardItem[]> => {
-  const res = await authFetch('/api/platform/dashboard/items');
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+export const fetchDashboardItemsApi = async (page: number = 1, pageSize: number = 20): Promise<{ items: DashboardItem[]; total: number; page: number; pageSize: number }> => {
+  const res = await authFetch(`/api/platform/dashboard/items?page=${page}&pageSize=${pageSize}`);
+  const result = await res.json();
+  // 返回格式: { code: 0, data: { items: [...], total: X, page: X, pageSize: X } }
+  if (result.data) {
+    return {
+      items: result.data.items || [],
+      total: result.data.total || 0,
+      page: result.data.page || page,
+      pageSize: result.data.pageSize || pageSize
+    };
+  }
+  return { items: [], total: 0, page, pageSize };
+};
+
+// 获取看板卡片统计数据
+export const fetchDashboardStatsApi = async (): Promise<{
+  pending_count: number;
+  processing_count: number;
+  completed_count: number;
+  overdue_count: number;
+  warning_count: number;
+  near_due_count: number;
+}> => {
+  const res = await authFetch('/api/platform/dashboard/stats');
+  const result = await res.json();
+  return result.data || { pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 };
 };
 
 // 获取库存数据（物料 + 余料）
@@ -86,12 +134,14 @@ export const fetchInventoryDataApi = async (): Promise<{ materials: any[]; remna
     authFetch('/api/platform/remnants')
   ]);
 
-  const materialsData = await materialsRes.json();
-  const remnantsData = await remnantsRes.json();
+  const materialsResult = await materialsRes.json();
+  const remnantsResult = await remnantsRes.json();
+
+  const getData = (result: any) => Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
 
   return {
-    materials: Array.isArray(materialsData) ? materialsData : [],
-    remnants: Array.isArray(remnantsData) ? remnantsData : []
+    materials: getData(materialsResult),
+    remnants: getData(remnantsResult)
   };
 };
 
