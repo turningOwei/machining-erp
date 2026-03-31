@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, Menu, X, ChevronRight, ChevronLeft, LucideIcon } from 'lucide-react';
+import { Settings, Menu, X, ChevronRight, ChevronLeft, LucideIcon, ChevronUp, Lock, KeyRound, Mail } from 'lucide-react';
 
 interface NavItem {
   id: string;
@@ -16,8 +16,17 @@ interface SidebarProps {
   setIsSidebarOpen: (open: boolean) => void;
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (collapsed: boolean) => void;
-  authUser: { username: string } | null;
+  authUser: {
+    id?: number;
+    username: string;
+    name: string;
+    role_name: string;
+    corp_name: string;
+    email?: string;
+    expired_at?: string;
+  } | null;
   onLogout: () => void;
+  onOpenSettings: (type: 'password' | 'reset' | 'email') => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -29,8 +38,23 @@ const Sidebar: React.FC<SidebarProps> = ({
   isSidebarCollapsed,
   setIsSidebarCollapsed,
   authUser,
-  onLogout
+  onLogout,
+  onOpenSettings
 }) => {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭下拉框
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <>
       {/* Mobile Header */}
@@ -112,31 +136,101 @@ const Sidebar: React.FC<SidebarProps> = ({
               ))}
             </nav>
 
-            <div className={`p-4 border-t border-white/5`}>
+            {/* User Info Section with Dropdown */}
+            <div className={`p-4 border-t border-white/5 relative`}>
               <div className={`flex items-center gap-3 px-2 py-2 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
-                <div className="shrink-0 w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-white">
-                  {authUser?.username?.charAt(0).toUpperCase() || 'A'}
-                </div>
                 {!isSidebarCollapsed && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex-1 overflow-hidden"
+                    className="flex-1 overflow-hidden cursor-pointer"
+                    onClick={() => setShowDropdown(!showDropdown)}
                   >
-                    <p className="text-sm font-medium text-white truncate">{authUser?.username || 'Admin'}</p>
-                    <p className="text-xs truncate opacity-50">管理员</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-medium text-white truncate">{authUser?.username || 'Admin'}</p>
+                        <p className="text-xs truncate opacity-50">{authUser?.role_name || '账号'}</p>
+                        <p className="text-xs truncate opacity-40">{authUser?.corp_name || ''}</p>
+                        {authUser?.expired_at && (
+                          <p className="text-xs truncate opacity-40">
+                            有效期: {new Date(authUser.expired_at).toLocaleDateString('zh-CN')}
+                          </p>
+                        )}
+                      </div>
+                      <ChevronUp className={`w-4 h-4 text-white/50 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                    </div>
                   </motion.div>
                 )}
-                {!isSidebarCollapsed && (
-                  <button
-                    onClick={onLogout}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                    title="退出登录"
-                  >
-                    <X className="w-4 h-4 text-white/50 hover:text-white" />
-                  </button>
-                )}
               </div>
+
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {showDropdown && !isSidebarCollapsed && (
+                  <motion.div
+                    ref={dropdownRef}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute left-0 right-0 bottom-full mb-2 mx-4 bg-zinc-800 rounded-xl border border-zinc-700 shadow-xl overflow-hidden"
+                  >
+                    <div className="p-1">
+                      <button
+                        onClick={() => {
+                          setShowDropdown(false);
+                          onOpenSettings('password');
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white rounded-lg transition-colors"
+                      >
+                        <Lock className="w-4 h-4" />
+                        修改密码
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowDropdown(false);
+                          onOpenSettings('reset');
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white rounded-lg transition-colors"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                        密码重置
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowDropdown(false);
+                          onOpenSettings('email');
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white rounded-lg transition-colors"
+                      >
+                        <Mail className="w-4 h-4" />
+                        修改邮箱
+                      </button>
+                      <div className="border-t border-zinc-700 mt-1 pt-1">
+                        <button
+                          onClick={() => {
+                            setShowDropdown(false);
+                            onLogout();
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:bg-zinc-700 hover:text-red-300 rounded-lg transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                          退出登录
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Collapsed state - logout button */}
+              {isSidebarCollapsed && (
+                <button
+                  onClick={onLogout}
+                  className="w-full flex justify-center mt-2 p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="退出登录"
+                >
+                  <X className="w-4 h-4 text-white/50 hover:text-white" />
+                </button>
+              )}
             </div>
           </motion.aside>
         )}

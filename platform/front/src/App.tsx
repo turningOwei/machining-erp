@@ -44,6 +44,7 @@ import DeleteConfirmModal from './components/DeleteConfirmModal';
 import ErrorModal from './components/ErrorModal';
 import ValidationAlertModal from './components/ValidationAlertModal';
 import RuleModal, { RuleForm } from './components/RuleModal';
+import UserSettingsModal from './components/UserSettingsModal';
 import Orders from './pages/Orders';
 import Dashboard from './pages/Dashboard';
 import { createEmptyFilters, createOrderFilters } from './configs/filterConfigs';
@@ -55,8 +56,9 @@ import Inventory from './pages/Inventory';
 import Finance from './pages/Finance';
 import Rules from './pages/Rules';
 import { formatDate, authFetch } from './components/shared';
-import { NAV_ITEMS } from './constants/navigation';
+import { NAV_ITEMS, NavItem } from './constants/navigation';
 import { useOrders } from './hooks/useOrders';
+import * as LucideIcons from 'lucide-react';
 import {
   fetchOrdersApi,
   fetchCustomersApi,
@@ -87,8 +89,21 @@ declare global {
 export default function App() {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authUser, setAuthUser] = useState<{ username: string } | null>(null);
+  const [authUser, setAuthUser] = useState<{
+    id?: number;
+    username: string;
+    name: string;
+    role_name: string;
+    corp_name: string;
+    email?: string;
+    expired_at?: string;
+    resources?: { resource_key: string; name: string; icon: string; path: string }[];
+  } | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
+
+  // 用户设置弹框
+  const [showUserSettings, setShowUserSettings] = useState(false);
+  const [userSettingsType, setUserSettingsType] = useState<'password' | 'reset' | 'email' | null>(null);
 
   // Check auth status on mount
   useEffect(() => {
@@ -133,9 +148,19 @@ export default function App() {
     checkAuth();
   }, []);
 
-  const handleLoginSuccess = (token: string, user: { username: string }) => {
+  const handleLoginSuccess = (token: string, user: {
+    id: number;
+    username: string;
+    name: string;
+    email: string;
+    role_name: string;
+    corp_name: string;
+    expired_at?: string;
+    resources?: { resource_key: string; name: string; icon: string; path: string }[];
+  }) => {
     setIsAuthenticated(true);
     setAuthUser(user);
+    localStorage.setItem('auth_user', JSON.stringify(user));
     fetchDashboardData();
   };
 
@@ -872,7 +897,11 @@ export default function App() {
   return (
     <div className="h-screen w-full flex flex-col md:flex-row overflow-hidden">
       <Sidebar
-        navItems={NAV_ITEMS}
+        navItems={authUser?.resources ? authUser.resources.map(r => ({
+          id: r.resource_key,
+          label: r.name,
+          icon: (LucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[r.icon] || LucideIcons.LayoutDashboard
+        })) : NAV_ITEMS}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isSidebarOpen={isSidebarOpen}
@@ -881,6 +910,23 @@ export default function App() {
         setIsSidebarCollapsed={setIsSidebarCollapsed}
         authUser={authUser}
         onLogout={handleLogout}
+        onOpenSettings={(type) => {
+          setUserSettingsType(type);
+          setShowUserSettings(true);
+        }}
+      />
+
+      {/* User Settings Modal */}
+      <UserSettingsModal
+        isOpen={showUserSettings}
+        type={userSettingsType}
+        onClose={() => {
+          setShowUserSettings(false);
+          setUserSettingsType(null);
+        }}
+        onLogout={handleLogout}
+        userId={authUser?.id || 0}
+        userEmail={authUser?.email || ''}
       />
 
       {/* Main Content */}

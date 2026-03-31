@@ -23,7 +23,7 @@ func NewOrderItemHandler(itemRepo *repository.OrderItemRepository, orderRepo *re
 }
 
 func (h *OrderItemHandler) Update(c *gin.Context) {
-	itemID, _ := strconv.Atoi(c.Param("itemId"))
+	itemID, _ := strconv.ParseInt(c.Param("itemId"), 10, 64)
 
 	var req struct {
 		Status         *string `json:"status"`
@@ -92,8 +92,8 @@ func NewProcessHandler(processRepo *repository.OrderProcessRepository, itemRepo 
 }
 
 func (h *ProcessHandler) Update(c *gin.Context) {
-	itemID, _ := strconv.Atoi(c.Param("itemId"))
-	processID, _ := strconv.Atoi(c.Param("processId"))
+	itemID, _ := strconv.ParseInt(c.Param("itemId"), 10, 64)
+	processID, _ := strconv.ParseInt(c.Param("processId"), 10, 64)
 
 	var req struct {
 		Status         *string  `json:"status"`

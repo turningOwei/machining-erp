@@ -5,8 +5,8 @@ import (
 )
 
 type AdventRule struct {
-	ID           int       `gorm:"primaryKey;autoIncrement" json:"id"`
-	CorpID       int       `gorm:"column:corp_id;default:0" json:"corp_id"`
+	ID           int64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	CorpID       int64     `gorm:"column:corp_id;default:0" json:"corp_id"`
 	Name         string    `gorm:"column:name" json:"name"`
 	Description  string    `gorm:"column:description" json:"description,omitempty"`
 	Formula      string    `gorm:"column:formula" json:"formula"`

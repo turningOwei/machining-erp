@@ -344,42 +344,46 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         {formatDate(getOrderMaxDueDate(order))}
                       </div>
                     </td>
-                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
+                    <td className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.bg}`}>
                       {(() => {
                         const items = order.items || [];
                         if (items.length === 0) return <span className="text-xs text-zinc-400">无零件</span>;
 
-                        // 计算各状态零件数量
-                        const pendingCount = items.filter((i: any) => i.status === 'pending').length;
-                        const processingCount = items.filter((i: any) => i.status === 'processing').length;
-                        const completedCount = items.filter((i: any) => i.status === 'completed' || i.status === 'delivered').length;
+                        // 检查是否有任何工序
+                        const hasProcesses = items.some((item: any) => item.processes && item.processes.length > 0);
+                        if (!hasProcesses) {
+                          return <span className="text-xs text-zinc-400">无工序</span>;
+                        }
 
                         return (
-                          <div className="flex items-center gap-2 w-full">
-                            {/* 分段进度条 - 每个零件一个小段 */}
-                            <div className="flex h-5 gap-0.5 flex-1 max-w-[280px]">
-                              {items.map((item: any, idx: number) => {
-                                let bgColor = 'bg-zinc-300'; // 待加工 - 灰色
-                                if (item.status === 'processing') {
-                                  bgColor = 'bg-blue-400'; // 加工中 - 蓝色
-                                } else if (item.status === 'completed' || item.status === 'delivered') {
-                                  bgColor = 'bg-emerald-500'; // 已完成 - 绿色
-                                }
-                                return (
-                                  <div
-                                    key={idx}
-                                    className={`flex-1 h-full ${bgColor} rounded-sm`}
-                                    title={`${item.part_name}: ${item.status === 'pending' ? '待加工' : item.status === 'processing' ? '加工中' : '已完成'}`}
-                                  />
-                                );
-                              })}
-                            </div>
-                            {/* 数字统计 */}
-                            <div className="flex items-center gap-1.5 text-xs whitespace-nowrap shrink-0">
-                              <span className="text-zinc-500">待:{pendingCount}</span>
-                              <span className="text-blue-600">进:{processingCount}</span>
-                              <span className="text-emerald-600">完:{completedCount}</span>
-                            </div>
+                          <div className="flex flex-col gap-1 w-full">
+                            {/* 每个零件一行进度条 */}
+                            {items.map((item: any, itemIdx: number) => {
+                              const processes = item.processes || [];
+                              if (processes.length === 0) return null;
+
+                              return (
+                                <div key={itemIdx} className="flex items-center gap-2 min-h-[8px]">
+                                  <div className="flex h-1.5 gap-0.5 flex-1">
+                                    {processes.map((p: any, pIdx: number) => {
+                                      let bgColor = 'bg-zinc-300'; // 待加工 - 灰色
+                                      if (p.status === 'processing') {
+                                        bgColor = 'bg-blue-400'; // 加工中 - 蓝色
+                                      } else if (p.status === 'completed') {
+                                        bgColor = 'bg-emerald-500'; // 已完成 - 绿色
+                                      }
+                                      return (
+                                        <div
+                                          key={pIdx}
+                                          className={`flex-1 h-full ${bgColor} rounded-sm`}
+                                          title={`${item.part_name} - ${p.name}: ${p.status === 'pending' ? '待加工' : p.status === 'processing' ? '加工中' : '已完成'}`}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })()}

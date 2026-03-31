@@ -64,12 +64,12 @@ func (h *OrderHandler) List(c *gin.Context) {
 }
 
 type CreateOrderRequest struct {
-	CustomerID        *int            `json:"customer_id"`
+	CustomerID        *int64          `json:"customer_id"`
 	CustomerName      *string         `json:"customer_name"`
 	CustomerShortName *string         `json:"customer_short_name"`
 	OrderNumber       string          `json:"order_number"`
 	OrderName         *string         `json:"order_name"`
-	ContactID         *int            `json:"contact_id"`
+	ContactID         *int64          `json:"contact_id"`
 	Priority          models.Priority `json:"priority"`
 	StartDate         string          `json:"start_date"`
 	DueDate           string          `json:"due_date"`
@@ -177,21 +177,21 @@ func (h *OrderHandler) Create(c *gin.Context) {
 }
 
 type UpdateOrderRequest struct {
-	CustomerID        *int            `json:"customer_id"`
-	CustomerName      *string         `json:"customer_name"`
-	CustomerShortName *string         `json:"customer_short_name"`
-	OrderName         *string         `json:"order_name"`
-	ContactID         *int            `json:"contact_id"`
-	Priority          models.Priority `json:"priority"`
-	StartDate         string          `json:"start_date"`
-	DueDate           string          `json:"due_date"`
-	Notes             *string         `json:"notes"`
+	CustomerID        *int64            `json:"customer_id"`
+	CustomerName      *string           `json:"customer_name"`
+	CustomerShortName *string           `json:"customer_short_name"`
+	OrderName         *string           `json:"order_name"`
+	ContactID         *int64            `json:"contact_id"`
+	Priority          models.Priority   `json:"priority"`
+	StartDate         string            `json:"start_date"`
+	DueDate           string            `json:"due_date"`
+	Notes             *string           `json:"notes"`
 	Status            models.OrderStatus `json:"status"`
 	Items             []CreateOrderItemRequest `json:"items"`
 }
 
 func (h *OrderHandler) Update(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	var req UpdateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -243,7 +243,7 @@ func (h *OrderHandler) Update(c *gin.Context) {
 }
 
 func (h *OrderHandler) Delete(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	if err := h.repo.Delete(id); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})

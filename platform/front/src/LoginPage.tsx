@@ -1,21 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, User, AlertCircle, Loader2 } from 'lucide-react';
+import { Lock, User, AlertCircle, Loader2, Building2, X } from 'lucide-react';
 
 interface LoginPageProps {
-  onLoginSuccess: (token: string, user: { username: string }) => void;
+  onLoginSuccess: (token: string, user: {
+    id: number;
+    username: string;
+    name: string;
+    email: string;
+    role_name: string;
+    corp_name: string;
+    expired_at?: string;
+  }) => void;
+}
+
+interface UserInfo {
+  id: number;
+  corp_id: number;
+  corp_name: string;
+  username: string;
+  name: string;
+  role_type: string;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [lockedInfo, setLockedInfo] = useState<{ locked: boolean; remainingMinutes?: number }>({ locked: false });
+
+  // 公司信息
+  const [corpInfo, setCorpInfo] = useState<UserInfo | null>(null);
+  const [checkingUser, setCheckingUser] = useState(false);
+
+  // 错误弹框
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
 
   // Check lock status on mount
   useEffect(() => {
     checkLockStatus();
   }, []);
+
+  // 用户名变化时查询公司信息
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (username.trim()) {
+        checkUser(username.trim());
+      } else {
+        setCorpInfo(null);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [username]);
 
   const checkLockStatus = async () => {
     try {
@@ -29,19 +67,66 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     }
   };
 
+  // 查询用户/公司信息
+  const checkUser = async (name: string) => {
+    setCheckingUser(true);
+    try {
+      const res = await fetch('/api/platform/check-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: name })
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.user) {
+        setCorpInfo(data.user);
+      } else {
+        setCorpInfo(null);
+      }
+    } catch (e) {
+      setCorpInfo(null);
+    } finally {
+      setCheckingUser(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (lockedInfo.locked) return;
+    if (!username.trim()) {
+      setErrorMessage('请输入账号');
+      setRemainingAttempts(null);
+      setShowErrorModal(true);
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMessage('请输入密码');
+      setRemainingAttempts(null);
+      setShowErrorModal(true);
+      return;
+    }
 
-    setError('');
+    // 检查公司是否存在
+    if (!corpInfo) {
+      setErrorMessage('公司不存在');
+      setRemainingAttempts(null);
+      setShowErrorModal(true);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const res = await fetch('/api/platform/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({
+          username,
+          password,
+          corp_id: corpInfo?.corp_id
+        })
       });
 
       const data = await res.json();
@@ -51,14 +136,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         localStorage.setItem('auth_user', JSON.stringify(data.user));
         onLoginSuccess(data.token, data.user);
       } else {
-        setError(data.error || '登录失败');
+        setErrorMessage(data.error || '登录失败');
+        setRemainingAttempts(data.remaining_attempts ?? null);
+        setShowErrorModal(true);
 
         if (data.locked) {
           setLockedInfo({ locked: true, remainingMinutes: data.remainingMinutes });
         }
       }
     } catch (e) {
-      setError('网络错误，请稍后重试');
+      setErrorMessage('网络错误，请稍后重试');
+      setRemainingAttempts(null);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -67,7 +156,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const handleReset = () => {
     setUsername('');
     setPassword('');
-    setError('');
+    setCorpInfo(null);
+  };
+
+  const closeErrorModal = () => {
+    setShowErrorModal(false);
   };
 
   return (
@@ -85,14 +178,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         {/* Login Form */}
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Error Message */}
-            {error && (
-              <div className="flex items-center gap-3 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm">{error}</span>
-              </div>
-            )}
-
             {/* Locked Info */}
             {lockedInfo.locked && (
               <div className="flex items-center gap-3 p-4 bg-orange-500/20 border border-orange-500/30 rounded-xl text-orange-300">
@@ -102,6 +187,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 </span>
               </div>
             )}
+
+            {/* Company Info - 动态显示 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-300">公司</label>
+              <div className="relative">
+                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <div className="w-full pl-12 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-slate-300 min-h-[48px]">
+                  {corpInfo?.corp_name || '\u00A0'}
+                </div>
+              </div>
+            </div>
 
             {/* Username */}
             <div className="space-y-2">
@@ -117,6 +213,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   placeholder="请输入账号"
                   required
                 />
+                {checkingUser && (
+                  <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-400 animate-spin" />
+                )}
               </div>
             </div>
 
@@ -170,6 +269,47 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           © 2026 裕合森精密机械 · ERP管理系统
         </p>
       </div>
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-slate-700">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">提示</h3>
+              </div>
+              <button
+                onClick={closeErrorModal}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Error Message */}
+            <div className="mb-6">
+              <p className="text-slate-300">{errorMessage}</p>
+              {remainingAttempts !== null && remainingAttempts > 0 && (
+                <p className="text-slate-400 text-sm mt-2">
+                  剩余 {remainingAttempts} 次尝试机会
+                </p>
+              )}
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={closeErrorModal}
+              className="w-full py-2.5 px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-all"
+            >
+              确定
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

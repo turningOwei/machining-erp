@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 	"machining-erp/internal/models"
-	"machining-erp/internal/services"
+	"machining-erp/pkg/utils"
 )
 
 type OrderRepository struct {
@@ -155,14 +155,14 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 
 	var rows []struct {
 		// Order fields
-		ID                int
-		CorpID            int
-		CustomerID        *int
+		ID                int64
+		CorpID            int64
+		CustomerID        *int64
 		CustomerName      *string
 		CustomerShortName *string
 		OrderNumber       string
 		OrderName         *string
-		ContactID         *int
+		ContactID         *int64
 		ContactName       *string
 		Status            string
 		Priority          string
@@ -171,8 +171,8 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		Notes             *string
 		CreatedAt         time.Time
 		// OrderItem fields
-		ItemID            *int
-		ItemCorpID        *int
+		ItemID            *int64
+		ItemCorpID        *int64
 		PartName          *string
 		PartNumber        *string
 		Quantity          *int
@@ -192,9 +192,9 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		OtherCost         *float64
 		ItemNotes2        *string // item_notes from items table
 		// OrderProcess fields
-		ProcessID         *int
-		ProcessItemID     *int
-		ProcessCorpID     *int
+		ProcessID         *int64
+		ProcessItemID     *int64
+		ProcessCorpID     *int64
 		ProcessName       *string
 		IsOutsourced      *bool
 		OutsourcingFee    *float64
@@ -206,9 +206,9 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		return OrderListResult{}, err
 	}
 
-	// 组装数据
-	orderMap := make(map[int]*models.Order)
-	itemMap := make(map[int]*models.OrderItem)
+	// 4. 组装订单和订单项数据
+	orderMap := make(map[int64]*models.Order)
+	itemMap := make(map[int64]*models.OrderItem)
 
 	for _, row := range rows {
 		// 组装订单
@@ -263,21 +263,29 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 				itemMap[*row.ItemID] = item
 				orderMap[row.ID].Items = append(orderMap[row.ID].Items, *item)
 			}
+		}
+	}
 
-			// 组装工序
-			if row.ProcessID != nil {
-				process := models.OrderProcess{
-					ID:             *row.ProcessID,
-					OrderItemID:    *row.ProcessItemID,
-					CorpID:         *row.ProcessCorpID,
-					Name:           *row.ProcessName,
-					IsOutsourced:   *row.IsOutsourced,
-					OutsourcingFee: *row.OutsourcingFee,
-					Status:         models.ProcessStatus(*row.ProcessStatus),
-					SortOrder:      *row.SortOrder,
-				}
-				if item, exists := itemMap[*row.ProcessItemID]; exists {
-					item.Processes = append(item.Processes, process)
+	// 5. 单独查询工序并组装
+	itemIDs := make([]int64, 0)
+	for id := range itemMap {
+		itemIDs = append(itemIDs, id)
+	}
+
+	if len(itemIDs) > 0 {
+		var processes []models.OrderProcess
+		err := r.db.Where("order_item_id IN ?", itemIDs).Order("sort_order ASC").Find(&processes).Error
+		if err != nil {
+			return OrderListResult{}, err
+		}
+
+		// 将工序添加到对应的 order.Items 中（直接修改 order.Items）
+		for _, p := range processes {
+			for _, order := range orderMap {
+				for i := range order.Items {
+					if order.Items[i].ID == p.OrderItemID {
+						order.Items[i].Processes = append(order.Items[i].Processes, p)
+					}
 				}
 			}
 		}
@@ -304,7 +312,7 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		// 计算每个订单项的状态
 		for i := range items {
-			items[i].Status = models.OrderStatus(services.CalculateOrderItemStatus(items[i].Processes))
+			items[i].Status = models.OrderStatus(utils.CalculateOrderItemStatus(items[i].Processes))
 		}
 
 		// 插入订单
@@ -335,7 +343,7 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 		for _, item := range items {
 			statuses = append(statuses, string(item.Status))
 		}
-		order.Status = models.OrderStatus(services.CalculateStatus(statuses))
+		order.Status = models.OrderStatus(utils.CalculateStatus(statuses))
 		tx.Model(order).Update("status", order.Status)
 
 		return nil
@@ -376,7 +384,7 @@ func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) 
 			// 插入新的订单项和工序
 			for i := range items {
 				items[i].OrderID = order.ID
-				items[i].Status = models.OrderStatus(services.CalculateOrderItemStatus(items[i].Processes))
+				items[i].Status = models.OrderStatus(utils.CalculateOrderItemStatus(items[i].Processes))
 				if err := tx.Create(&items[i]).Error; err != nil {
 					return err
 				}
@@ -394,18 +402,18 @@ func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) 
 		// 重新计算订单状态
 		var statuses []string
 		tx.Model(&models.OrderItem{}).Where("order_id = ?", order.ID).Pluck("status", &statuses)
-		order.Status = models.OrderStatus(services.CalculateStatus(statuses))
+		order.Status = models.OrderStatus(utils.CalculateStatus(statuses))
 		tx.Model(order).Update("status", order.Status)
 
 		return nil
 	})
 }
 
-func (r *OrderRepository) UpdateStatus(id int, status string) error {
+func (r *OrderRepository) UpdateStatus(id int64, status string) error {
 	return r.db.Model(&models.Order{}).Where("id = ?", id).Update("status", status).Error
 }
 
-func (r *OrderRepository) Delete(id int) error {
+func (r *OrderRepository) Delete(id int64) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var itemIDs []int
 		tx.Model(&models.OrderItem{}).Where("order_id = ?", id).Pluck("id", &itemIDs)
@@ -420,19 +428,19 @@ func (r *OrderRepository) Delete(id int) error {
 
 // DashboardItem 工作看板零件数据
 type DashboardItem struct {
-	OrderID           int                   `json:"order_id"`
-	OrderNumber       string                `json:"order_number"`
-	CustomerShortName string                `json:"customer_short_name"`
-	Priority          string                `json:"priority"`
-	ItemID            int                   `json:"item_id"`
-	PartName          string                `json:"part_name"`
-	PartNumber        string                `json:"part_number"`
-	Quantity          int                   `json:"quantity"`
-	Status            string                `json:"status"`
-	StartDate         *time.Time            `json:"start_date"`
-	DueDate           *time.Time            `json:"due_date"`
-	DrawingData       string                `json:"drawing_data"`
-	Processes         []models.OrderProcess `json:"processes"`
+	OrderID           int64                  `json:"order_id"`
+	OrderNumber       string                 `json:"order_number"`
+	CustomerShortName string                 `json:"customer_short_name"`
+	Priority          string                 `json:"priority"`
+	ItemID            int64                  `json:"item_id"`
+	PartName          string                 `json:"part_name"`
+	PartNumber        string                 `json:"part_number"`
+	Quantity          int                    `json:"quantity"`
+	Status            string                 `json:"status"`
+	StartDate         *time.Time             `json:"start_date"`
+	DueDate           *time.Time             `json:"due_date"`
+	DrawingData       string                 `json:"drawing_data"`
+	Processes         []models.OrderProcess  `json:"processes"`
 }
 
 // DashboardResult 工作看板返回结果
@@ -446,7 +454,7 @@ type DashboardResult struct {
 
 // OrderInfo 订单简要信息
 type OrderInfo struct {
-	ID              int    `json:"id"`
+	ID              int64  `json:"id"`
 	OrderNumber     string `json:"order_number"`
 	CustomerName    string `json:"customer_name"`
 	CustomerShortName string `json:"customer_short_name"`
@@ -533,11 +541,11 @@ func (r *OrderRepository) GetDashboardItems(page, pageSize int) (*DashboardResul
 
 	// 2. 分页查询零件
 	var results []struct {
-		OrderID           int
+		OrderID           int64
 		OrderNumber       string
 		CustomerShortName string
 		Priority          string
-		ItemID            int
+		ItemID            int64
 		PartName          string
 		PartNumber        string
 		Quantity          int
@@ -576,8 +584,8 @@ func (r *OrderRepository) GetDashboardItems(page, pageSize int) (*DashboardResul
 	}
 
 	// 3. 获取订单ID列表，查询订单信息
-	orderIDs := make([]int, 0)
-	orderIDSet := make(map[int]bool)
+	orderIDs := make([]int64, 0)
+	orderIDSet := make(map[int64]bool)
 	for _, r := range results {
 		if !orderIDSet[r.OrderID] {
 			orderIDs = append(orderIDs, r.OrderID)
@@ -593,8 +601,8 @@ func (r *OrderRepository) GetDashboardItems(page, pageSize int) (*DashboardResul
 		Find(&orderInfos)
 
 	// 4. 批量加载工序
-	itemIDs := make([]int, len(results))
-	itemMap := make(map[int]int)
+	itemIDs := make([]int64, len(results))
+	itemMap := make(map[int64]int)
 	for i, r := range results {
 		itemIDs[i] = r.ItemID
 		itemMap[r.ItemID] = i
@@ -643,7 +651,7 @@ func (r *OrderRepository) GetDashboardItems(page, pageSize int) (*DashboardResul
 }
 
 // getOrderIDsByRuleType 根据规则类型获取符合条件的订单ID列表（使用SQL）
-func (r *OrderRepository) getOrderIDsByRuleType(corpID int, ruleType string) []int {
+func (r *OrderRepository) getOrderIDsByRuleType(corpID int, ruleType string) []int64 {
 	// 1. 获取规则列表
 	var rules []models.AdventRule
 	r.db.Where("corp_id = ? AND ruleType = ?", corpID, ruleType).Find(&rules)
@@ -659,11 +667,11 @@ func (r *OrderRepository) getOrderIDsByRuleType(corpID int, ruleType string) []i
 	}
 
 	// 3. 使用SQL转换器构建查询
-	converter := services.NewRuleSQLConverter()
+	converter := utils.NewRuleSQLConverter()
 	sql := converter.BuildRuleBasedQuery(corpID, ruleType, formulas)
 
 	// 4. 执行查询
-	var orderIDs []int
+	var orderIDs []int64
 	r.db.Raw(sql).Pluck("id", &orderIDs)
 
 	return orderIDs

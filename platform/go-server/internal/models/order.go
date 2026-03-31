@@ -22,14 +22,14 @@ const (
 )
 
 type Order struct {
-	ID                int           `gorm:"primaryKey;autoIncrement" json:"id"`
-	CorpID            int           `gorm:"column:corp_id;default:0" json:"corp_id"`
-	CustomerID        *int          `gorm:"column:customer_id" json:"customer_id"`
+	ID                int64         `gorm:"primaryKey;autoIncrement" json:"id"`
+	CorpID            int64         `gorm:"column:corp_id;default:0" json:"corp_id"`
+	CustomerID        *int64        `gorm:"column:customer_id" json:"customer_id"`
 	CustomerName      *string       `gorm:"column:customer_name" json:"customer_name"`
 	CustomerShortName *string       `gorm:"column:customer_short_name" json:"customer_short_name"`
 	OrderNumber       string        `gorm:"column:order_number" json:"order_number"`
 	OrderName         *string       `gorm:"column:order_name" json:"order_name"`
-	ContactID         *int          `gorm:"column:contact_id" json:"contact_id"`
+	ContactID         *int64        `gorm:"column:contact_id" json:"contact_id"`
 	ContactName       *string       `gorm:"column:contact_name" json:"contact_name"`
 	Status            OrderStatus   `gorm:"column:status;type:varchar(20);default:pending" json:"status"`
 	Priority          Priority      `gorm:"column:priority;type:varchar(20);default:medium" json:"priority"`
@@ -43,9 +43,9 @@ type Order struct {
 func (Order) TableName() string { return "orders" }
 
 type OrderItem struct {
-	ID             int            `gorm:"primaryKey;autoIncrement" json:"id"`
-	OrderID        int            `gorm:"column:order_id;index" json:"order_id"`
-	CorpID         int            `gorm:"column:corp_id;default:0" json:"corp_id"`
+	ID             int64          `gorm:"primaryKey;autoIncrement" json:"id"`
+	OrderID        int64          `gorm:"column:order_id;index" json:"order_id"`
+	CorpID         int64          `gorm:"column:corp_id;default:0" json:"corp_id"`
 	PartName       string         `gorm:"column:part_name" json:"part_name"`
 	PartNumber     *string        `gorm:"column:part_number" json:"part_number"`
 	Quantity       int            `gorm:"column:quantity" json:"quantity"`
@@ -78,9 +78,9 @@ const (
 )
 
 type OrderProcess struct {
-	ID             int           `gorm:"primaryKey;autoIncrement" json:"id"`
-	OrderItemID    int           `gorm:"column:order_item_id;index" json:"order_item_id"`
-	CorpID         int           `gorm:"column:corp_id;default:0" json:"corp_id"`
+	ID             int64         `gorm:"primaryKey;autoIncrement" json:"id"`
+	OrderItemID    int64         `gorm:"column:order_item_id;index" json:"order_item_id"`
+	CorpID         int64         `gorm:"column:corp_id;default:0" json:"corp_id"`
 	Name           string        `gorm:"column:name" json:"name"`
 	IsOutsourced   bool          `gorm:"column:is_outsourced;default:false" json:"is_outsourced"`
 	OutsourcingFee float64       `gorm:"column:outsourcing_fee;default:0" json:"outsourcing_fee"`

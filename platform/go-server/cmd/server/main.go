@@ -9,9 +9,11 @@ import (
 	"machining-erp/internal/config"
 	"machining-erp/internal/handlers"
 	"machining-erp/internal/middleware"
+	"machining-erp/internal/models"
 	"machining-erp/internal/repository"
 	"machining-erp/internal/services"
 	"machining-erp/pkg/database"
+	"machining-erp/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -56,16 +58,23 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	// 初始化服务
-	authService := services.NewAuthService(
-		cfg.AdminUser,
-		cfg.AdminPassword,
-		cfg.MaxLoginAttempts,
-		time.Duration(cfg.LockDurationMinutes)*time.Minute,
-	)
-	orderNumSvc := services.NewOrderNumberService(db)
+	// 自动迁移新表
+	if err := db.AutoMigrate(
+		&models.Company{},
+		&models.User{},
+		&models.Role{},
+		&models.Permission{},
+		&models.Resource{},
+	); err != nil {
+		log.Fatalf("Failed to auto migrate: %v", err)
+	}
 
 	// 初始化仓库
+	userRepo := repository.NewUserRepository(db)
+	companyRepo := repository.NewCompanyRepository(db)
+	resourceRepo := repository.NewResourceRepository(db)
+	permissionRepo := repository.NewPermissionRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
 	orderRepo := repository.NewOrderRepository(db)
 	orderItemRepo := repository.NewOrderItemRepository(db)
@@ -73,6 +82,24 @@ func main() {
 	materialRepo := repository.NewMaterialRepository(db)
 	remnantRepo := repository.NewRemnantRepository(db)
 	adventRuleRepo := repository.NewAdventRuleRepository(db)
+
+	// 初始化服务
+	authService := services.NewAuthService(
+		userRepo,
+		companyRepo,
+		resourceRepo,
+		permissionRepo,
+		roleRepo,
+		jwt.JWTConfig{
+			SecretKey:    cfg.JWTSecret,
+			ExpiresHours: cfg.JWTExpiresHours,
+			Issuer:       cfg.JWTIssuer,
+		},
+		cfg.MaxLoginAttempts,
+		time.Duration(cfg.LockDurationMinutes)*time.Minute,
+	)
+	orderNumSvc := services.NewOrderNumberService(db)
+	emailSvc := services.NewEmailService(cfg, userRepo)
 
 	// 初始化处理器
 	authHandler := handlers.NewAuthHandler(authService)
@@ -84,6 +111,7 @@ func main() {
 	remnantHandler := handlers.NewRemnantHandler(remnantRepo)
 	financeHandler := handlers.NewFinanceHandler(db)
 	adventRuleHandler := handlers.NewAdventRuleHandler(adventRuleRepo)
+	userSettingsHandler := handlers.NewUserSettingsHandler(userRepo, emailSvc, authService)
 
 	// 创建 Gin 路由
 	r := gin.New()
@@ -117,6 +145,7 @@ func main() {
 	auth := r.Group("/api/platform")
 	{
 		auth.POST("/login", authHandler.Login)
+		auth.POST("/check-user", authHandler.CheckUser)
 		auth.GET("/auth/status", authHandler.Status)
 		auth.POST("/logout", authHandler.Logout)
 	}
@@ -125,6 +154,9 @@ func main() {
 	api := r.Group("/api/platform")
 	api.Use(middleware.AuthMiddleware(authService))
 	{
+		// 当前用户信息
+		api.GET("/me", authHandler.GetCurrentUser)
+
 		// 客户
 		api.GET("/customers", customerHandler.List)
 		api.POST("/customers", customerHandler.Create)
@@ -163,6 +195,12 @@ func main() {
 		api.POST("/advent-rules", adventRuleHandler.Create)
 		api.PATCH("/advent-rules/:id", adventRuleHandler.Update)
 		api.DELETE("/advent-rules/:id", adventRuleHandler.Delete)
+
+		// 用户设置
+		api.GET("/user/info", userSettingsHandler.GetUserInfo)
+		api.POST("/user/change-password", userSettingsHandler.ChangePassword)
+		api.POST("/user/reset-password", userSettingsHandler.ResetPassword)
+		api.POST("/user/change-email", userSettingsHandler.ChangeEmail)
 	}
 
 	// 启动服务器

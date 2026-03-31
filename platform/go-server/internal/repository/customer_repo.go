@@ -33,7 +33,7 @@ func (r *CustomerRepository) Create(name, shortName string, contacts []models.Co
 	return int64(customer.ID), nil
 }
 
-func (r *CustomerRepository) Update(id int, name, shortName string, contacts []models.Contact) error {
+func (r *CustomerRepository) Update(id int64, name, shortName string, contacts []models.Contact) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// 更新客户
 		if err := tx.Model(&models.Customer{}).Where("id = ?", id).Updates(map[string]interface{}{
@@ -60,7 +60,7 @@ func (r *CustomerRepository) Update(id int, name, shortName string, contacts []m
 	})
 }
 
-func (r *CustomerRepository) Delete(id int) error {
+func (r *CustomerRepository) Delete(id int64) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// 删除联系人
 		if err := tx.Delete(&models.Contact{}, "customer_id = ?", id).Error; err != nil {
@@ -75,7 +75,7 @@ func (r *CustomerRepository) Delete(id int) error {
 }
 
 // NameExists 检查客户名称是否存在，excludeID 用于更新时排除当前客户
-func (r *CustomerRepository) NameExists(name string, excludeID int) (bool, error) {
+func (r *CustomerRepository) NameExists(name string, excludeID int64) (bool, error) {
 	var count int64
 	err := r.db.Model(&models.Customer{}).
 		Where("name = ?", name).

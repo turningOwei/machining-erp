@@ -19,6 +19,33 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+// CheckUser 检查用户是否存在
+func (h *AuthHandler) CheckUser(c *gin.Context) {
+	var req struct {
+		Username string `json:"username"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	userInfo, errMsg, err := h.authService.CheckUser(req.Username)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "系统错误"})
+		return
+	}
+	if errMsg != "" {
+		c.JSON(400, gin.H{"error": errMsg})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"user":    userInfo,
+	})
+}
+
+// Login 登录
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -50,20 +77,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 }
 
+// Status 获取认证状态
 func (h *AuthHandler) Status(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	if len(token) > 7 && token[:7] == "Bearer " {
 		token = token[7:]
-	}
-
-	locked, remaining := h.authService.IsLocked()
-	if locked {
-		c.JSON(200, gin.H{
-			"authenticated":    false,
-			"locked":           true,
-			"remainingMinutes": remaining,
-		})
-		return
 	}
 
 	if token != "" && h.authService.ValidateToken(token) {
@@ -76,6 +94,7 @@ func (h *AuthHandler) Status(c *gin.Context) {
 	}
 }
 
+// Logout 登出
 func (h *AuthHandler) Logout(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	if len(token) > 7 && token[:7] == "Bearer " {
@@ -83,4 +102,33 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	}
 	h.authService.Logout(token)
 	c.JSON(200, gin.H{"success": true})
+}
+
+// GetCurrentUser 获取当前用户信息（包含资源）
+func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+
+	claims := h.authService.GetClaimsFromToken(token)
+	if claims == nil {
+		c.JSON(401, gin.H{"error": "无效的token"})
+		return
+	}
+
+	resources, err := h.authService.GetUserResources(claims.UserID, claims.RoleType)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "获取资源失败"})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"id":        claims.UserID,
+		"corp_id":   claims.CorpID,
+		"corp_name": claims.CorpName,
+		"username":  claims.Username,
+		"role_type": claims.RoleType,
+		"resources": resources,
+	})
 }

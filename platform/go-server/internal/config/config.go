@@ -12,10 +12,16 @@ type Config struct {
 	MySQLPassword       string
 	MySQLDatabase       string
 	MySQLPort           int
-	AdminUser           string
-	AdminPassword       string
 	MaxLoginAttempts    int
 	LockDurationMinutes int
+	JWTSecret           string
+	JWTExpiresHours     int
+	JWTIssuer           string
+	SMTPHost            string
+	SMTPPort            string
+	SMTPUsername        string
+	SMTPPassword        string
+	FromEmail           string
 }
 
 func Load() *Config {
@@ -26,10 +32,16 @@ func Load() *Config {
 		MySQLPassword:       getEnv("MYSQL_PASSWORD", ""),
 		MySQLDatabase:       getEnv("MYSQL_DATABASE", "erp"),
 		MySQLPort:           getEnvInt("MYSQL_PORT", 3306),
-		AdminUser:           getEnv("ADMIN_USER", "admin"),
-		AdminPassword:       getEnv("ADMIN_PASSWORD", "yhs@2026"),
-		MaxLoginAttempts:    3,
-		LockDurationMinutes: 120,
+		MaxLoginAttempts:    getEnvInt("MAX_LOGIN_ATTEMPTS", 5),
+		LockDurationMinutes: getEnvInt("LOCK_DURATION_MINUTES", 120),
+		JWTSecret:           getEnv("JWT_SECRET", "yhs-erp-jwt-secret-key-2026"),
+		JWTExpiresHours:     getEnvInt("JWT_EXPIRES_HOURS", 24),
+		JWTIssuer:           getEnv("JWT_ISSUER", "yhs-erp"),
+		SMTPHost:            getEnv("SMTP_HOST", ""),
+		SMTPPort:            getEnv("SMTP_PORT", "587"),
+		SMTPUsername:        getEnv("SMTP_USERNAME", ""),
+		SMTPPassword:        getEnv("SMTP_PASSWORD", ""),
+		FromEmail:           getEnv("FROM_EMAIL", ""),
 	}
 }
 

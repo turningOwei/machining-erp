@@ -65,7 +65,7 @@ func (h *CustomerHandler) Create(c *gin.Context) {
 }
 
 func (h *CustomerHandler) Update(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	var req struct {
 		Name      string           `json:"name"`
@@ -105,7 +105,7 @@ func (h *CustomerHandler) Update(c *gin.Context) {
 }
 
 func (h *CustomerHandler) Delete(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	if err := h.repo.Delete(id); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})

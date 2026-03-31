@@ -5,9 +5,9 @@ import (
 )
 
 type Contact struct {
-	ID         int    `gorm:"primaryKey;autoIncrement" json:"id,omitempty"`
-	CorpID     int    `gorm:"column:corp_id;default:0" json:"corp_id,omitempty"`
-	CustomerID int    `gorm:"column:customer_id;index" json:"customer_id,omitempty"`
+	ID         int64  `gorm:"primaryKey;autoIncrement" json:"id,omitempty"`
+	CorpID     int64  `gorm:"column:corp_id;default:0" json:"corp_id,omitempty"`
+	CustomerID int64  `gorm:"column:customer_id;index" json:"customer_id,omitempty"`
 	Name       string `gorm:"column:name" json:"name"`
 	Contact    string `gorm:"column:contact" json:"contact"`
 }
@@ -15,8 +15,8 @@ type Contact struct {
 func (Contact) TableName() string { return "contacts" }
 
 type Customer struct {
-	ID        int       `gorm:"primaryKey;autoIncrement" json:"id"`
-	CorpID    int       `gorm:"column:corp_id;default:0" json:"corp_id"`
+	ID        int64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	CorpID    int64     `gorm:"column:corp_id;default:0" json:"corp_id"`
 	Name      string    `gorm:"column:name;size:100" json:"name"`
 	ShortName string    `gorm:"column:short_name;size:50" json:"short_name,omitempty"`
 	Contacts  []Contact `gorm:"foreignKey:CustomerID" json:"contacts,omitempty"`

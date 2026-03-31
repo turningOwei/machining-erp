@@ -42,6 +42,6 @@ func (r *AdventRuleRepository) Update(rule *models.AdventRule) error {
 	}).Error
 }
 
-func (r *AdventRuleRepository) Delete(id int) error {
+func (r *AdventRuleRepository) Delete(id int64) error {
 	return r.db.Delete(&models.AdventRule{}, id).Error
 }

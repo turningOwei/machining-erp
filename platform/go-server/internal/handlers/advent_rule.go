@@ -42,7 +42,7 @@ func (h *AdventRuleHandler) Create(c *gin.Context) {
 }
 
 func (h *AdventRuleHandler) Update(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	var req models.AdventRule
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -59,7 +59,7 @@ func (h *AdventRuleHandler) Update(c *gin.Context) {
 }
 
 func (h *AdventRuleHandler) Delete(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	if err := h.repo.Delete(id); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
