@@ -50,13 +50,14 @@ func (h *OrderHandler) List(c *gin.Context) {
 		PageSize:     pageSize,
 	}
 
-	orders, err := h.repo.GetWithFilters(filters)
+	result, err := h.repo.GetWithFilters(filters)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{
-		"data":     orders,
+		"data":     result.Orders,
+		"total":    result.Total,
 		"page":     page,
 		"pageSize": pageSize,
 	})

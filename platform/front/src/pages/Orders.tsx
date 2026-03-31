@@ -15,6 +15,7 @@ interface OrdersProps {
   setCurrentPage: (page: number) => void;
   pageSize: number;
   setPageSize: (size: number) => void;
+  orderTotal: number;
   resetAndOpenModal: () => void;
   editOrder: (order: Order) => void;
   deleteOrder: (orderId: number) => void;
@@ -34,6 +35,7 @@ const Orders: React.FC<OrdersProps> = ({
   setCurrentPage,
   pageSize,
   setPageSize,
+  orderTotal,
   resetAndOpenModal,
   editOrder,
   deleteOrder,
@@ -81,6 +83,7 @@ const Orders: React.FC<OrdersProps> = ({
         setPage={setCurrentPage}
         pageSize={pageSize}
         setPageSize={setPageSize}
+        total={orderTotal}
         themeColor="blue"
         editOrder={editOrder}
         deleteOrder={handleDeleteClick}

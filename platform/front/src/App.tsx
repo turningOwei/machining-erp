@@ -189,6 +189,7 @@ export default function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [orderTotal, setOrderTotal] = useState(0);
   const [overduePage, setOverduePage] = useState(1);
   const [overduePageSize, setOverduePageSize] = useState(10);
   const [overdueFilters, setOverdueFilters] = useState(createEmptyFilters);
@@ -353,8 +354,9 @@ export default function App() {
   // 只获取订单数据（订单管理、逾期/告警/临期订单页面使用）
   const fetchOrdersData = async (dateType?: string) => {
     try {
-      const data = await fetchOrdersApi(dateType);
+      const { data, total } = await fetchOrdersApi(dateType, currentPage, pageSize);
       setOrders(data);
+      setOrderTotal(total);
     } catch (error) {
       console.error("Failed to fetch orders", error);
     }
@@ -457,6 +459,12 @@ export default function App() {
     if (!isAuthenticated || activeTab !== 'dashboard') return;
     fetchDashboardData();
   }, [dashboardPage, dashboardPageSize]);
+
+  // 监听订单管理分页变化
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'orders') return;
+    fetchOrdersData();
+  }, [currentPage, pageSize]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -746,6 +754,7 @@ export default function App() {
             setCurrentPage={setCurrentPage}
             pageSize={pageSize}
             setPageSize={setPageSize}
+            orderTotal={orderTotal}
             orderMgrExpanded={orderMgrExpanded}
             setOrderMgrExpanded={setOrderMgrExpanded}
             allOrderMgrExpanded={allOrderMgrExpanded}

@@ -25,6 +25,7 @@ interface OrderMonitorPanelProps {
   setPage: (page: number) => void;
   pageSize: number;
   setPageSize: (size: number) => void;
+  total?: number;
   themeColor: string;
   editOrder: (order: Order) => void;
   deleteOrder?: (order: Order) => void;
@@ -41,7 +42,7 @@ interface OrderMonitorPanelProps {
 }
 
 const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
-  title, icon: Icon, orders, filters, setFilters, filterConfigs, localFilter, page, setPage, pageSize, setPageSize, themeColor,
+  title, icon: Icon, orders, filters, setFilters, filterConfigs, localFilter, page, setPage, pageSize, setPageSize, total, themeColor,
   editOrder, deleteOrder, setShowDrawingModal, handleProcessClick, getOrderMaxDueDate,
   showOrderName = false, showContactName = false, showOrderNotes = false, showOutsourcingFee = true,
   onSearch, isSearching = false, onNewOrder
@@ -60,9 +61,28 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
     return dateA.localeCompare(dateB);
   });
 
-  // 使用自定义本地筛选或默认筛选
-  const filteredOrders = localFilter
-    ? localFilter(sortedOrders, filters, getOrderMaxDueDate)
+  // 如果提供了total，表示服务端分页，直接使用orders
+  // 否则使用客户端筛选和分页
+  const displayOrders = total !== undefined
+    ? orders
+    : (() => {
+        const filtered = localFilter
+          ? localFilter(sortedOrders, filters, getOrderMaxDueDate)
+          : sortedOrders.filter(o => {
+              const mDate = getOrderMaxDueDate(o);
+              const matchDueDateStart = !filters.dueDateStart || mDate >= filters.dueDateStart;
+              const matchDueDateEnd = !filters.dueDateEnd || mDate <= filters.dueDateEnd;
+              const matchOrderNumber = !filters.orderNumber || String(o.order_number || o.id).toLowerCase().includes(filters.orderNumber.toLowerCase());
+              const matchCustomer = !filters.customerName || (o.customer_name || '').toLowerCase().includes(filters.customerName.toLowerCase());
+              const matchPriority = !filters.priority || o.priority === filters.priority;
+              const matchPartNumber = !filters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(filters.partNumber.toLowerCase()));
+              return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
+            });
+        return filtered.slice((page - 1) * pageSize, page * pageSize);
+      })();
+
+  const totalCount = total !== undefined ? total : (localFilter
+    ? localFilter(sortedOrders, filters, getOrderMaxDueDate).length
     : sortedOrders.filter(o => {
         const mDate = getOrderMaxDueDate(o);
         const matchDueDateStart = !filters.dueDateStart || mDate >= filters.dueDateStart;
@@ -72,15 +92,13 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
         const matchPriority = !filters.priority || o.priority === filters.priority;
         const matchPartNumber = !filters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(filters.partNumber.toLowerCase()));
         return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
-      });
-
-  const displayOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize);
+      }).length);
 
   React.useEffect(() => {
     if (allExpanded) {
-      setExpandedOrders(new Set(filteredOrders.map(o => o.id)));
+      setExpandedOrders(new Set(displayOrders.map(o => o.id)));
     }
-  }, [filteredOrders.length, allExpanded]);
+  }, [displayOrders.length, allExpanded]);
 
   const toggleOrder = (orderId: number) => {
     setExpandedOrders(prev => {
@@ -118,7 +136,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
           <h2 className={`text-3xl font-bold tracking-tight ${colors.text} flex items-center gap-2`}>
             <Icon className="w-8 h-8" />
             {title}
-            <span className="text-base font-normal text-zinc-500">检测到 {filteredOrders.length} 个符合筛选条件的订单</span>
+            <span className="text-base font-normal text-zinc-500">检测到 {totalCount} 个符合筛选条件的订单</span>
           </h2>
         </div>
         <button
@@ -534,7 +552,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
 
       {/* Pagination */}
       <Pagination
-        total={filteredOrders.length}
+        total={totalCount}
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}

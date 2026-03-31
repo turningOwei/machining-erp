@@ -2,11 +2,18 @@ import { authFetch } from '../components/shared';
 import { Order, Customer, AdventRule } from '../types';
 
 // 获取订单数据
-export const fetchOrdersApi = async (dateType?: string): Promise<Order[]> => {
-  const url = dateType ? `/api/platform/orders?dateType=${dateType}` : '/api/platform/orders';
+export const fetchOrdersApi = async (dateType?: string, page?: number, pageSize?: number): Promise<{data: Order[], total: number}> => {
+  const params = new URLSearchParams();
+  if (dateType) params.append('dateType', dateType);
+  if (page) params.append('page', String(page));
+  if (pageSize) params.append('pageSize', String(pageSize));
+  const url = `/api/platform/orders${params.toString() ? '?' + params.toString() : ''}`;
   const res = await authFetch(url);
   const result = await res.json();
-  return Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
+  return {
+    data: Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []),
+    total: result.total || 0
+  };
 };
 
 // 获取客户数据

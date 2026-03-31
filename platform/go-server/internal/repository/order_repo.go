@@ -30,23 +30,29 @@ type OrderFilters struct {
 	DateType     string // "overdue" 逾期, "warning" 告警, "near_due" 临期
 }
 
-func (r *OrderRepository) GetWithFilters(filters OrderFilters) ([]models.Order, error) {
-	// 1. 先查询订单ID列表（带分页）
-	idQuery := r.db.Model(&models.Order{})
+// OrderListResult 订单列表返回结果
+type OrderListResult struct {
+	Orders []models.Order
+	Total  int64
+}
+
+func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult, error) {
+	// 1. 构建基础查询
+	baseQuery := r.db.Model(&models.Order{})
 
 	// 应用订单级别筛选
 	if filters.Status != "" {
-		idQuery = idQuery.Where("status = ?", filters.Status)
+		baseQuery = baseQuery.Where("status = ?", filters.Status)
 	}
 	if filters.OrderNumber != "" {
-		idQuery = idQuery.Where("order_number LIKE ?", "%"+filters.OrderNumber+"%")
+		baseQuery = baseQuery.Where("order_number LIKE ?", "%"+filters.OrderNumber+"%")
 	}
 	if filters.CustomerName != "" {
-		idQuery = idQuery.Where("customer_name LIKE ? OR customer_short_name LIKE ?",
+		baseQuery = baseQuery.Where("customer_name LIKE ? OR customer_short_name LIKE ?",
 			"%"+filters.CustomerName+"%", "%"+filters.CustomerName+"%")
 	}
 	if filters.Priority != "" {
-		idQuery = idQuery.Where("priority = ?", filters.Priority)
+		baseQuery = baseQuery.Where("priority = ?", filters.Priority)
 	}
 
 	// 根据期限类型筛选
@@ -54,7 +60,7 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) ([]models.Order, 
 
 	if filters.DateType != "" {
 		// 排除已完成的订单
-		idQuery = idQuery.Where("status NOT IN ?", []string{"delivered", "completed"})
+		baseQuery = baseQuery.Where("status NOT IN ?", []string{"delivered", "completed"})
 
 		subQuery := r.db.Model(&models.OrderItem{}).Select("DISTINCT order_id")
 
@@ -81,7 +87,7 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) ([]models.Order, 
 				subQuery = r.db.Model(&models.Order{}).Select("id").Where("1 = 0")
 			}
 		}
-		idQuery = idQuery.Where("id IN (?)", subQuery)
+		baseQuery = baseQuery.Where("id IN (?)", subQuery)
 	}
 
 	// 如果有零件级别筛选，需要子查询
@@ -96,12 +102,21 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) ([]models.Order, 
 		if filters.PartNumber != "" {
 			subQuery = subQuery.Where("part_number LIKE ?", "%"+filters.PartNumber+"%")
 		}
-		idQuery = idQuery.Where("id IN (?)", subQuery)
+		baseQuery = baseQuery.Where("id IN (?)", subQuery)
 	}
 
-	idQuery = idQuery.Order("start_date ASC")
+	// 2. 先计算总数
+	var total int64
+	if err := baseQuery.Count(&total).Error; err != nil {
+		return OrderListResult{}, err
+	}
 
-	// 分页
+	if total == 0 {
+		return OrderListResult{Orders: []models.Order{}, Total: 0}, nil
+	}
+
+	// 3. 分页查询订单ID
+	idQuery := baseQuery.Order("start_date ASC")
 	if filters.PageSize > 0 {
 		offset := 0
 		if filters.Page > 1 {
@@ -111,17 +126,16 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) ([]models.Order, 
 	}
 
 	var orderIDs []int
-	err := idQuery.Pluck("id", &orderIDs).Error
-	if err != nil {
-		return nil, err
+	if err := idQuery.Pluck("id", &orderIDs).Error; err != nil {
+		return OrderListResult{}, err
 	}
 
 	if len(orderIDs) == 0 {
-		return []models.Order{}, nil
+		return OrderListResult{Orders: []models.Order{}, Total: total}, nil
 	}
 
 	// 2. 用JOIN查询这些订单的完整数据
-	baseQuery := r.db.Table("orders as o").
+	joinQuery := r.db.Table("orders as o").
 		Select(`o.id, o.corp_id, o.customer_id, o.customer_name, o.customer_short_name,
 			o.order_number, o.order_name, o.contact_id, o.contact_name,
 			o.status, o.priority, o.start_date, o.due_date, o.notes, o.created_at,
@@ -188,9 +202,8 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) ([]models.Order, 
 		SortOrder         *int
 	}
 
-	err = baseQuery.Find(&rows).Error
-	if err != nil {
-		return nil, err
+	if err := joinQuery.Find(&rows).Error; err != nil {
+		return OrderListResult{}, err
 	}
 
 	// 组装数据
@@ -276,11 +289,15 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) ([]models.Order, 
 		orders = append(orders, *order)
 	}
 
-	return orders, nil
+	return OrderListResult{Orders: orders, Total: total}, nil
 }
 
 func (r *OrderRepository) GetAllWithItems() ([]models.Order, error) {
-	return r.GetWithFilters(OrderFilters{})
+	result, err := r.GetWithFilters(OrderFilters{})
+	if err != nil {
+		return nil, err
+	}
+	return result.Orders, nil
 }
 
 func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) (int64, error) {
