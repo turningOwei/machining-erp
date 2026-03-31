@@ -354,9 +354,16 @@ export default function App() {
   // 只获取订单数据（订单管理、逾期/告警/临期订单页面使用）
   const fetchOrdersData = async (dateType?: string) => {
     try {
-      const { data, total } = await fetchOrdersApi(dateType, currentPage, pageSize);
-      setOrders(data);
-      setOrderTotal(total);
+      // 订单管理使用后端分页，其他页面获取全部数据在客户端分页
+      if (!dateType) {
+        const { data, total } = await fetchOrdersApi(undefined, currentPage, pageSize);
+        setOrders(data);
+        setOrderTotal(total);
+      } else {
+        // 逾期/告警/临期订单获取全部数据
+        const { data } = await fetchOrdersApi(dateType, 1, 1000);
+        setOrders(data);
+      }
     } catch (error) {
       console.error("Failed to fetch orders", error);
     }
@@ -423,32 +430,49 @@ export default function App() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    // 先清空当前面板数据，避免显示旧数据
     switch (activeTab) {
       case 'dashboard':
+        setDashboardItems([]);
+        setDashboardStats({ pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 });
+        setDashboardPage(1);
         fetchDashboardData();
         break;
       case 'orders':
+        setOrders([]);
+        setCurrentPage(1);
         fetchOrdersData();
         break;
       case 'overdue':
+        setOrders([]);
+        setOverduePage(1);
         fetchOrdersData('overdue');
         break;
       case 'warning_orders':
+        setOrders([]);
+        setWarningPage(1);
         fetchOrdersData('warning');
         break;
       case 'imminent_orders':
+        setOrders([]);
+        setImminentPage(1);
         fetchOrdersData('near_due');
         break;
       case 'customers':
+        setCustomers([]);
         fetchCustomersData();
         break;
       case 'inventory':
+        setMaterials([]);
+        setRemnants([]);
         fetchInventoryData();
         break;
       case 'finance':
+        setReconciliation([]);
         fetchFinanceData();
         break;
       case 'advent_rules':
+        setAdventRules([]);
         fetchRulesData();
         break;
     }
