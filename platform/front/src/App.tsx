@@ -176,6 +176,7 @@ export default function App() {
     setAuthUser(user);
     localStorage.setItem('auth_user', JSON.stringify(user));
     fetchDashboardData();
+    fetchCustomersData(); // 登录时加载客户数据
   };
 
   const handleLogout = async () => {
@@ -194,7 +195,7 @@ export default function App() {
     setAuthUser(null);
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'inventory' | 'finance' | 'overdue' | 'warning_orders' | 'imminent_orders' | 'advent_rules' | 'customers'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'production_dashboard' | 'orders' | 'inventory' | 'finance' | 'overdue' | 'warning_orders' | 'imminent_orders' | 'advent_rules' | 'customers'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
   const [dashboardStats, setDashboardStats] = useState<{
@@ -418,6 +419,9 @@ export default function App() {
 
   const editOrder = (order: Order) => {
     editOrderFromHook(order, setNewOrder, setShowOrderModal);
+    // 设置客户搜索框显示当前客户名称
+    setCustomerSearch(order.customer_short_name || '');
+    setShowCustomerDropdown(false);
   };
 
   const resetAndOpenModal = () => {
@@ -472,6 +476,12 @@ export default function App() {
     // 先清空当前面板数据，避免显示旧数据
     switch (activeTab) {
       case 'dashboard':
+        setDashboardItems([]);
+        setDashboardStats({ pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 });
+        setDashboardPage(1);
+        fetchDashboardData();
+        break;
+      case 'production_dashboard':
         setDashboardItems([]);
         setDashboardStats({ pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 });
         setDashboardPage(1);
@@ -558,7 +568,7 @@ export default function App() {
   };
 
   // 带筛选条件的订单查询
-  const fetchOrdersWithFilters = async (filters: typeof orderFilters) => {
+  const fetchOrdersWithFilters = async (filters: typeof orderFilters, page?: number, pageSize?: number) => {
     const params = new URLSearchParams();
     if (filters.dueDateStart) params.append('dueDateStart', filters.dueDateStart);
     if (filters.dueDateEnd) params.append('dueDateEnd', filters.dueDateEnd);
@@ -567,11 +577,14 @@ export default function App() {
     if (filters.customerName) params.append('customerName', filters.customerName);
     if (filters.priority) params.append('priority', filters.priority);
     if (filters.status) params.append('status', filters.status);
+    if (page) params.append('page', String(page));
+    if (pageSize) params.append('pageSize', String(pageSize));
 
     const url = `/api/platform/orders${params.toString() ? '?' + params.toString() : ''}`;
     const res = await authFetch(url);
     const data = await res.json();
-    setOrders(Array.isArray(data) ? data : []);
+    setOrders(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []);
+    if (data.total) setOrderTotal(data.total);
   };
 
   const deleteOrder = async (orderId: number) => {

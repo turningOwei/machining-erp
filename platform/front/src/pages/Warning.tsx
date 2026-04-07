@@ -16,7 +16,7 @@ interface WarningProps {
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
-  fetchData: () => void;
+  fetchData: (dateType?: string) => void;
 }
 
 const Warning: React.FC<WarningProps> = ({
@@ -38,7 +38,7 @@ const Warning: React.FC<WarningProps> = ({
   const handleSearch = async () => {
     setIsSearching(true);
     try {
-      await fetchData();
+      await fetchData('warning');
     } finally {
       setIsSearching(false);
     }

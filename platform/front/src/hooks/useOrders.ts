@@ -156,7 +156,6 @@ export function useOrders(
       customer_id: order.customer_id,
       customer_name: order.customer_name,
       customer_short_name: order.customer_short_name,
-      contact_id: order.contact_id,
       contact_name: order.contact_name,
       priority: order.priority,
       start_date: formatDateForInput(orderStartDate),
@@ -164,6 +163,8 @@ export function useOrders(
       notes: order.notes,
       items: (order.items || []).map(item => ({
         ...item,
+        id: item.id,
+        order_id: item.order_id,
         part_number: item.part_number || '',
         scrap_quantity: item.scrap_quantity || 0,
         delivered_quantity: item.delivered_quantity || 0,
@@ -175,7 +176,15 @@ export function useOrders(
         start_date: formatDateForInput(item.start_date || orderStartDate),
         due_date: formatDateForInput(item.due_date || orderDueDate),
         completion_date: formatDateForInput(item.completion_date),
-        processes: (item.processes || []).map(p => ({ ...p }))
+        processes: (item.processes || []).map(p => ({
+          id: p.id,
+          order_item_id: p.order_item_id,
+          name: p.name,
+          is_outsourced: p.is_outsourced,
+          outsourcing_fee: p.outsourcing_fee,
+          status: p.status,
+          sort_order: p.sort_order
+        }))
       }))
     });
     setShowOrderModal(true);

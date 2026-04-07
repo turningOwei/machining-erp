@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"machining-erp/internal/middleware"
 	"machining-erp/internal/models"
 	"machining-erp/internal/repository"
 	"strconv"
@@ -17,7 +18,8 @@ func NewCustomerHandler(repo *repository.CustomerRepository) *CustomerHandler {
 }
 
 func (h *CustomerHandler) List(c *gin.Context) {
-	customers, err := h.repo.GetAll()
+	corpID := middleware.GetCorpID(c)
+	customers, err := h.repo.GetByCorpID(corpID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -26,6 +28,8 @@ func (h *CustomerHandler) List(c *gin.Context) {
 }
 
 func (h *CustomerHandler) Create(c *gin.Context) {
+	corpID := middleware.GetCorpID(c)
+
 	var req struct {
 		Name      string           `json:"name"`
 		ShortName string           `json:"short_name"`
@@ -56,7 +60,7 @@ func (h *CustomerHandler) Create(c *gin.Context) {
 		return
 	}
 
-	id, err := h.repo.Create(req.Name, req.ShortName, req.Contacts)
+	id, err := h.repo.Create(corpID, req.Name, req.ShortName, req.Contacts)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

@@ -6,29 +6,29 @@ export interface Contact {
 }
 
 export interface Customer {
-  id: number;
+  id?: number;
   corp_id?: number;
   name: string;
   short_name: string;
   contacts: Contact[];
-  created_at: string;
+  created_at?: string;
 }
 
 export interface OrderProcess {
-  id: number;
+  id?: number;
   corp_id?: number;
-  order_id: number;
+  order_item_id?: number;
   name: string;
   is_outsourced: boolean;
   outsourcing_fee: number;
   status: 'pending' | 'processing' | 'completed';
-  sort_order: number;
+  sort_order?: number;
 }
 
 export interface OrderItem {
-  id: number;
+  id?: number;
   corp_id?: number;
-  order_id: number;
+  order_id?: number;
   part_name: string;
   part_number?: string;
   quantity: number;
@@ -51,9 +51,9 @@ export interface OrderItem {
 }
 
 export interface Order {
-  id: number;
+  id?: number;
   corp_id?: number;
-  customer_id: number;
+  customer_id?: number;
   customer_name?: string;
   customer_short_name?: string;
   order_number?: string;
@@ -65,12 +65,12 @@ export interface Order {
   start_date?: string;
   due_date: string;
   notes?: string;
-  created_at: string;
+  created_at?: string;
   items?: OrderItem[];
 }
 
 export interface Material {
-  id: number;
+  id?: number;
   corp_id?: number;
   name: string;
   spec: string;
@@ -79,14 +79,14 @@ export interface Material {
 }
 
 export interface Remnant {
-  id: number;
+  id?: number;
   corp_id?: number;
-  material_id: number;
+  material_id?: number;
   material_name?: string;
   dimensions: string;
   photo_data?: string;
   notes?: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface Reconciliation {
@@ -97,7 +97,7 @@ export interface Reconciliation {
 }
 
 export interface AdventRule {
-  id: number;
+  id?: number;
   corp_id?: number;
   name: string;
   description?: string;

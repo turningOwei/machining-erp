@@ -5,6 +5,8 @@ import { PROCESS_COLORS } from './shared';
 const PROCESS_OPTIONS = ['下料', '车削', '铣削', '磨削', '线切割', '电火花', '热处理', '表面处理', '送货'];
 
 interface Process {
+  id?: number;
+  order_item_id?: number;
   name: string;
   is_outsourced: boolean;
   outsourcing_fee: number;
@@ -29,7 +31,14 @@ const ProcessCell: React.FC<ProcessCellProps> = ({ processes, onUpdate }) => {
     if (name === '送货' && processes.some(p => p.name === '送货')) {
       return;
     }
-    const newProcesses = [...processes, { name: name.trim(), is_outsourced: false, outsourcing_fee: 0, status: 'pending' }];
+    // 新增工序时不传 id，让后端自动生成
+    const newProcess: Process = {
+      name: name.trim(),
+      is_outsourced: false,
+      outsourcing_fee: 0,
+      status: 'pending'
+    };
+    const newProcesses = [...processes, newProcess];
     onUpdate(newProcesses);
     setManualInput('');
   };

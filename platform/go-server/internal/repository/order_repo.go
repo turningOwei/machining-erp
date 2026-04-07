@@ -1,6 +1,7 @@
 package repository
 
 import (
+	
 	"time"
 
 	"gorm.io/gorm"
@@ -18,6 +19,7 @@ func NewOrderRepository(db *gorm.DB) *OrderRepository {
 
 // OrderFilters 订单筛选条件
 type OrderFilters struct {
+	CorpID       int64
 	DueDateStart string
 	DueDateEnd   string
 	OrderNumber  string
@@ -39,6 +41,11 @@ type OrderListResult struct {
 func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult, error) {
 	// 1. 构建基础查询
 	baseQuery := r.db.Model(&models.Order{})
+
+	// 按 corpID 过滤
+	if filters.CorpID > 0 {
+		baseQuery = baseQuery.Where("corp_id = ?", filters.CorpID)
+	}
 
 	// 应用订单级别筛选
 	if filters.Status != "" {
@@ -323,19 +330,22 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 		// 插入订单项
 		for i := range items {
 			items[i].OrderID = order.ID
+			// 先保存工序，然后清空避免 GORM 自动插入关联
+			processes := items[i].Processes
+			items[i].Processes = nil
 			if err := tx.Create(&items[i]).Error; err != nil {
 				return err
 			}
 
 			// 插入工序
-			for j, p := range items[i].Processes {
-				p.OrderItemID = items[i].ID
-				p.SortOrder = j
-				if err := tx.Create(&p).Error; err != nil {
+			for j := range processes {
+				processes[j].OrderItemID = items[i].ID
+				processes[j].SortOrder = j
+				if err := tx.Create(&processes[j]).Error; err != nil {
 					return err
 				}
 			}
-			items[i].Processes = nil // 清空，避免返回重复数据
+			items[i].Processes = processes
 		}
 
 		// 计算订单状态
@@ -355,45 +365,143 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 	return int64(order.ID), nil
 }
 
+// handleProcesses 处理已存在订单项的工序更新逻辑
+func handleProcesses(tx *gorm.DB, itemID int64, processes []models.OrderProcess) error {
+	// 获取旧的工序ID
+	var oldProcessIDs []int64
+	tx.Model(&models.OrderProcess{}).Where("order_item_id = ?", itemID).Pluck("id", &oldProcessIDs)
+
+	// 收集前端传来的工序ID
+	newProcessIDs := make(map[int64]bool)
+	for _, p := range processes {
+		if p.ID != 0 {
+			newProcessIDs[p.ID] = true
+		}
+	}
+
+	// 删除不再存在的工序
+	for _, oldPID := range oldProcessIDs {
+		if !newProcessIDs[oldPID] {
+			tx.Delete(&models.OrderProcess{}, oldPID)
+		}
+	}
+
+	// 更新或插入工序
+	for j := range processes {
+		processes[j].OrderItemID = itemID
+		processes[j].SortOrder = j
+
+		if processes[j].ID != 0 {
+			// 有ID，执行更新
+			if err := tx.Model(&models.OrderProcess{}).Where("id = ? AND order_item_id = ?", processes[j].ID, itemID).Updates(map[string]interface{}{
+				"name":            processes[j].Name,
+				"is_outsourced":   processes[j].IsOutsourced,
+				"outsourcing_fee": processes[j].OutsourcingFee,
+				"status":          processes[j].Status,
+				"sort_order":      j,
+			}).Error; err != nil {
+				return err
+			}
+		} else {
+			// 没有ID，插入新工序
+			if err := tx.Create(&processes[j]).Error; err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// 更新订单基本信息
 		if err := tx.Model(order).Updates(map[string]interface{}{
-			"customer_id":        order.CustomerID,
-			"customer_name":      order.CustomerName,
+			"customer_id":         order.CustomerID,
+			"customer_name":       order.CustomerName,
 			"customer_short_name": order.CustomerShortName,
-			"order_name":         order.OrderName,
-			"contact_id":         order.ContactID,
-			"priority":           order.Priority,
-			"start_date":         order.StartDate,
-			"due_date":           order.DueDate,
-			"notes":              order.Notes,
+			"order_name":          order.OrderName,
+			"contact_name":        order.ContactName,
+			"priority":            order.Priority,
+			"start_date":          order.StartDate,
+			"due_date":            order.DueDate,
+			"notes":               order.Notes,
 		}).Error; err != nil {
 			return err
 		}
 
 		if items != nil {
-			// 删除旧的工序和订单项
-			var oldItemIDs []int
+			// 获取旧的订单项ID
+			var oldItemIDs []int64
 			tx.Model(&models.OrderItem{}).Where("order_id = ?", order.ID).Pluck("id", &oldItemIDs)
-			if len(oldItemIDs) > 0 {
-				tx.Delete(&models.OrderProcess{}, "order_item_id IN ?", oldItemIDs)
-			}
-			tx.Delete(&models.OrderItem{}, "order_id = ?", order.ID)
 
-			// 插入新的订单项和工序
+			// 收集前端传来的订单项ID
+			newItemIDs := make(map[int64]bool)
+			for _, item := range items {
+				if item.ID != 0 {
+					newItemIDs[item.ID] = true
+				}
+			}
+
+			// 删除不再存在的订单项和其工序
+			for _, oldID := range oldItemIDs {
+				if !newItemIDs[oldID] {
+					tx.Delete(&models.OrderProcess{}, "order_item_id = ?", oldID)
+					tx.Delete(&models.OrderItem{}, oldID)
+				}
+			}
+
+			// 更新或插入订单项和工序
 			for i := range items {
 				items[i].OrderID = order.ID
 				items[i].Status = models.OrderStatus(utils.CalculateOrderItemStatus(items[i].Processes))
-				if err := tx.Create(&items[i]).Error; err != nil {
-					return err
-				}
 
-				for j, p := range items[i].Processes {
-					p.OrderItemID = items[i].ID
-					p.SortOrder = j
-					if err := tx.Create(&p).Error; err != nil {
+				if items[i].ID != 0 {
+					// 更新已存在的订单项
+					if err := tx.Model(&items[i]).Updates(map[string]interface{}{
+						"part_name":       items[i].PartName,
+						"part_number":     items[i].PartNumber,
+						"quantity":        items[i].Quantity,
+						"scrap_quantity":  items[i].ScrapQuantity,
+						"unit_price":      items[i].UnitPrice,
+						"total_price":     items[i].TotalPrice,
+						"status":          items[i].Status,
+						"drawing_data":    items[i].DrawingData,
+						"notes":           items[i].Notes,
+						"start_date":      items[i].StartDate,
+						"due_date":        items[i].DueDate,
+						"delivered_quantity": items[i].DeliveredQty,
+						"tool_cost":       items[i].ToolCost,
+						"fixture_cost":    items[i].FixtureCost,
+						"material_cost":   items[i].MaterialCost,
+						"other_cost":      items[i].OtherCost,
+						"item_notes":      items[i].ItemNotes,
+						"completion_date": items[i].CompletionDate,
+					}).Error; err != nil {
 						return err
+					}
+
+					// 处理已存在订单项的工序
+					if err := handleProcesses(tx, items[i].ID, items[i].Processes); err != nil {
+						return err
+					}
+				} else {
+					// 插入新的订单项：清空所有工序ID，确保全新插入
+					for j := range items[i].Processes {
+						items[i].Processes[j].ID = 0
+						items[i].Processes[j].OrderItemID = 0
+					}
+					if err := tx.Create(&items[i]).Error; err != nil {
+						return err
+					}
+
+					// 插入工序（此时items[i].ID已赋值）
+					for j := range items[i].Processes {
+						items[i].Processes[j].OrderItemID = items[i].ID
+						items[i].Processes[j].SortOrder = j
+						if err := tx.Omit("id").Create(&items[i].Processes[j]).Error; err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -473,16 +581,18 @@ type DashboardStats struct {
 }
 
 // GetDashboardStats 获取看板卡片统计数据
-func (r *OrderRepository) GetDashboardStats() (*DashboardStats, error) {
+func (r *OrderRepository) GetDashboardStats(corpID int64) (*DashboardStats, error) {
 	stats := &DashboardStats{}
 	today := time.Now().Format("2006-01-02")
 
 	// 统计各状态的零件数量
-	rows, err := r.db.Table("order_items").
-		Select("status, COUNT(*) as count").
-		Where("status NOT IN ?", []string{"delivered", "completed"}).
-		Group("status").
-		Rows()
+	query := r.db.Table("order_items as oi").
+		Joins("JOIN orders o ON o.id = oi.order_id").
+		Where("oi.status NOT IN ?", []string{"delivered", "completed"})
+	if corpID > 0 {
+		query = query.Where("o.corp_id = ?", corpID)
+	}
+	rows, err := query.Select("oi.status, COUNT(*) as count").Group("oi.status").Rows()
 	if err != nil {
 		return nil, err
 	}
@@ -503,28 +613,35 @@ func (r *OrderRepository) GetDashboardStats() (*DashboardStats, error) {
 	}
 
 	// 已完成的统计
-	r.db.Table("order_items").Where("status = ?", "completed").Count(&stats.CompletedCount)
+	completedQuery := r.db.Table("order_items as oi").Joins("JOIN orders o ON o.id = oi.order_id").Where("oi.status = ?", "completed")
+	if corpID > 0 {
+		completedQuery = completedQuery.Where("o.corp_id = ?", corpID)
+	}
+	completedQuery.Count(&stats.CompletedCount)
 
 	// 逾期订单：零件交期 < 今天 且订单状态未完成
-	r.db.Table("order_items as oi").
+	overdueQuery := r.db.Table("order_items as oi").
 		Joins("JOIN orders o ON o.id = oi.order_id").
 		Where("oi.due_date IS NOT NULL AND oi.due_date < ?", today).
-		Where("o.status NOT IN ?", []string{"delivered", "completed"}).
-		Count(&stats.OverdueCount)
+		Where("o.status NOT IN ?", []string{"delivered", "completed"})
+	if corpID > 0 {
+		overdueQuery = overdueQuery.Where("o.corp_id = ?", corpID)
+	}
+	overdueQuery.Count(&stats.OverdueCount)
 
 	// 告警订单：根据规则统计
-	warningIDs := r.getOrderIDsByRuleType(0, "warning")
+	warningIDs := r.getOrderIDsByRuleType(int(corpID), "warning")
 	stats.WarningCount = int64(len(warningIDs))
 
 	// 临期订单：根据规则统计
-	imminentIDs := r.getOrderIDsByRuleType(0, "imminent")
+	imminentIDs := r.getOrderIDsByRuleType(int(corpID), "imminent")
 	stats.NearDueCount = int64(len(imminentIDs))
 
 	return stats, nil
 }
 
 // GetDashboardItems 获取工作看板零件数据（带分页）
-func (r *OrderRepository) GetDashboardItems(page, pageSize int) (*DashboardResult, error) {
+func (r *OrderRepository) GetDashboardItems(corpID int64, page, pageSize int) (*DashboardResult, error) {
 	if pageSize <= 0 {
 		pageSize = 20
 	}
@@ -535,9 +652,13 @@ func (r *OrderRepository) GetDashboardItems(page, pageSize int) (*DashboardResul
 
 	// 1. 查询总数
 	var total int64
-	r.db.Table("order_items").
-		Where("status NOT IN ?", []string{"delivered", "completed"}).
-		Count(&total)
+	countQuery := r.db.Table("order_items as oi").
+		Joins("JOIN orders o ON o.id = oi.order_id").
+		Where("oi.status NOT IN ?", []string{"delivered", "completed"})
+	if corpID > 0 {
+		countQuery = countQuery.Where("o.corp_id = ?", corpID)
+	}
+	countQuery.Count(&total)
 
 	// 2. 分页查询零件
 	var results []struct {
@@ -555,7 +676,7 @@ func (r *OrderRepository) GetDashboardItems(page, pageSize int) (*DashboardResul
 		DrawingData       *string
 	}
 
-	err := r.db.Table("order_items as oi").
+	dataQuery := r.db.Table("order_items as oi").
 		Select(`o.id as order_id, o.order_number,
 			COALESCE(o.customer_short_name, '') as customer_short_name,
 			o.priority, oi.id as item_id, oi.part_name,
@@ -564,8 +685,11 @@ func (r *OrderRepository) GetDashboardItems(page, pageSize int) (*DashboardResul
 			oi.start_date, oi.due_date,
 			COALESCE(oi.drawing_data, '') as drawing_data`).
 		Joins("JOIN orders o ON o.id = oi.order_id").
-		Where("oi.status NOT IN ?", []string{"delivered", "completed"}).
-		Order("oi.start_date ASC, oi.due_date ASC, oi.status ASC").
+		Where("oi.status NOT IN ?", []string{"delivered", "completed"})
+	if corpID > 0 {
+		dataQuery = dataQuery.Where("o.corp_id = ?", corpID)
+	}
+	err := dataQuery.Order("oi.start_date ASC, oi.due_date ASC, oi.status ASC").
 		Limit(pageSize).Offset(offset).
 		Find(&results).Error
 
@@ -676,4 +800,3 @@ func (r *OrderRepository) getOrderIDsByRuleType(corpID int, ruleType string) []i
 
 	return orderIDs
 }
-

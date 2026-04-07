@@ -16,7 +16,7 @@ interface ImminentProps {
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
-  fetchData: () => void;
+  fetchData: (dateType?: string) => void;
 }
 
 const Imminent: React.FC<ImminentProps> = ({
@@ -38,7 +38,7 @@ const Imminent: React.FC<ImminentProps> = ({
   const handleSearch = async () => {
     setIsSearching(true);
     try {
-      await fetchData();
+      await fetchData('near_due');
     } finally {
       setIsSearching(false);
     }

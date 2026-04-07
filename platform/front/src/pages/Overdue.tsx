@@ -16,7 +16,7 @@ interface OverdueProps {
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
-  fetchData: () => void;
+  fetchData: (dateType?: string) => void;
 }
 
 const Overdue: React.FC<OverdueProps> = ({
@@ -38,7 +38,7 @@ const Overdue: React.FC<OverdueProps> = ({
   const handleSearch = async () => {
     setIsSearching(true);
     try {
-      await fetchData();
+      await fetchData('overdue');
     } finally {
       setIsSearching(false);
     }

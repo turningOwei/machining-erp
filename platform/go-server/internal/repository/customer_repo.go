@@ -19,8 +19,15 @@ func (r *CustomerRepository) GetAll() ([]models.Customer, error) {
 	return customers, err
 }
 
-func (r *CustomerRepository) Create(name, shortName string, contacts []models.Contact) (int64, error) {
+func (r *CustomerRepository) GetByCorpID(corpID int64) ([]models.Customer, error) {
+	var customers []models.Customer
+	err := r.db.Preload("Contacts").Where("corp_id = ?", corpID).Order("name").Find(&customers).Error
+	return customers, err
+}
+
+func (r *CustomerRepository) Create(corpID int64, name, shortName string, contacts []models.Contact) (int64, error) {
 	customer := models.Customer{
+		CorpID:    corpID,
 		Name:      name,
 		ShortName: shortName,
 		Contacts:  contacts,

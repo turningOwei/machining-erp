@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"machining-erp/internal/middleware"
 	"machining-erp/internal/models"
 	"machining-erp/internal/repository"
 	"machining-erp/internal/services"
@@ -38,6 +39,7 @@ func (h *OrderHandler) List(c *gin.Context) {
 	}
 
 	filters := repository.OrderFilters{
+		CorpID:       middleware.GetCorpID(c),
 		DueDateStart: c.Query("dueDateStart"),
 		DueDateEnd:   c.Query("dueDateEnd"),
 		OrderNumber:  c.Query("orderNumber"),
@@ -69,7 +71,7 @@ type CreateOrderRequest struct {
 	CustomerShortName *string         `json:"customer_short_name"`
 	OrderNumber       string          `json:"order_number"`
 	OrderName         *string         `json:"order_name"`
-	ContactID         *int64          `json:"contact_id"`
+	ContactName       *string         `json:"contact_name"`
 	Priority          models.Priority `json:"priority"`
 	StartDate         string          `json:"start_date"`
 	DueDate           string          `json:"due_date"`
@@ -79,17 +81,38 @@ type CreateOrderRequest struct {
 
 // CreateOrderItemRequest 创建订单项请求结构体（日期用string避免解析问题）
 type CreateOrderItemRequest struct {
-	PartName       string                  `json:"part_name"`
-	PartNumber     *string                 `json:"part_number"`
-	Quantity       int                     `json:"quantity"`
-	ScrapQuantity  int                     `json:"scrap_quantity"`
-	UnitPrice      float64                 `json:"unit_price"`
-	TotalPrice     float64                 `json:"total_price"`
-	DrawingData    *string                 `json:"drawing_data"`
-	Notes          *string                 `json:"notes"`
-	StartDate      string                  `json:"start_date"`
-	DueDate        string                  `json:"due_date"`
-	Processes      []models.OrderProcess   `json:"processes"`
+	ID              *int64                   `json:"id"`
+	OrderID         *int64                   `json:"order_id"`
+	PartName        string                   `json:"part_name"`
+	PartNumber      *string                  `json:"part_number"`
+	Quantity        int                      `json:"quantity"`
+	ScrapQuantity   int                      `json:"scrap_quantity"`
+	UnitPrice       float64                  `json:"unit_price"`
+	TotalPrice      float64                  `json:"total_price"`
+	Status          models.OrderStatus       `json:"status"`
+	DrawingData     *string                  `json:"drawing_data"`
+	Notes           *string                  `json:"notes"`
+	StartDate       string                   `json:"start_date"`
+	DueDate         string                   `json:"due_date"`
+	DeliveredQty    int                      `json:"delivered_quantity"`
+	ToolCost        float64                  `json:"tool_cost"`
+	FixtureCost     float64                  `json:"fixture_cost"`
+	MaterialCost    float64                  `json:"material_cost"`
+	OtherCost       float64                  `json:"other_cost"`
+	ItemNotes       *string                  `json:"item_notes"`
+	CompletionDate  string                   `json:"completion_date"`
+	Processes       []ProcessRequest         `json:"processes"`
+}
+
+// ProcessRequest 工序请求结构体
+type ProcessRequest struct {
+	ID             *int64               `json:"id"`
+	OrderItemID    *int64               `json:"order_item_id"`
+	Name           string               `json:"name"`
+	IsOutsourced   bool                 `json:"is_outsourced"`
+	OutsourcingFee float64              `json:"outsourcing_fee"`
+	Status         models.ProcessStatus `json:"status"`
+	SortOrder      int                  `json:"sort_order"`
 }
 
 func parseDate(s string) *time.Time {
@@ -101,6 +124,14 @@ func parseDate(s string) *time.Time {
 		return nil
 	}
 	return &t
+}
+
+func floatPtr(v float64) *float64 {
+	return &v
+}
+
+func intPtr(v int) *int {
+	return &v
 }
 
 func (h *OrderHandler) Create(c *gin.Context) {
@@ -143,7 +174,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		CustomerShortName: req.CustomerShortName,
 		OrderNumber:       orderNumber,
 		OrderName:         req.OrderName,
-		ContactID:         req.ContactID,
+		ContactName:       req.ContactName,
 		Priority:          req.Priority,
 		StartDate:         parseDate(req.StartDate),
 		DueDate:           parseDate(req.DueDate),
@@ -153,18 +184,54 @@ func (h *OrderHandler) Create(c *gin.Context) {
 	// 转换请求结构体为models
 	items := make([]models.OrderItem, len(req.Items))
 	for i, reqItem := range req.Items {
+		// 转换工序
+		processes := make([]models.OrderProcess, len(reqItem.Processes))
+		for j, p := range reqItem.Processes {
+			var processID, orderItemID int64
+			if p.ID != nil {
+				processID = *p.ID
+			}
+			if p.OrderItemID != nil {
+				orderItemID = *p.OrderItemID
+			}
+			processes[j] = models.OrderProcess{
+				ID:             processID,
+				OrderItemID:    orderItemID,
+				Name:           p.Name,
+				IsOutsourced:   p.IsOutsourced,
+				OutsourcingFee: p.OutsourcingFee,
+				Status:         p.Status,
+			}
+		}
+		var itemID, orderID int64
+		if reqItem.ID != nil {
+			itemID = *reqItem.ID
+		}
+		if reqItem.OrderID != nil {
+			orderID = *reqItem.OrderID
+		}
 		items[i] = models.OrderItem{
+			ID:             itemID,
+			OrderID:        orderID,
 			PartName:       reqItem.PartName,
 			PartNumber:     reqItem.PartNumber,
 			Quantity:       reqItem.Quantity,
 			ScrapQuantity:  reqItem.ScrapQuantity,
 			UnitPrice:      reqItem.UnitPrice,
 			TotalPrice:     reqItem.TotalPrice,
+			Status:         reqItem.Status,
 			DrawingData:    reqItem.DrawingData,
 			Notes:          reqItem.Notes,
 			StartDate:      parseDate(reqItem.StartDate),
 			DueDate:        parseDate(reqItem.DueDate),
-			Processes:      reqItem.Processes,
+			DeliveredQty:   intPtr(reqItem.DeliveredQty),
+			ToolCost:       floatPtr(reqItem.ToolCost),
+			FixtureCost:    floatPtr(reqItem.FixtureCost),
+			MaterialCost:   floatPtr(reqItem.MaterialCost),
+			OtherCost:      floatPtr(reqItem.OtherCost),
+			ItemNotes:      reqItem.ItemNotes,
+			CompletionDate: parseDate(reqItem.CompletionDate),
+			Processes:      processes,
 		}
 	}
 
@@ -181,7 +248,7 @@ type UpdateOrderRequest struct {
 	CustomerName      *string           `json:"customer_name"`
 	CustomerShortName *string           `json:"customer_short_name"`
 	OrderName         *string           `json:"order_name"`
-	ContactID         *int64            `json:"contact_id"`
+	ContactName       *string           `json:"contact_name"`
 	Priority          models.Priority   `json:"priority"`
 	StartDate         string            `json:"start_date"`
 	DueDate           string            `json:"due_date"`
@@ -210,7 +277,7 @@ func (h *OrderHandler) Update(c *gin.Context) {
 		CustomerName:      req.CustomerName,
 		CustomerShortName: req.CustomerShortName,
 		OrderName:         req.OrderName,
-		ContactID:         req.ContactID,
+		ContactName:       req.ContactName,
 		Priority:          req.Priority,
 		StartDate:         parseDate(req.StartDate),
 		DueDate:           parseDate(req.DueDate),
@@ -220,18 +287,54 @@ func (h *OrderHandler) Update(c *gin.Context) {
 	// 转换请求结构体为models
 	items := make([]models.OrderItem, len(req.Items))
 	for i, reqItem := range req.Items {
+		// 转换工序
+		processes := make([]models.OrderProcess, len(reqItem.Processes))
+		for j, p := range reqItem.Processes {
+			var processID, orderItemID int64
+			if p.ID != nil {
+				processID = *p.ID
+			}
+			if p.OrderItemID != nil {
+				orderItemID = *p.OrderItemID
+			}
+			processes[j] = models.OrderProcess{
+				ID:             processID,
+				OrderItemID:    orderItemID,
+				Name:           p.Name,
+				IsOutsourced:   p.IsOutsourced,
+				OutsourcingFee: p.OutsourcingFee,
+				Status:         p.Status,
+			}
+		}
+		var itemID, orderID int64
+		if reqItem.ID != nil {
+			itemID = *reqItem.ID
+		}
+		if reqItem.OrderID != nil {
+			orderID = *reqItem.OrderID
+		}
 		items[i] = models.OrderItem{
+			ID:             itemID,
+			OrderID:        orderID,
 			PartName:       reqItem.PartName,
 			PartNumber:     reqItem.PartNumber,
 			Quantity:       reqItem.Quantity,
 			ScrapQuantity:  reqItem.ScrapQuantity,
 			UnitPrice:      reqItem.UnitPrice,
 			TotalPrice:     reqItem.TotalPrice,
+			Status:         reqItem.Status,
 			DrawingData:    reqItem.DrawingData,
 			Notes:          reqItem.Notes,
 			StartDate:      parseDate(reqItem.StartDate),
 			DueDate:        parseDate(reqItem.DueDate),
-			Processes:      reqItem.Processes,
+			DeliveredQty:   intPtr(reqItem.DeliveredQty),
+			ToolCost:       floatPtr(reqItem.ToolCost),
+			FixtureCost:    floatPtr(reqItem.FixtureCost),
+			MaterialCost:   floatPtr(reqItem.MaterialCost),
+			OtherCost:      floatPtr(reqItem.OtherCost),
+			ItemNotes:      reqItem.ItemNotes,
+			CompletionDate: parseDate(reqItem.CompletionDate),
+			Processes:      processes,
 		}
 	}
 
@@ -257,7 +360,7 @@ func (h *OrderHandler) GetDashboardItems(c *gin.Context) {
 	page, _ := strconv.Atoi(c.Query("page"))
 	pageSize, _ := strconv.Atoi(c.Query("pageSize"))
 
-	result, err := h.repo.GetDashboardItems(page, pageSize)
+	result, err := h.repo.GetDashboardItems(middleware.GetCorpID(c), page, pageSize)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -270,7 +373,7 @@ func (h *OrderHandler) GetDashboardItems(c *gin.Context) {
 
 // GetDashboardStats 获取看板卡片统计数据
 func (h *OrderHandler) GetDashboardStats(c *gin.Context) {
-	stats, err := h.repo.GetDashboardStats()
+	stats, err := h.repo.GetDashboardStats(middleware.GetCorpID(c))
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

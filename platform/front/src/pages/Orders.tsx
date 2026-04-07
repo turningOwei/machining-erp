@@ -11,19 +11,28 @@ interface OrdersProps {
   setOrders: (orders: Order[]) => void;
   orderFilters: OrderFilters;
   setOrderFilters: (filters: OrderFilters) => void;
+  appliedOrderFilters?: OrderFilters;
+  setAppliedOrderFilters?: (filters: OrderFilters) => void;
+  showOrderFilters?: boolean;
+  setShowOrderFilters?: (show: boolean) => void;
   currentPage: number;
   setCurrentPage: (page: number) => void;
   pageSize: number;
   setPageSize: (size: number) => void;
   orderTotal: number;
+  orderMgrExpanded?: Set<number>;
+  setOrderMgrExpanded?: (set: Set<number>) => void;
+  allOrderMgrExpanded?: boolean;
+  setAllOrderMgrExpanded?: (expanded: boolean) => void;
   resetAndOpenModal: () => void;
   editOrder: (order: Order) => void;
   deleteOrder: (orderId: number) => void;
+  toggleOrderMgr?: (orderId: number) => void;
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
   fetchData: () => void;
-  fetchOrdersWithFilters: (filters: OrderFilters) => Promise<void>;
+  fetchOrdersWithFilters: (filters: OrderFilters, page?: number, pageSize?: number) => Promise<void>;
 }
 
 const Orders: React.FC<OrdersProps> = ({
@@ -53,8 +62,7 @@ const Orders: React.FC<OrdersProps> = ({
   const handleSearch = async () => {
     setIsSearching(true);
     try {
-      setCurrentPage(1);
-      await fetchOrdersWithFilters(orderFilters);
+      await fetchOrdersWithFilters(orderFilters, currentPage, pageSize);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     } finally {

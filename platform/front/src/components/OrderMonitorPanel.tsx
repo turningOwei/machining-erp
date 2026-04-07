@@ -145,7 +145,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
               setExpandedOrders(new Set());
               setAllExpanded(false);
             } else {
-              setExpandedOrders(new Set(filteredOrders.map(o => o.id)));
+              setExpandedOrders(new Set(displayOrders.map(o => o.id)));
               setAllExpanded(true);
             }
           }}
@@ -266,7 +266,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       setExpandedOrders(new Set());
                       setAllExpanded(false);
                     } else {
-                      setExpandedOrders(new Set(filteredOrders.map(o => o.id)));
+                      setExpandedOrders(new Set(displayOrders.map(o => o.id)));
                       setAllExpanded(true);
                     }
                   }}
@@ -315,7 +315,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                     <td className={`pl-4 pr-6 py-2 sticky left-0 ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronUp className={`shrink-0 w-4 h-4 ${colors.text}`} /> : <ChevronDown className={`shrink-0 w-4 h-4 ${colors.text}`} />}
-                        <span className={`text-sm font-bold ${colors.headText} whitespace-nowrap`}>{order.order_number || order.id}</span>
+                        <span className={`text-xs font-bold ${colors.headText} whitespace-nowrap`}>{order.order_number || order.id}</span>
                       </div>
                     </td>
                     <td className={`px-6 py-2 sticky left-[192px] ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
@@ -326,8 +326,8 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                     </td>
                     <td colSpan={3} className={`px-6 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.bg}`}>
                       <div className="flex items-center gap-4 text-sm text-zinc-600">
-                        {showContactName && order.contact_name && <span className="text-zinc-500">{order.contact_name}</span>}
-                        {showOrderName && order.order_name && <span>{order.order_name}</span>}
+                        {showContactName && <span className="text-zinc-400 text-xs inline-block min-w-[4em]">{order.contact_name || '\u3000\u3000\u3000\u3000'}</span>}
+                        {showOrderName && order.order_name && <span className="text-xs font-bold text-zinc-700">{order.order_name}</span>}
                       </div>
                     </td>
                     <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.bg}`}>
@@ -522,7 +522,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                 <div className="p-4 border-b border-zinc-100 space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-zinc-500">客户</span><span className="font-medium">{order.customer_short_name}</span></div>
                   {showOrderName && order.order_name && <div className="flex justify-between"><span className="text-zinc-500">订单名称</span><span className="font-medium">{order.order_name}</span></div>}
-                  {showContactName && order.contact_name && <div className="flex justify-between"><span className="text-zinc-500">联系人</span><span className="font-medium">{order.contact_name}</span></div>}
+                  {showContactName && <div className="flex justify-between"><span className="text-zinc-500">联系人</span><span className="font-medium text-xs">{order.contact_name || '-'}</span></div>}
                   <div className="flex justify-between"><span className="text-zinc-500">订单日期</span><span>{formatDate(order.start_date) || '-'}</span></div>
                   <div className="flex justify-between"><span className="text-zinc-500">订单交期</span><span className={`font-bold ${colors.text}`}>{formatDate(getOrderMaxDueDate(order))}</span></div>
                   {showOrderNotes && order.notes && <div className="pt-2 text-zinc-500 text-xs italic">备注: {order.notes}</div>}
