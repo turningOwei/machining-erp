@@ -21,7 +21,7 @@ $env:CGO_ENABLED=0; $env:GOOS="linux"; $env:GOARCH="amd64"; go build -o bin/serv
 ```bash
 scp platform/go-server/bin/server_linux root@8.145.45.155:/opt/erp/server
 scp platform/go-server/.env.production root@8.145.45.155:/opt/erp/.env
-scp -r platform/front/dist/* root@8.145.45.155:/var/www/platform/
+scp -r platform/front/dist/* root@8.145.45.155:/var/www/erp/
 ```
 
 ---
@@ -56,3 +56,6 @@ tail -50 /opt/erp/server.log
 ```bash
 sudo nginx -t && sudo nginx -s reload
 ```
+
+
+## nginx位置 /etc/nginx

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -36,25 +36,10 @@ import { GoogleGenAI } from "@google/genai";
 import { Order, Customer, Material, Remnant } from './types';
 import LoginPage from './LoginPage';
 import Sidebar from './components/Sidebar';
-import OrderModal from './components/OrderModal';
-import AiDrawingModal from './components/AiDrawingModal';
-import DrawingViewerModal from './components/DrawingViewerModal';
-import CustomerModal from './components/CustomerModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
 import ErrorModal from './components/ErrorModal';
 import ValidationAlertModal from './components/ValidationAlertModal';
-import RuleModal, { RuleForm } from './components/RuleModal';
-import UserSettingsModal from './components/UserSettingsModal';
-import Orders from './pages/Orders';
-import Dashboard from './pages/Dashboard';
 import { createEmptyFilters, createOrderFilters } from './configs/filterConfigs';
-import Overdue from './pages/Overdue';
-import Warning from './pages/Warning';
-import Imminent from './pages/Imminent';
-import Customers from './pages/Customers';
-import Inventory from './pages/Inventory';
-import Finance from './pages/Finance';
-import Rules from './pages/Rules';
 import { formatDate, authFetch } from './components/shared';
 import { NAV_ITEMS, NavItem } from './constants/navigation';
 import { useOrders } from './hooks/useOrders';
@@ -71,6 +56,35 @@ import {
   updateRuleApi,
   deleteRuleApi
 } from './services/api';
+
+// 懒加载页面组件
+const Orders = lazy(() => import('./pages/Orders'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Overdue = lazy(() => import('./pages/Overdue'));
+const Warning = lazy(() => import('./pages/Warning'));
+const Imminent = lazy(() => import('./pages/Imminent'));
+const Customers = lazy(() => import('./pages/Customers'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Finance = lazy(() => import('./pages/Finance'));
+const Rules = lazy(() => import('./pages/Rules'));
+
+// 懒加载模态框组件
+const OrderModal = lazy(() => import('./components/OrderModal'));
+const AiDrawingModal = lazy(() => import('./components/AiDrawingModal'));
+const DrawingViewerModal = lazy(() => import('./components/DrawingViewerModal'));
+const CustomerModal = lazy(() => import('./components/CustomerModal'));
+const RuleModal = lazy(() => import('./components/RuleModal'));
+const UserSettingsModal = lazy(() => import('./components/UserSettingsModal'));
+
+// 类型导入
+type RuleForm = {
+  name: string;
+  description: string;
+  formula: string;
+  target_status: string;
+  scopeType: string;
+  ruleType: string;
+};
 
 // --- AI Service ---
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
@@ -917,77 +931,89 @@ export default function App() {
       />
 
       {/* User Settings Modal */}
-      <UserSettingsModal
-        isOpen={showUserSettings}
-        type={userSettingsType}
-        onClose={() => {
-          setShowUserSettings(false);
-          setUserSettingsType(null);
-        }}
-        onLogout={handleLogout}
-        userId={authUser?.id || 0}
-        userEmail={authUser?.email || ''}
-      />
+      <Suspense fallback={null}>
+        <UserSettingsModal
+          isOpen={showUserSettings}
+          type={userSettingsType}
+          onClose={() => {
+            setShowUserSettings(false);
+            setUserSettingsType(null);
+          }}
+          onLogout={handleLogout}
+          userId={authUser?.id || 0}
+          userEmail={authUser?.email || ''}
+        />
+      </Suspense>
 
       {/* Main Content */}
       <main className="flex-1 bg-zinc-50 overflow-hidden flex flex-col !w-full !max-w-none !m-0 !p-0">
         <div className="!w-full h-full flex flex-col py-0 md:py-0 min-h-0 !max-w-none !m-0 !p-0">
-          {renderActiveTab()}
+          <Suspense fallback={<div className="flex items-center justify-center h-full"><RefreshCw className="w-6 h-6 animate-spin text-zinc-400" /></div>}>
+            {renderActiveTab()}
+          </Suspense>
         </div>
       </main>
 
       {/* Order Modal */}
       <AnimatePresence>
         {showOrderModal && (
-          <OrderModal
-            show={showOrderModal}
-            onClose={() => setShowOrderModal(false)}
-            newOrder={newOrder}
-            setNewOrder={setNewOrder}
-            customers={customers}
-            customerSearch={customerSearch}
-            setCustomerSearch={setCustomerSearch}
-            showCustomerDropdown={showCustomerDropdown}
-            setShowCustomerDropdown={setShowCustomerDropdown}
-            customerDropdownRef={customerDropdownRef}
-            formErrors={formErrors}
-            setFormErrors={setFormErrors}
-            onSubmit={handleCreateOrder}
-            isSaving={isSaving}
-          />
+          <Suspense fallback={null}>
+            <OrderModal
+              show={showOrderModal}
+              onClose={() => setShowOrderModal(false)}
+              newOrder={newOrder}
+              setNewOrder={setNewOrder}
+              customers={customers}
+              customerSearch={customerSearch}
+              setCustomerSearch={setCustomerSearch}
+              showCustomerDropdown={showCustomerDropdown}
+              setShowCustomerDropdown={setShowCustomerDropdown}
+              customerDropdownRef={customerDropdownRef}
+              formErrors={formErrors}
+              setFormErrors={setFormErrors}
+              onSubmit={handleCreateOrder}
+              isSaving={isSaving}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 
       {/* AI Drawing Modal */}
-      <AiDrawingModal
-        show={showAiModal}
-        onClose={() => setShowAiModal(false)}
-        aiPrompt={aiPrompt}
-        setAiPrompt={setAiPrompt}
-        isGenerating={isGenerating}
-        generatedImage={generatedImage}
-        onGenerate={generateAiDrawing}
-        onUseImage={(imageData) => {
-          setNewOrder({ ...newOrder, drawing_data: imageData });
-          setShowAiModal(false);
-        }}
-      />
+      <Suspense fallback={null}>
+        <AiDrawingModal
+          show={showAiModal}
+          onClose={() => setShowAiModal(false)}
+          aiPrompt={aiPrompt}
+          setAiPrompt={setAiPrompt}
+          isGenerating={isGenerating}
+          generatedImage={generatedImage}
+          onGenerate={generateAiDrawing}
+          onUseImage={(imageData) => {
+            setNewOrder({ ...newOrder, drawing_data: imageData });
+            setShowAiModal(false);
+          }}
+        />
+      </Suspense>
 
       {/* Drawing Viewer Modal */}
-      <DrawingViewerModal
-        show={showDrawingModal}
-        onClose={() => setShowDrawingModal(null)}
-      />
+      <Suspense fallback={null}>
+        <DrawingViewerModal
+          show={showDrawingModal}
+          onClose={() => setShowDrawingModal(null)}
+        />
+      </Suspense>
 
       {/* Customer Modal */}
-      <CustomerModal
-        show={showCustomerModal}
-        onClose={() => setShowCustomerModal(false)}
-        editingCustomer={editingCustomer}
-        newCustomer={newCustomer}
-        setNewCustomer={setNewCustomer}
-        onSave={handleSaveCustomer}
-      />
+      <Suspense fallback={null}>
+        <CustomerModal
+          show={showCustomerModal}
+          onClose={() => setShowCustomerModal(false)}
+          editingCustomer={editingCustomer}
+          newCustomer={newCustomer}
+          setNewCustomer={setNewCustomer}
+          onSave={handleSaveCustomer}
+        />
+      </Suspense>
 
       {/* Delete Customer Confirmation Modal */}
       <DeleteConfirmModal
@@ -1005,16 +1031,18 @@ export default function App() {
       />
 
       {/* Advent Rule Modal */}
-      <RuleModal
-        show={showRuleModal}
-        onClose={() => setShowRuleModal(false)}
-        editingRuleId={editingRuleId}
-        ruleForm={ruleForm}
-        setRuleForm={setRuleForm}
-        adventRules={adventRules}
-        onSubmit={handleRuleSubmit}
-        onValidationError={(msg) => setValidationAlert(msg)}
-      />
+      <Suspense fallback={null}>
+        <RuleModal
+          show={showRuleModal}
+          onClose={() => setShowRuleModal(false)}
+          editingRuleId={editingRuleId}
+          ruleForm={ruleForm}
+          setRuleForm={setRuleForm}
+          adventRules={adventRules}
+          onSubmit={handleRuleSubmit}
+          onValidationError={(msg) => setValidationAlert(msg)}
+        />
+      </Suspense>
 
       {/* Delete Confirmation Modal for Rule */}
       <DeleteConfirmModal

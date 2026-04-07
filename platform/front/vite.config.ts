@@ -33,6 +33,21 @@ export default defineConfig(({mode}) => {
       target: 'esnext',
       minify: 'esbuild',
       sourcemap: false,
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // React 核心库
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            // UI 图标库
+            'lucide': ['lucide-react'],
+            // 动画库
+            'motion': ['motion'],
+            // Google AI
+            'google-ai': ['@google/genai'],
+          },
+        },
+      },
     },
     esbuild: {
       drop: ['console', 'debugger'],
