@@ -415,7 +415,74 @@ export default function App() {
     handleProcessClick,
     editOrder: editOrderFromHook,
     resetAndOpenModal: resetAndOpenModalFromHook
-  } = useOrders(orders, setOrders, adventRules, fetchOrdersData);
+  } = useOrders(orders, setOrders, adventRules, fetchDashboardData);
+
+  // Dashboard 专用的工序点击处理函数
+  const handleDashboardProcessClick = useCallback(async (orderId: number, itemId: number, processId: number, currentStatus: string, name: string) => {
+    const nextStatus = currentStatus === 'pending' ? 'processing' : currentStatus === 'processing' ? 'completed' : 'pending';
+
+    // 更新 dashboardItems
+    setDashboardItems(prevItems => prevItems.map(item => {
+      if (item.item_id !== itemId) return item;
+      if (!item.processes) return item;
+
+      const newProcesses = item.processes.map(p =>
+        p.id === processId ? { ...p, status: nextStatus } : p
+      );
+
+      // 计算新的零件状态
+      const statuses = newProcesses.map(p => p.status || 'pending');
+      let newItemStatus = 'pending';
+      if (statuses.every(s => s === 'completed')) newItemStatus = 'completed';
+      else if (!statuses.every(s => s === 'pending')) newItemStatus = 'processing';
+
+      return {
+        ...item,
+        processes: newProcesses,
+        status: newItemStatus
+      };
+    }));
+
+    // 同时更新 orders（如果存在）
+    setOrders(prevOrders => prevOrders.map(o => {
+      if (Number(o.id) !== Number(orderId)) return o;
+      if (!o.items) return o;
+
+      const updatedItems = o.items.map(i => {
+        if (Number(i.id) !== Number(itemId)) return i;
+        if (!i.processes) return i;
+
+        const newProcesses = i.processes.map(p =>
+          Number(p.id) === Number(processId) ? { ...p, status: nextStatus } : p
+        );
+
+        const statuses = newProcesses.map(p => p.status || 'pending');
+        let newItemStatus: 'pending' | 'processing' | 'completed' = 'pending';
+        if (statuses.every(s => s === 'completed')) newItemStatus = 'completed';
+        else if (!statuses.every(s => s === 'pending')) newItemStatus = 'processing';
+
+        return { ...i, processes: newProcesses, status: newItemStatus };
+      });
+
+      const itemStatuses = updatedItems.map(i => i.status || 'pending');
+      let newOrderStatus: 'pending' | 'processing' | 'completed' = 'pending';
+      if (itemStatuses.every(s => s === 'completed' || s === 'delivered')) newOrderStatus = 'completed';
+      else if (!itemStatuses.every(s => s === 'pending')) newOrderStatus = 'processing';
+
+      return { ...o, items: updatedItems, status: newOrderStatus };
+    }));
+
+    // 调用 API 更新状态（不刷新数据）
+    try {
+      await authFetch(`/api/platform/order-items/${itemId}/processes/${processId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+    } catch (err) {
+      console.error("Failed to update process status:", err);
+    }
+  }, [setDashboardItems, setOrders]);
 
   const editOrder = (order: Order) => {
     editOrderFromHook(order, setNewOrder, setShowOrderModal);
@@ -480,32 +547,38 @@ export default function App() {
         setDashboardStats({ pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 });
         setDashboardPage(1);
         fetchDashboardData();
+        if (customers.length === 0) fetchCustomersData();
         break;
       case 'production_dashboard':
         setDashboardItems([]);
         setDashboardStats({ pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 });
         setDashboardPage(1);
         fetchDashboardData();
+        if (customers.length === 0) fetchCustomersData();
         break;
       case 'orders':
         setOrders([]);
         setCurrentPage(1);
         fetchOrdersData();
+        if (customers.length === 0) fetchCustomersData();
         break;
       case 'overdue':
         setOrders([]);
         setOverduePage(1);
         fetchOrdersData('overdue');
+        if (customers.length === 0) fetchCustomersData();
         break;
       case 'warning_orders':
         setOrders([]);
         setWarningPage(1);
         fetchOrdersData('warning');
+        if (customers.length === 0) fetchCustomersData();
         break;
       case 'imminent_orders':
         setOrders([]);
         setImminentPage(1);
         fetchOrdersData('near_due');
+        if (customers.length === 0) fetchCustomersData();
         break;
       case 'customers':
         setCustomers([]);
@@ -799,6 +872,7 @@ export default function App() {
         return (
           <Dashboard
             {...baseOrderProps}
+            handleProcessClick={handleDashboardProcessClick}
             dashboardItems={dashboardItems}
             dashboardStats={dashboardStats}
             dashboardPage={dashboardPage}
@@ -811,7 +885,7 @@ export default function App() {
             setAppliedOrderFilters={setAppliedOrderFilters}
             setCurrentPage={setCurrentPage}
             resetAndOpenModal={resetAndOpenModal}
-            fetchData={fetchData}
+            fetchData={fetchDashboardData}
             formatDate={formatDate}
           />
         );

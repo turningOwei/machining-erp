@@ -82,7 +82,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="搜索客户..."
+                    placeholder="输入客户名称搜索..."
                     value={customerSearch || (newOrder.customer_id ? customers.find(c => Number(c.id) === Number(newOrder.customer_id))?.short_name || customers.find(c => Number(c.id) === Number(newOrder.customer_id))?.name || '' : '')}
                     onChange={e => {
                       const value = e.target.value;
@@ -100,10 +100,15 @@ const OrderModal: React.FC<OrderModalProps> = ({
                       }
                     }}
                     onFocus={() => setShowCustomerDropdown(true)}
-                    className={`w-full px-3 py-1.5 bg-white border ${formErrors.customer ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]`}
+                    className={`w-full px-3 py-1.5 pr-8 bg-white border ${formErrors.customer ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]`}
                   />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                   {showCustomerDropdown && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-[100] w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                       {customers
                         .filter(c => {
                           const searchLower = (customerSearch || '').toLowerCase();

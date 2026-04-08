@@ -1,7 +1,6 @@
 package repository
 
 import (
-	
 	"time"
 
 	"gorm.io/gorm"
@@ -122,186 +121,123 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		return OrderListResult{Orders: []models.Order{}, Total: 0}, nil
 	}
 
-	// 3. 分页查询订单ID
-	idQuery := baseQuery.Order("start_date ASC")
+	// 3. 查询订单列表（分页+排序）
+	var orders []models.Order
+	orderQuery := r.db.Model(&models.Order{})
+	// 复制baseQuery的条件
+	if filters.CorpID > 0 {
+		orderQuery = orderQuery.Where("corp_id = ?", filters.CorpID)
+	}
+	if filters.Status != "" {
+		orderQuery = orderQuery.Where("status = ?", filters.Status)
+	}
+	if filters.OrderNumber != "" {
+		orderQuery = orderQuery.Where("order_number LIKE ?", "%"+filters.OrderNumber+"%")
+	}
+	if filters.CustomerName != "" {
+		orderQuery = orderQuery.Where("customer_name LIKE ? OR customer_short_name LIKE ?",
+			"%"+filters.CustomerName+"%", "%"+filters.CustomerName+"%")
+	}
+	if filters.Priority != "" {
+		orderQuery = orderQuery.Where("priority = ?", filters.Priority)
+	}
+	if filters.DateType != "" {
+		orderQuery = orderQuery.Where("status NOT IN ?", []string{"delivered", "completed"})
+		switch filters.DateType {
+		case "overdue":
+			subQuery := r.db.Model(&models.OrderItem{}).Select("DISTINCT order_id").Where("due_date IS NOT NULL AND due_date < ?", today)
+			orderQuery = orderQuery.Where("id IN (?)", subQuery)
+		case "near_due":
+			ids := r.getOrderIDsByRuleType(0, "imminent")
+			if len(ids) > 0 {
+				orderQuery = orderQuery.Where("id IN ?", ids)
+			} else {
+				orderQuery = orderQuery.Where("1 = 0")
+			}
+		case "warning":
+			ids := r.getOrderIDsByRuleType(0, "warning")
+			if len(ids) > 0 {
+				orderQuery = orderQuery.Where("id IN ?", ids)
+			} else {
+				orderQuery = orderQuery.Where("1 = 0")
+			}
+		}
+	}
+	if filters.DueDateStart != "" || filters.DueDateEnd != "" || filters.PartNumber != "" {
+		subQuery := r.db.Model(&models.OrderItem{}).Select("DISTINCT order_id")
+		if filters.DueDateStart != "" {
+			subQuery = subQuery.Where("due_date >= ?", filters.DueDateStart)
+		}
+		if filters.DueDateEnd != "" {
+			subQuery = subQuery.Where("due_date <= ?", filters.DueDateEnd)
+		}
+		if filters.PartNumber != "" {
+			subQuery = subQuery.Where("part_number LIKE ?", "%"+filters.PartNumber+"%")
+		}
+		orderQuery = orderQuery.Where("id IN (?)", subQuery)
+	}
+
+	// 排序和分页
+	orderQuery = orderQuery.Order("status DESC, start_date DESC, id DESC")
 	if filters.PageSize > 0 {
 		offset := 0
 		if filters.Page > 1 {
 			offset = (filters.Page - 1) * filters.PageSize
 		}
-		idQuery = idQuery.Limit(filters.PageSize).Offset(offset)
+		orderQuery = orderQuery.Limit(filters.PageSize).Offset(offset)
 	}
 
-	var orderIDs []int
-	if err := idQuery.Pluck("id", &orderIDs).Error; err != nil {
+	if err := orderQuery.Find(&orders).Error; err != nil {
 		return OrderListResult{}, err
 	}
 
-	if len(orderIDs) == 0 {
+	if len(orders) == 0 {
 		return OrderListResult{Orders: []models.Order{}, Total: total}, nil
 	}
 
-	// 2. 用JOIN查询这些订单的完整数据
-	joinQuery := r.db.Table("orders as o").
-		Select(`o.id, o.corp_id, o.customer_id, o.customer_name, o.customer_short_name,
-			o.order_number, o.order_name, o.contact_id, o.contact_name,
-			o.status, o.priority, o.start_date, o.due_date, o.notes, o.created_at,
-			oi.id as item_id, oi.corp_id as item_corp_id, oi.part_name, oi.part_number,
-			oi.quantity, oi.scrap_quantity, oi.unit_price, oi.total_price,
-			oi.status as item_status, oi.drawing_data, oi.notes as item_notes,
-			oi.completion_date, oi.start_date as item_start_date, oi.due_date as item_due_date,
-			oi.delivered_quantity, oi.tool_cost, oi.fixture_cost, oi.material_cost,
-			oi.other_cost, oi.item_notes,
-			op.id as process_id, op.order_item_id as process_item_id, op.corp_id as process_corp_id,
-			op.name as process_name, op.is_outsourced, op.outsourcing_fee,
-			op.status as process_status, op.sort_order`).
-		Joins("LEFT JOIN order_items oi ON oi.order_id = o.id").
-		Joins("LEFT JOIN order_processes op ON op.order_item_id = oi.id").
-		Where("o.id IN ?", orderIDs).
-		Order("o.start_date ASC, oi.due_date ASC, op.sort_order ASC")
-
-	var rows []struct {
-		// Order fields
-		ID                int64
-		CorpID            int64
-		CustomerID        *int64
-		CustomerName      *string
-		CustomerShortName *string
-		OrderNumber       string
-		OrderName         *string
-		ContactID         *int64
-		ContactName       *string
-		Status            string
-		Priority          string
-		StartDate         *time.Time
-		DueDate           *time.Time
-		Notes             *string
-		CreatedAt         time.Time
-		// OrderItem fields
-		ItemID            *int64
-		ItemCorpID        *int64
-		PartName          *string
-		PartNumber        *string
-		Quantity          *int
-		ScrapQuantity     *int
-		UnitPrice         *float64
-		TotalPrice        *float64
-		ItemStatus        *string
-		DrawingData       *string
-		ItemNotes         *string
-		CompletionDate    *time.Time
-		ItemStartDate     *time.Time
-		ItemDueDate       *time.Time
-		DeliveredQuantity *int
-		ToolCost          *float64
-		FixtureCost       *float64
-		MaterialCost      *float64
-		OtherCost         *float64
-		ItemNotes2        *string // item_notes from items table
-		// OrderProcess fields
-		ProcessID         *int64
-		ProcessItemID     *int64
-		ProcessCorpID     *int64
-		ProcessName       *string
-		IsOutsourced      *bool
-		OutsourcingFee    *float64
-		ProcessStatus     *string
-		SortOrder         *int
+	// 收集订单ID
+	orderIDs := make([]int64, len(orders))
+	for i, o := range orders {
+		orderIDs[i] = o.ID
 	}
 
-	if err := joinQuery.Find(&rows).Error; err != nil {
+	// 4. 查询零件信息
+	var items []models.OrderItem
+	if err := r.db.Where("order_id IN ?", orderIDs).Order("due_date ASC, id ASC").Find(&items).Error; err != nil {
 		return OrderListResult{}, err
 	}
 
-	// 4. 组装订单和订单项数据
-	orderMap := make(map[int64]*models.Order)
-	itemMap := make(map[int64]*models.OrderItem)
-
-	for _, row := range rows {
-		// 组装订单
-		if _, exists := orderMap[row.ID]; !exists {
-			orderMap[row.ID] = &models.Order{
-				ID:                row.ID,
-				CorpID:            row.CorpID,
-				CustomerID:        row.CustomerID,
-				CustomerName:      row.CustomerName,
-				CustomerShortName: row.CustomerShortName,
-				OrderNumber:       row.OrderNumber,
-				OrderName:         row.OrderName,
-				ContactID:         row.ContactID,
-				ContactName:       row.ContactName,
-				Status:            models.OrderStatus(row.Status),
-				Priority:          models.Priority(row.Priority),
-				StartDate:         row.StartDate,
-				DueDate:           row.DueDate,
-				Notes:             row.Notes,
-				CreatedAt:         row.CreatedAt,
-				Items:             []models.OrderItem{},
-			}
-		}
-
-		// 组装订单项
-		if row.ItemID != nil {
-			if _, exists := itemMap[*row.ItemID]; !exists {
-				item := &models.OrderItem{
-					ID:             *row.ItemID,
-					OrderID:        row.ID,
-					CorpID:         *row.ItemCorpID,
-					PartName:       *row.PartName,
-					PartNumber:     row.PartNumber,
-					Quantity:       *row.Quantity,
-					ScrapQuantity:  *row.ScrapQuantity,
-					UnitPrice:      *row.UnitPrice,
-					TotalPrice:     *row.TotalPrice,
-					Status:         models.OrderStatus(*row.ItemStatus),
-					DrawingData:    row.DrawingData,
-					Notes:          row.ItemNotes,
-					CompletionDate: row.CompletionDate,
-					StartDate:      row.ItemStartDate,
-					DueDate:        row.ItemDueDate,
-					DeliveredQty:   row.DeliveredQuantity,
-					ToolCost:       row.ToolCost,
-					FixtureCost:    row.FixtureCost,
-					MaterialCost:   row.MaterialCost,
-					OtherCost:      row.OtherCost,
-					ItemNotes:      row.ItemNotes2,
-					Processes:      []models.OrderProcess{},
-				}
-				itemMap[*row.ItemID] = item
-				orderMap[row.ID].Items = append(orderMap[row.ID].Items, *item)
-			}
-		}
+	// 收集零件ID
+	itemIDs := make([]int64, len(items))
+	for i, it := range items {
+		itemIDs[i] = it.ID
 	}
 
-	// 5. 单独查询工序并组装
-	itemIDs := make([]int64, 0)
-	for id := range itemMap {
-		itemIDs = append(itemIDs, id)
-	}
-
+	// 5. 查询工序信息
+	var processes []models.OrderProcess
 	if len(itemIDs) > 0 {
-		var processes []models.OrderProcess
-		err := r.db.Where("order_item_id IN ?", itemIDs).Order("sort_order ASC").Find(&processes).Error
-		if err != nil {
+		if err := r.db.Where("order_item_id IN ?", itemIDs).Order("sort_order ASC").Find(&processes).Error; err != nil {
 			return OrderListResult{}, err
 		}
-
-		// 将工序添加到对应的 order.Items 中（直接修改 order.Items）
-		for _, p := range processes {
-			for _, order := range orderMap {
-				for i := range order.Items {
-					if order.Items[i].ID == p.OrderItemID {
-						order.Items[i].Processes = append(order.Items[i].Processes, p)
-					}
-				}
-			}
-		}
 	}
 
-	// 转换为数组
-	orders := make([]models.Order, 0, len(orderMap))
-	for _, order := range orderMap {
-		orders = append(orders, *order)
+	// 6. 组装数据
+	// 构建工序映射
+	processMap := make(map[int64][]models.OrderProcess)
+	for _, p := range processes {
+		processMap[p.OrderItemID] = append(processMap[p.OrderItemID], p)
+	}
+
+	// 构建零件映射
+	itemMap := make(map[int64][]models.OrderItem)
+	for _, it := range items {
+		it.Processes = processMap[it.ID]
+		itemMap[it.OrderID] = append(itemMap[it.OrderID], it)
+	}
+
+	// 组装订单
+	for i := range orders {
+		orders[i].Items = itemMap[orders[i].ID]
 	}
 
 	return OrderListResult{Orders: orders, Total: total}, nil

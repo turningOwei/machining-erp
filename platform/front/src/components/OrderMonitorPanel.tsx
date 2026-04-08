@@ -51,24 +51,14 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
   const [allExpanded, setAllExpanded] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  const sortedOrders = [...orders].sort((a, b) => {
-    // 已完工排最后
-    if (a.status === 'completed' && b.status !== 'completed') return 1;
-    if (b.status === 'completed' && a.status !== 'completed') return -1;
-    // 其他按订单日期排序
-    const dateA = a.start_date || '';
-    const dateB = b.start_date || '';
-    return dateA.localeCompare(dateB);
-  });
-
-  // 如果提供了total，表示服务端分页，直接使用orders
+  // 如果提供了total，表示服务端分页，直接使用orders（后端已排序）
   // 否则使用客户端筛选和分页
   const displayOrders = total !== undefined
     ? orders
     : (() => {
         const filtered = localFilter
-          ? localFilter(sortedOrders, filters, getOrderMaxDueDate)
-          : sortedOrders.filter(o => {
+          ? localFilter(orders, filters, getOrderMaxDueDate)
+          : orders.filter(o => {
               const mDate = getOrderMaxDueDate(o);
               const matchDueDateStart = !filters.dueDateStart || mDate >= filters.dueDateStart;
               const matchDueDateEnd = !filters.dueDateEnd || mDate <= filters.dueDateEnd;
@@ -82,8 +72,8 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
       })();
 
   const totalCount = total !== undefined ? total : (localFilter
-    ? localFilter(sortedOrders, filters, getOrderMaxDueDate).length
-    : sortedOrders.filter(o => {
+    ? localFilter(orders, filters, getOrderMaxDueDate).length
+    : orders.filter(o => {
         const mDate = getOrderMaxDueDate(o);
         const matchDueDateStart = !filters.dueDateStart || mDate >= filters.dueDateStart;
         const matchDueDateEnd = !filters.dueDateEnd || mDate <= filters.dueDateEnd;
