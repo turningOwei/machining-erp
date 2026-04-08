@@ -36,6 +36,7 @@ interface OrderMonitorPanelProps {
   showContactName?: boolean;
   showOrderNotes?: boolean;
   showOutsourcingFee?: boolean;
+  showTotalAmount?: boolean;
   onSearch?: () => void;
   isSearching?: boolean;
   onNewOrder?: () => void;
@@ -44,7 +45,7 @@ interface OrderMonitorPanelProps {
 const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
   title, icon: Icon, orders, filters, setFilters, filterConfigs, localFilter, page, setPage, pageSize, setPageSize, total, themeColor,
   editOrder, deleteOrder, setShowDrawingModal, handleProcessClick, getOrderMaxDueDate,
-  showOrderName = false, showContactName = false, showOrderNotes = false, showOutsourcingFee = true,
+  showOrderName = false, showContactName = false, showOrderNotes = false, showOutsourcingFee = true, showTotalAmount = false,
   onSearch, isSearching = false, onNewOrder
 }) => {
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
@@ -318,6 +319,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       <div className="flex items-center gap-4 text-sm text-zinc-600">
                         {showContactName && <span className="text-zinc-400 text-xs inline-block min-w-[4em]">{order.contact_name || '\u3000\u3000\u3000\u3000'}</span>}
                         {showOrderName && order.order_name && <span className="text-xs font-bold text-zinc-700">{order.order_name}</span>}
+                        {showTotalAmount && order.total_amount > 0 && <span className="text-xs font-bold text-zinc-700">¥{order.total_amount.toLocaleString()}</span>}
                       </div>
                     </td>
                     <td className={`px-6 py-2 text-xs text-zinc-500 whitespace-nowrap shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.bg}`}>

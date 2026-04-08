@@ -160,6 +160,7 @@ export function useOrders(
       priority: order.priority,
       start_date: formatDateForInput(orderStartDate),
       due_date: formatDateForInput(orderDueDate),
+      total_amount: order.total_amount,
       notes: order.notes,
       items: (order.items || []).map(item => ({
         ...item,

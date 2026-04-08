@@ -64,6 +64,7 @@ export interface Order {
   priority: 'low' | 'medium' | 'high';
   start_date?: string;
   due_date: string;
+  total_amount?: number;
   notes?: string;
   created_at?: string;
   items?: OrderItem[];

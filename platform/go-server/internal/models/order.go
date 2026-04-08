@@ -35,6 +35,7 @@ type Order struct {
 	Priority          Priority      `gorm:"column:priority;type:varchar(20);default:medium" json:"priority"`
 	StartDate         *time.Time    `gorm:"column:start_date" json:"start_date"`
 	DueDate           *time.Time    `gorm:"column:due_date" json:"due_date"`
+	TotalAmount       float64       `gorm:"column:total_amount;default:0" json:"total_amount"`
 	Notes             *string       `gorm:"column:notes" json:"notes"`
 	CreatedAt         time.Time     `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	Items             []OrderItem   `gorm:"foreignKey:OrderID" json:"items"`

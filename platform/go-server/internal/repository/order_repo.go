@@ -290,7 +290,7 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 			statuses = append(statuses, string(item.Status))
 		}
 		order.Status = models.OrderStatus(utils.CalculateStatus(statuses))
-		tx.Model(order).Update("status", order.Status)
+		tx.Model(order).Updates(map[string]interface{}{"status": order.Status, "total_amount": order.TotalAmount})
 
 		return nil
 	})
@@ -447,7 +447,7 @@ func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) 
 		var statuses []string
 		tx.Model(&models.OrderItem{}).Where("order_id = ?", order.ID).Pluck("status", &statuses)
 		order.Status = models.OrderStatus(utils.CalculateStatus(statuses))
-		tx.Model(order).Update("status", order.Status)
+		tx.Model(order).Updates(map[string]interface{}{"status": order.Status, "total_amount": order.TotalAmount})
 
 		return nil
 	})

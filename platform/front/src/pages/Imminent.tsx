@@ -17,6 +17,7 @@ interface ImminentProps {
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   getOrderMaxDueDate: (order: Order) => string;
   fetchData: (dateType?: string) => void;
+  fetchOrdersWithFilters: (filters: any, page?: number, pageSize?: number, dateType?: string) => Promise<void>;
 }
 
 const Imminent: React.FC<ImminentProps> = ({
@@ -31,14 +32,15 @@ const Imminent: React.FC<ImminentProps> = ({
   setShowDrawingModal,
   handleProcessClick,
   getOrderMaxDueDate,
-  fetchData
+  fetchData,
+  fetchOrdersWithFilters
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
 
   const handleSearch = async () => {
     setIsSearching(true);
     try {
-      await fetchData('near_due');
+      await fetchOrdersWithFilters(imminentFilters, imminentPage, imminentPageSize, 'near_due');
     } finally {
       setIsSearching(false);
     }
@@ -65,6 +67,7 @@ const Imminent: React.FC<ImminentProps> = ({
       getOrderMaxDueDate={getOrderMaxDueDate}
       showOrderName={true}
       showContactName={true}
+      showTotalAmount={true}
       onSearch={handleSearch}
       isSearching={isSearching}
     />

@@ -75,9 +75,9 @@ const OrderModal: React.FC<OrderModalProps> = ({
 
         <form onSubmit={onSubmit} className="p-6 pt-2 space-y-2">
           {/* Common Order Header */}
-          <div className="bg-zinc-50 px-2.5 py-2 rounded-2xl border border-zinc-100 flex items-end gap-3">
-            <div className="grid grid-cols-4 md:grid-cols-[100px_80px_80px_180px_140px_200px_140px] gap-3 flex-1">
-              <div className="relative" ref={customerDropdownRef}>
+          <div className="bg-zinc-50 px-2.5 py-2 rounded-2xl border border-zinc-100">
+            <div className="flex gap-3 items-end">
+              <div className="relative shrink-0 w-[100px]" ref={customerDropdownRef}>
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">选择客户 *</label>
                 <div className="relative">
                   <input
@@ -100,7 +100,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                       }
                     }}
                     onFocus={() => setShowCustomerDropdown(true)}
-                    className={`w-full px-3 py-1.5 pr-8 bg-white border ${formErrors.customer ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]`}
+                    className={`w-full px-3 py-1.5 pr-8 bg-white border ${formErrors.customer ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-xs h-[34px]`}
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +118,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                         .map(c => (
                           <div
                             key={c.id}
-                            className="px-3 py-2 hover:bg-zinc-100 cursor-pointer text-sm"
+                            className="px-3 py-2 hover:bg-zinc-100 cursor-pointer text-xs"
                             onClick={() => {
                               setNewOrder({
                                 ...newOrder,
@@ -152,7 +152,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
                 )}
               </div>
-              <div>
+              <div className="shrink-0 w-[100px]">
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">联系人</label>
                 <select
                   value={newOrder.contact_name || ''}
@@ -164,7 +164,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                     });
                   }}
                   disabled={!newOrder.customer_id}
-                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm disabled:bg-zinc-100 disabled:text-zinc-400 h-[34px]"
+                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-xs disabled:bg-zinc-100 disabled:text-zinc-400 h-[34px]"
                 >
                   <option value="">选择</option>
                   {customers.find(c => Number(c.id) === Number(newOrder.customer_id))?.contacts?.map(ct => (
@@ -172,11 +172,11 @@ const OrderModal: React.FC<OrderModalProps> = ({
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="shrink-0 w-[80px]">
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">优先级</label>
                 <select
                   value={newOrder.priority || 'medium'}
-                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]"
+                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-xs h-[34px]"
                   onChange={e => setNewOrder({ ...newOrder, priority: e.target.value as any })}
                 >
                   <option value="low">较低</option>
@@ -184,17 +184,17 @@ const OrderModal: React.FC<OrderModalProps> = ({
                   <option value="high">紧急</option>
                 </select>
               </div>
-              <div>
+              <div className="shrink-0 w-[150px]">
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单号</label>
                 <input
                   type="text"
                   placeholder="自动生成"
                   value={newOrder.order_number || ''}
-                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]"
+                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-xs h-[34px]"
                   onChange={e => setNewOrder({ ...newOrder, order_number: e.target.value })}
                 />
               </div>
-              <div>
+              <div className="shrink-0 w-[140px]">
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单日期 *</label>
                 <div className="relative flex items-center group cursor-pointer">
                   <Calendar className="absolute left-2.5 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-zinc-900 pointer-events-none transition-colors z-10" />
@@ -202,7 +202,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                     required
                     type="date"
                     value={newOrder.start_date || ''}
-                    className={`w-full pl-8 pr-2 py-1.5 bg-white border ${formErrors.orderDate ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none transition-all cursor-pointer text-sm h-[34px] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
+                    className={`w-full pl-8 pr-2 py-1.5 bg-white border ${formErrors.orderDate ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-200'} rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none transition-all cursor-pointer text-xs h-[34px] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
                     onChange={e => {
                       const newDate = e.target.value;
                       const updatedItems = (newOrder.items || []).map(item => ({
@@ -225,45 +225,57 @@ const OrderModal: React.FC<OrderModalProps> = ({
                   </div>
                 )}
               </div>
-              <div>
+              <div className="shrink-0 w-[160px]">
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单名称</label>
                 <input
                   type="text"
                   placeholder="订单名称..."
                   value={newOrder.order_name || ''}
                   onChange={e => setNewOrder({ ...newOrder, order_name: e.target.value })}
-                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]"
+                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-xs h-[34px]"
                 />
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单备注</label>
-                <input
-                  type="text"
-                  placeholder="备注..."
-                  value={newOrder.notes || ''}
-                  onChange={e => setNewOrder({ ...newOrder, notes: e.target.value })}
-                  className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-sm h-[34px]"
-                />
+              <div className="flex gap-2 items-end flex-1">
+                <div className="shrink-0 w-[90px]">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单总额</label>
+                  <input
+                    type="number"
+                    placeholder="订单总额..."
+                    value={newOrder.total_amount || ''}
+                    onChange={e => setNewOrder({ ...newOrder, total_amount: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-2 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-xs h-[34px]"
+                  />
+                </div>
+                <div className="shrink-0 w-[200px]">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单备注</label>
+                  <input
+                    type="text"
+                    placeholder="备注..."
+                    value={newOrder.notes || ''}
+                    onChange={e => setNewOrder({ ...newOrder, notes: e.target.value })}
+                    className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-xs h-[34px]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const items = [...(newOrder.items || [])];
+                    items.push({
+                      part_name: '',
+                      quantity: 1,
+                      unit_price: 0,
+                      processes: [],
+                      start_date: newOrder.start_date || ''
+                    });
+                    setNewOrder({ ...newOrder, items });
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors whitespace-nowrap h-[34px]"
+                >
+                  <Plus className="w-4 h-4" />
+                  添加一行
+                </button>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                const items = [...(newOrder.items || [])];
-                items.push({
-                  part_name: '',
-                  quantity: 1,
-                  unit_price: 0,
-                  processes: [],
-                  start_date: newOrder.start_date || ''
-                });
-                setNewOrder({ ...newOrder, items });
-              }}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors whitespace-nowrap h-[34px]"
-            >
-              <Plus className="w-4 h-4" />
-              添加一行
-            </button>
           </div>
 
           <div className="space-y-4">

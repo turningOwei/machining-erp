@@ -75,6 +75,7 @@ type CreateOrderRequest struct {
 	Priority          models.Priority `json:"priority"`
 	StartDate         string          `json:"start_date"`
 	DueDate           string          `json:"due_date"`
+	TotalAmount       float64         `json:"total_amount"`
 	Notes             *string         `json:"notes"`
 	Items             []CreateOrderItemRequest `json:"items"`
 }
@@ -179,6 +180,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		StartDate:         parseDate(req.StartDate),
 		DueDate:           parseDate(req.DueDate),
 		Notes:             req.Notes,
+		TotalAmount:       req.TotalAmount,
 	}
 
 	// 转换请求结构体为models
@@ -253,6 +255,7 @@ type UpdateOrderRequest struct {
 	StartDate         string            `json:"start_date"`
 	DueDate           string            `json:"due_date"`
 	Notes             *string           `json:"notes"`
+	TotalAmount       float64           `json:"total_amount"`
 	Status            models.OrderStatus `json:"status"`
 	Items             []CreateOrderItemRequest `json:"items"`
 }
@@ -282,6 +285,7 @@ func (h *OrderHandler) Update(c *gin.Context) {
 		StartDate:         parseDate(req.StartDate),
 		DueDate:           parseDate(req.DueDate),
 		Notes:             req.Notes,
+		TotalAmount:       req.TotalAmount,
 	}
 
 	// 转换请求结构体为models

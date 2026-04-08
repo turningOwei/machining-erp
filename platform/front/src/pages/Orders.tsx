@@ -102,6 +102,7 @@ const Orders: React.FC<OrdersProps> = ({
         showContactName={true}
         showOrderNotes={true}
         showOutsourcingFee={true}
+        showTotalAmount={true}
         onSearch={handleSearch}
         isSearching={isSearching}
         onNewOrder={resetAndOpenModal}

@@ -624,7 +624,8 @@ export default function App() {
       ]);
 
       const ordersData = await ordersRes.json();
-      setOrders(Array.isArray(ordersData) ? ordersData : []);
+      setOrders(Array.isArray(ordersData.data) ? ordersData.data : Array.isArray(ordersData) ? ordersData : []);
+      if (ordersData.total) setOrderTotal(ordersData.total);
       const customersData = await customersRes.json();
       setCustomers(Array.isArray(customersData) ? customersData : []);
       const materialsData = await materialsRes.json();
@@ -641,7 +642,7 @@ export default function App() {
   };
 
   // 带筛选条件的订单查询
-  const fetchOrdersWithFilters = async (filters: typeof orderFilters, page?: number, pageSize?: number) => {
+  const fetchOrdersWithFilters = async (filters: typeof orderFilters, page?: number, pageSize?: number, dateType?: string) => {
     const params = new URLSearchParams();
     if (filters.dueDateStart) params.append('dueDateStart', filters.dueDateStart);
     if (filters.dueDateEnd) params.append('dueDateEnd', filters.dueDateEnd);
@@ -650,6 +651,7 @@ export default function App() {
     if (filters.customerName) params.append('customerName', filters.customerName);
     if (filters.priority) params.append('priority', filters.priority);
     if (filters.status) params.append('status', filters.status);
+    if (dateType) params.append('dateType', dateType);
     if (page) params.append('page', String(page));
     if (pageSize) params.append('pageSize', String(pageSize));
 
@@ -925,6 +927,7 @@ export default function App() {
             setOverduePage={setOverduePage}
             overduePageSize={overduePageSize}
             setOverduePageSize={setOverduePageSize}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
           />
         );
       case 'warning_orders':
@@ -937,6 +940,7 @@ export default function App() {
             setWarningPage={setWarningPage}
             warningPageSize={warningPageSize}
             setWarningPageSize={setWarningPageSize}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
           />
         );
       case 'imminent_orders':
@@ -949,6 +953,7 @@ export default function App() {
             setImminentPage={setImminentPage}
             imminentPageSize={imminentPageSize}
             setImminentPageSize={setImminentPageSize}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
           />
         );
       case 'customers':
