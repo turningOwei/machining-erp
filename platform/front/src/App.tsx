@@ -68,6 +68,18 @@ const Inventory = lazy(() => import('./pages/Inventory'));
 const Finance = lazy(() => import('./pages/Finance'));
 const Rules = lazy(() => import('./pages/Rules'));
 
+// 生产相关页面
+const ProductionDashboard = lazy(() => import('./pages/ProductionDashboard'));
+const ProductionOrders = lazy(() => import('./pages/ProductionOrders'));
+const ProductionOverdue = lazy(() => import('./pages/ProductionOverdue'));
+const ProductionWarning = lazy(() => import('./pages/ProductionWarning'));
+const ProductionImminent = lazy(() => import('./pages/ProductionImminent'));
+
+// 管理相关页面
+const UserManagement = lazy(() => import('./pages/UserManagement'));
+const RoleManagement = lazy(() => import('./pages/RoleManagement'));
+const ResourceManagement = lazy(() => import('./pages/ResourceManagement'));
+
 // 懒加载模态框组件
 const OrderModal = lazy(() => import('./components/OrderModal'));
 const AiDrawingModal = lazy(() => import('./components/AiDrawingModal'));
@@ -195,7 +207,7 @@ export default function App() {
     setAuthUser(null);
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'production_dashboard' | 'orders' | 'inventory' | 'finance' | 'overdue' | 'warning_orders' | 'imminent_orders' | 'advent_rules' | 'customers'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'production_dashboard' | 'orders' | 'production_orders' | 'inventory' | 'finance' | 'overdue' | 'production_overdue' | 'warning_orders' | 'production_warning' | 'imminent_orders' | 'production_imminent' | 'advent_rules' | 'customers'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
   const [dashboardStats, setDashboardStats] = useState<{
@@ -580,6 +592,30 @@ export default function App() {
         fetchOrdersData('near_due');
         if (customers.length === 0) fetchCustomersData();
         break;
+      case 'production_orders':
+        setOrders([]);
+        setCurrentPage(1);
+        fetchOrdersData();
+        if (customers.length === 0) fetchCustomersData();
+        break;
+      case 'production_overdue':
+        setOrders([]);
+        setOverduePage(1);
+        fetchOrdersData('overdue');
+        if (customers.length === 0) fetchCustomersData();
+        break;
+      case 'production_warning':
+        setOrders([]);
+        setWarningPage(1);
+        fetchOrdersData('warning');
+        if (customers.length === 0) fetchCustomersData();
+        break;
+      case 'production_imminent':
+        setOrders([]);
+        setImminentPage(1);
+        fetchOrdersData('near_due');
+        if (customers.length === 0) fetchCustomersData();
+        break;
       case 'customers':
         setCustomers([]);
         fetchCustomersData();
@@ -608,7 +644,7 @@ export default function App() {
 
   // 监听订单管理分页变化
   useEffect(() => {
-    if (!isAuthenticated || activeTab !== 'orders') return;
+    if (!isAuthenticated || (activeTab !== 'orders' && activeTab !== 'production_orders')) return;
     fetchOrdersData();
   }, [currentPage, pageSize]);
 
@@ -995,6 +1031,100 @@ export default function App() {
             fetchData={fetchRulesData}
           />
         );
+      // 生产相关菜单 - 使用独立组件
+      case 'production_dashboard':
+        return (
+          <ProductionDashboard
+            {...baseOrderProps}
+            handleProcessClick={handleDashboardProcessClick}
+            dashboardItems={dashboardItems}
+            dashboardStats={dashboardStats}
+            dashboardPage={dashboardPage}
+            dashboardPageSize={dashboardPageSize}
+            dashboardTotal={dashboardTotal}
+            setDashboardPage={setDashboardPage}
+            setDashboardPageSize={setDashboardPageSize}
+            setActiveTab={setActiveTab}
+            setOrderFilters={setOrderFilters}
+            setAppliedOrderFilters={setAppliedOrderFilters}
+            setCurrentPage={setCurrentPage}
+            resetAndOpenModal={resetAndOpenModal}
+            fetchData={fetchDashboardData}
+            formatDate={formatDate}
+          />
+        );
+      case 'production_orders':
+        return (
+          <ProductionOrders
+            {...baseOrderProps}
+            setOrders={setOrders}
+            orderFilters={orderFilters}
+            setOrderFilters={setOrderFilters}
+            appliedOrderFilters={appliedOrderFilters}
+            setAppliedOrderFilters={setAppliedOrderFilters}
+            showOrderFilters={showOrderFilters}
+            setShowOrderFilters={setShowOrderFilters}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            pageSize={pageSize}
+            setPageSize={setPageSize}
+            orderTotal={orderTotal}
+            orderMgrExpanded={orderMgrExpanded}
+            setOrderMgrExpanded={setOrderMgrExpanded}
+            allOrderMgrExpanded={allOrderMgrExpanded}
+            setAllOrderMgrExpanded={setAllOrderMgrExpanded}
+            resetAndOpenModal={resetAndOpenModal}
+            deleteOrder={deleteOrder}
+            toggleOrderMgr={toggleOrderMgr}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
+          />
+        );
+      case 'production_overdue':
+        return (
+          <ProductionOverdue
+            {...baseOrderProps}
+            overdueFilters={overdueFilters}
+            setOverdueFilters={setOverdueFilters}
+            overduePage={overduePage}
+            setOverduePage={setOverduePage}
+            overduePageSize={overduePageSize}
+            setOverduePageSize={setOverduePageSize}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
+          />
+        );
+      case 'production_warning':
+        return (
+          <ProductionWarning
+            {...orderWithRulesProps}
+            warningFilters={warningFilters}
+            setWarningFilters={setWarningFilters}
+            warningPage={warningPage}
+            setWarningPage={setWarningPage}
+            warningPageSize={warningPageSize}
+            setWarningPageSize={setWarningPageSize}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
+          />
+        );
+      case 'production_imminent':
+        return (
+          <ProductionImminent
+            {...orderWithRulesProps}
+            imminentFilters={imminentFilters}
+            setImminentFilters={setImminentFilters}
+            imminentPage={imminentPage}
+            setImminentPage={setImminentPage}
+            imminentPageSize={imminentPageSize}
+            setImminentPageSize={setImminentPageSize}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
+          />
+        );
+      // 管理相关菜单
+      case 'user_management':
+        return <UserManagement />;
+      case 'role_management':
+        return <RoleManagement />;
+      case 'resource_management':
+        return <ResourceManagement />;
       default:
         return null;
     }
@@ -1065,6 +1195,7 @@ export default function App() {
               setFormErrors={setFormErrors}
               onSubmit={handleCreateOrder}
               isSaving={isSaving}
+              hideCostFields={activeTab.startsWith('production_')}
             />
           </Suspense>
         )}

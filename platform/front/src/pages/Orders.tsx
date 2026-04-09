@@ -33,6 +33,7 @@ interface OrdersProps {
   getOrderMaxDueDate: (order: Order) => string;
   fetchData: () => void;
   fetchOrdersWithFilters: (filters: OrderFilters, page?: number, pageSize?: number) => Promise<void>;
+  hideCostFields?: boolean;
 }
 
 const Orders: React.FC<OrdersProps> = ({
@@ -52,7 +53,8 @@ const Orders: React.FC<OrdersProps> = ({
   handleProcessClick,
   getOrderMaxDueDate,
   fetchData,
-  fetchOrdersWithFilters
+  fetchOrdersWithFilters,
+  hideCostFields = false
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
@@ -101,8 +103,8 @@ const Orders: React.FC<OrdersProps> = ({
         showOrderName={true}
         showContactName={true}
         showOrderNotes={true}
-        showOutsourcingFee={true}
-        showTotalAmount={true}
+        showOutsourcingFee={!hideCostFields}
+        showTotalAmount={!hideCostFields}
         onSearch={handleSearch}
         isSearching={isSearching}
         onNewOrder={resetAndOpenModal}

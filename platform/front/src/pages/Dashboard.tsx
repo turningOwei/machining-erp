@@ -44,6 +44,7 @@ interface DashboardProps {
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   fetchData: () => void;
   formatDate: (date: string | null | undefined) => string;
+  hideCostFields?: boolean;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -64,7 +65,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   setShowDrawingModal,
   handleProcessClick,
   fetchData,
-  formatDate
+  formatDate,
+  hideCostFields = false
 }) => {
   return (
     <div className="flex-1 overflow-y-auto space-y-8 py-4 md:py-8 !w-full !max-w-none !m-0 !p-0">
@@ -112,11 +114,18 @@ const Dashboard: React.FC<DashboardProps> = ({
 
           const handleClick = () => {
             if (stat.action === 'tab' && stat.tab) {
-              setActiveTab(stat.tab);
+              // 生产菜单跳转到对应的生产菜单
+              const targetTab = hideCostFields
+                ? stat.tab.replace('overdue', 'production_overdue')
+                    .replace('warning_orders', 'production_warning')
+                    .replace('imminent_orders', 'production_imminent')
+                : stat.tab;
+              setActiveTab(targetTab);
             } else if (stat.action === 'filter' && stat.filterStatus) {
               setOrderFilters(prev => ({ ...prev, status: stat.filterStatus as any }));
               setAppliedOrderFilters(prev => ({ ...prev, status: stat.filterStatus as any }));
-              setActiveTab('orders');
+              // 生产菜单跳转到生产订单管理
+              setActiveTab(hideCostFields ? 'production_orders' : 'orders');
               setCurrentPage(1);
             }
           };
@@ -218,7 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           >
                             <span className="text-[10px] font-bold">{p.name}</span>
                             <ProcessStatusBadge status={p.status} />
-                            {p.is_outsourced && (
+                            {p.is_outsourced && !hideCostFields && (
                               <div className="flex items-center gap-0.5 text-[8px] bg-zinc-900 text-white px-1.5 rounded-full">
                                 <span>共</span>
                                 {p.outsourcing_fee > 0 && <span>¥{p.outsourcing_fee}</span>}

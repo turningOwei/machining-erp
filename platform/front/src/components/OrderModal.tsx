@@ -417,6 +417,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
                             items[idx] = { ...items[idx], processes };
                             setNewOrder({ ...newOrder, items });
                           }}
+                          hideCostFields={hideCostFields}
                         />
                       </td>
                       {!hideCostFields && (

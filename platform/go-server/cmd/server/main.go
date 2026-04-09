@@ -112,6 +112,9 @@ func main() {
 	financeHandler := handlers.NewFinanceHandler(db)
 	adventRuleHandler := handlers.NewAdventRuleHandler(adventRuleRepo)
 	userSettingsHandler := handlers.NewUserSettingsHandler(userRepo, emailSvc, authService)
+	userHandler := handlers.NewUserHandler(userRepo, roleRepo, authService)
+	roleHandler := handlers.NewRoleHandler(roleRepo, permissionRepo, resourceRepo, authService)
+	resourceHandler := handlers.NewResourceHandler(resourceRepo, authService)
 
 	// 创建 Gin 路由
 	r := gin.New()
@@ -201,6 +204,27 @@ func main() {
 		api.POST("/user/change-password", userSettingsHandler.ChangePassword)
 		api.POST("/user/reset-password", userSettingsHandler.ResetPassword)
 		api.POST("/user/change-email", userSettingsHandler.ChangeEmail)
+
+		// 用户管理
+		api.GET("/users", userHandler.List)
+		api.POST("/users", userHandler.Create)
+		api.PATCH("/users/:id", userHandler.Update)
+		api.DELETE("/users/:id", userHandler.Delete)
+		api.POST("/users/:id/reset-password", userHandler.ResetPassword)
+		api.POST("/users/:id/bind-role", userHandler.BindRole)
+
+		// 角色管理
+		api.GET("/roles", roleHandler.List)
+		api.POST("/roles", roleHandler.Create)
+		api.PATCH("/roles/:id", roleHandler.Update)
+		api.DELETE("/roles/:id", roleHandler.Delete)
+		api.GET("/roles/:id/permissions", roleHandler.GetPermissions)
+		api.GET("/roles/:id/resources", roleHandler.GetAllResources)
+		api.POST("/roles/:id/permissions", roleHandler.BindPermission)
+		api.DELETE("/roles/:id/permissions/:permission_id", roleHandler.UnbindPermission)
+
+		// 资源管理（只读）
+		api.GET("/resources", resourceHandler.List)
 	}
 
 	// 启动服务器

@@ -107,3 +107,43 @@ export interface AdventRule {
   scopeType: 'general' | 'specific';
   ruleType: 'warning' | 'imminent';
 }
+
+export interface User {
+  id?: number;
+  corp_id?: number;
+  role_id?: number;
+  role_type?: 'admin' | 'user';
+  role?: Role;
+  username: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  status: 'active' | 'inactive';
+  expired_at?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Role {
+  id?: number;
+  corp_id?: number;
+  name: string;
+  account_type: 'admin' | 'user';
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Resource {
+  id?: number;
+  resource_type: string;
+  resource_key: string;
+  name: string;
+  parent_id?: number;
+  path?: string;
+  icon?: string;
+  sort_order?: number;
+  platform_type?: string;
+  status?: string;
+  created_at?: string;
+}

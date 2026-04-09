@@ -16,9 +16,10 @@ interface Process {
 interface ProcessCellProps {
   processes: Process[];
   onUpdate: (processes: Process[]) => void;
+  hideCostFields?: boolean;
 }
 
-const ProcessCell: React.FC<ProcessCellProps> = ({ processes, onUpdate }) => {
+const ProcessCell: React.FC<ProcessCellProps> = ({ processes, onUpdate, hideCostFields = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [manualInput, setManualInput] = useState('');
 
@@ -131,7 +132,7 @@ const ProcessCell: React.FC<ProcessCellProps> = ({ processes, onUpdate }) => {
                     />
                     <span className="text-sm font-medium text-zinc-700">是否外协</span>
                   </label>
-                  {p.is_outsourced && (
+                  {p.is_outsourced && !hideCostFields && (
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-zinc-400">¥</span>
                       <input

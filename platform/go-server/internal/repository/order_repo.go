@@ -403,26 +403,40 @@ func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) 
 
 				if items[i].ID != 0 {
 					// 更新已存在的订单项
-					if err := tx.Model(&items[i]).Updates(map[string]interface{}{
+					updateFields := map[string]interface{}{
 						"part_name":       items[i].PartName,
 						"part_number":     items[i].PartNumber,
 						"quantity":        items[i].Quantity,
 						"scrap_quantity":  items[i].ScrapQuantity,
-						"unit_price":      items[i].UnitPrice,
-						"total_price":     items[i].TotalPrice,
 						"status":          items[i].Status,
 						"drawing_data":    items[i].DrawingData,
 						"notes":           items[i].Notes,
 						"start_date":      items[i].StartDate,
 						"due_date":        items[i].DueDate,
 						"delivered_quantity": items[i].DeliveredQty,
-						"tool_cost":       items[i].ToolCost,
-						"fixture_cost":    items[i].FixtureCost,
-						"material_cost":   items[i].MaterialCost,
-						"other_cost":      items[i].OtherCost,
 						"item_notes":      items[i].ItemNotes,
 						"completion_date": items[i].CompletionDate,
-					}).Error; err != nil {
+					}
+					// 只有当费用字段有值时才更新（避免清空原有值）
+					if items[i].UnitPrice != 0 {
+						updateFields["unit_price"] = items[i].UnitPrice
+					}
+					if items[i].TotalPrice != 0 {
+						updateFields["total_price"] = items[i].TotalPrice
+					}
+					if items[i].ToolCost != nil && *items[i].ToolCost != 0 {
+						updateFields["tool_cost"] = items[i].ToolCost
+					}
+					if items[i].FixtureCost != nil && *items[i].FixtureCost != 0 {
+						updateFields["fixture_cost"] = items[i].FixtureCost
+					}
+					if items[i].MaterialCost != nil && *items[i].MaterialCost != 0 {
+						updateFields["material_cost"] = items[i].MaterialCost
+					}
+					if items[i].OtherCost != nil && *items[i].OtherCost != 0 {
+						updateFields["other_cost"] = items[i].OtherCost
+					}
+					if err := tx.Model(&items[i]).Updates(updateFields).Error; err != nil {
 						return err
 					}
 

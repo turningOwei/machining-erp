@@ -18,6 +18,7 @@ interface WarningProps {
   getOrderMaxDueDate: (order: Order) => string;
   fetchData: (dateType?: string) => void;
   fetchOrdersWithFilters: (filters: any, page?: number, pageSize?: number, dateType?: string) => Promise<void>;
+  hideCostFields?: boolean;
 }
 
 const Warning: React.FC<WarningProps> = ({
@@ -33,7 +34,8 @@ const Warning: React.FC<WarningProps> = ({
   handleProcessClick,
   getOrderMaxDueDate,
   fetchData,
-  fetchOrdersWithFilters
+  fetchOrdersWithFilters,
+  hideCostFields = false
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
 
@@ -67,7 +69,8 @@ const Warning: React.FC<WarningProps> = ({
       getOrderMaxDueDate={getOrderMaxDueDate}
       showOrderName={true}
       showContactName={true}
-      showTotalAmount={true}
+      showOutsourcingFee={!hideCostFields}
+      showTotalAmount={!hideCostFields}
       onSearch={handleSearch}
       isSearching={isSearching}
     />

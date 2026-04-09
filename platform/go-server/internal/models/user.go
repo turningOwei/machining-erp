@@ -27,8 +27,9 @@ type User struct {
 	Phone     string       `gorm:"column:phone;size:20" json:"phone,omitempty"`
 	Status    string       `gorm:"column:status;size:20;default:'active'" json:"status"`
 	ExpiredAt *time.Time   `gorm:"column:expired_at" json:"expired_at,omitempty"` // 账号有效期，null表示永久有效
-	CreatedAt time.Time    `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time    `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	CreatedAt *time.Time   `gorm:"column:created_at;autoCreateTime" json:"created_at,omitempty"`
+	UpdatedAt *time.Time   `gorm:"column:updated_at;autoUpdateTime" json:"updated_at,omitempty"`
+	Role      *Role        `gorm:"foreignKey:RoleID" json:"role,omitempty"` // 关联角色
 }
 
 func (User) TableName() string { return "users" }

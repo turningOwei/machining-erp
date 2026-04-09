@@ -47,3 +47,33 @@ func (r *ResourceRepository) GetByPlatformType(platformType models.PlatformType)
 		Find(&resources).Error
 	return resources, err
 }
+
+// List 获取资源列表（带分页和筛选）
+func (r *ResourceRepository) List(page, pageSize int, filters map[string]string) ([]models.Resource, int64, error) {
+	var resources []models.Resource
+	var total int64
+
+	query := r.db.Model(&models.Resource{})
+
+	// 应用筛选
+	if resourceType, ok := filters["resource_type"]; ok && resourceType != "" {
+		query = query.Where("resource_type = ?", resourceType)
+	}
+	if platformType, ok := filters["platform_type"]; ok && platformType != "" {
+		query = query.Where("platform_type = ?", platformType)
+	}
+	if status, ok := filters["status"]; ok && status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	if err := query.Offset(offset).Limit(pageSize).Order("sort_order ASC").Find(&resources).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return resources, total, nil
+}
