@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -38,6 +39,8 @@ type OrderListResult struct {
 }
 
 func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult, error) {
+	startTime := time.Now()
+
 	// 1. 构建基础查询
 	baseQuery := r.db.Model(&models.Order{})
 
@@ -113,9 +116,11 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 
 	// 2. 先计算总数
 	var total int64
+	t1 := time.Now()
 	if err := baseQuery.Count(&total).Error; err != nil {
 		return OrderListResult{}, err
 	}
+	fmt.Printf("[OrderRepo] Count query took %v ms, total=%d\n", time.Since(t1).Milliseconds(), total)
 
 	if total == 0 {
 		return OrderListResult{Orders: []models.Order{}, Total: 0}, nil
@@ -187,9 +192,11 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		orderQuery = orderQuery.Limit(filters.PageSize).Offset(offset)
 	}
 
+	t2 := time.Now()
 	if err := orderQuery.Find(&orders).Error; err != nil {
 		return OrderListResult{}, err
 	}
+	fmt.Printf("[OrderRepo] Orders query took %v ms, count=%d\n", time.Since(t2).Milliseconds(), len(orders))
 
 	if len(orders) == 0 {
 		return OrderListResult{Orders: []models.Order{}, Total: total}, nil
@@ -240,6 +247,7 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		orders[i].Items = itemMap[orders[i].ID]
 	}
 
+	fmt.Printf("[OrderRepo] GetWithFilters total took %v ms\n", time.Since(startTime).Milliseconds())
 	return OrderListResult{Orders: orders, Total: total}, nil
 }
 
@@ -356,6 +364,7 @@ func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) 
 			"customer_id":         order.CustomerID,
 			"customer_name":       order.CustomerName,
 			"customer_short_name": order.CustomerShortName,
+			"order_number":        order.OrderNumber,
 			"order_name":          order.OrderName,
 			"contact_name":        order.ContactName,
 			"priority":            order.Priority,

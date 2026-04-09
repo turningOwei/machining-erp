@@ -29,6 +29,7 @@ func NewOrderHandler(repo *repository.OrderRepository, itemRepo *repository.Orde
 }
 
 func (h *OrderHandler) List(c *gin.Context) {
+	startTime := time.Now()
 	page, _ := strconv.Atoi(c.Query("page"))
 	pageSize, _ := strconv.Atoi(c.Query("pageSize"))
 	if pageSize <= 0 {
@@ -53,6 +54,8 @@ func (h *OrderHandler) List(c *gin.Context) {
 	}
 
 	result, err := h.repo.GetWithFilters(filters)
+	elapsed := time.Since(startTime)
+	fmt.Printf("[Order List] Query took %v ms\n", elapsed.Milliseconds())
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -249,6 +252,7 @@ type UpdateOrderRequest struct {
 	CustomerID        *int64            `json:"customer_id"`
 	CustomerName      *string           `json:"customer_name"`
 	CustomerShortName *string           `json:"customer_short_name"`
+	OrderNumber       string            `json:"order_number"`
 	OrderName         *string           `json:"order_name"`
 	ContactName       *string           `json:"contact_name"`
 	Priority          models.Priority   `json:"priority"`
@@ -269,6 +273,8 @@ func (h *OrderHandler) Update(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("[Order Update] Received order_number: %s\n", req.OrderNumber)
+
 	if req.StartDate == "" || req.DueDate == "" {
 		c.JSON(400, gin.H{"error": "start_date and due_date cannot be empty"})
 		return
@@ -279,6 +285,7 @@ func (h *OrderHandler) Update(c *gin.Context) {
 		CustomerID:        req.CustomerID,
 		CustomerName:      req.CustomerName,
 		CustomerShortName: req.CustomerShortName,
+		OrderNumber:       req.OrderNumber,
 		OrderName:         req.OrderName,
 		ContactName:       req.ContactName,
 		Priority:          req.Priority,
