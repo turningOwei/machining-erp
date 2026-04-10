@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronUp, ChevronDown, Settings, Eye, FileText, LucideIcon, Search, RefreshCw, Trash2, Plus } from 'lucide-react';
+import { ChevronUp, ChevronDown, Settings, Eye, FileText, LucideIcon, Search, RefreshCw, Trash2, Plus, FileCheck } from 'lucide-react';
 import { Order } from '../types';
 import { formatDate, PROCESS_COLORS, ProcessStatusBadge, StatusBadge, PriorityBadge } from './shared';
 import Pagination from './Pagination';
@@ -40,13 +40,19 @@ interface OrderMonitorPanelProps {
   onSearch?: () => void;
   isSearching?: boolean;
   onNewOrder?: () => void;
+  // 送货管理模式
+  deliveryMode?: boolean;
+  selectedOrderId?: number | null;
+  onSelectOrder?: (orderId: number | null) => void;
+  onPreviewDelivery?: () => void;
 }
 
 const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
   title, icon: Icon, orders, filters, setFilters, filterConfigs, localFilter, page, setPage, pageSize, setPageSize, total, themeColor,
   editOrder, deleteOrder, setShowDrawingModal, handleProcessClick, getOrderMaxDueDate,
   showOrderName = false, showContactName = false, showOrderNotes = false, showOutsourcingFee = true, showTotalAmount = false,
-  onSearch, isSearching = false, onNewOrder
+  onSearch, isSearching = false, onNewOrder,
+  deliveryMode = false, selectedOrderId, onSelectOrder, onPreviewDelivery
 }) => {
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
@@ -107,8 +113,9 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
     blue: { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', sep: 'border-blue-200', sepHex: '#93c5fd', pseudoSep: 'after:bg-blue-300', headText: 'text-blue-900', headBg: 'bg-blue-100', listBorder: 'border-l-blue-500', focus: 'focus:ring-blue-500', pageActive: 'bg-blue-600 text-white shadow-blue-100', pageBtn: 'hover:bg-blue-50' },
     rose: { text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', sep: 'border-rose-300', sepHex: '#fb7185', pseudoSep: 'after:bg-rose-300', headText: 'text-rose-900', headBg: 'bg-rose-100', listBorder: 'border-l-rose-500', focus: 'focus:ring-rose-500', pageActive: 'bg-rose-600 text-white shadow-rose-100', pageBtn: 'hover:bg-rose-50' },
     orange: { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', sep: 'border-orange-300', sepHex: '#fb923c', pseudoSep: 'after:bg-orange-300', headText: 'text-orange-900', headBg: 'bg-orange-100', listBorder: 'border-l-orange-500', focus: 'focus:ring-orange-500', pageActive: 'bg-orange-600 text-white shadow-orange-100', pageBtn: 'hover:bg-orange-50' },
-    amber: { text: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', sep: 'border-amber-300', sepHex: '#fbbf24', pseudoSep: 'after:bg-amber-300', headText: 'text-amber-900', headBg: 'bg-amber-100', listBorder: 'border-l-amber-500', focus: 'focus:ring-amber-500', pageActive: 'bg-amber-600 text-white shadow-amber-100', pageBtn: 'hover:bg-amber-50' }
-  }[themeColor as 'blue' | 'rose' | 'orange' | 'amber'] || { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-100', sep: 'border-zinc-300', sepHex: '#a1a1aa', pseudoSep: 'after:bg-zinc-300', headText: 'text-zinc-900', headBg: 'bg-zinc-50', listBorder: 'border-l-zinc-500', focus: 'focus:ring-zinc-900', pageActive: 'bg-zinc-600 text-white shadow-zinc-100', pageBtn: 'hover:bg-zinc-50' };
+    amber: { text: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', sep: 'border-amber-300', sepHex: '#fbbf24', pseudoSep: 'after:bg-amber-300', headText: 'text-amber-900', headBg: 'bg-amber-100', listBorder: 'border-l-amber-500', focus: 'focus:ring-amber-500', pageActive: 'bg-amber-600 text-white shadow-amber-100', pageBtn: 'hover:bg-amber-50' },
+    emerald: { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', sep: 'border-emerald-200', sepHex: '#6ee7b7', pseudoSep: 'after:bg-emerald-300', headText: 'text-emerald-900', headBg: 'bg-emerald-100', listBorder: 'border-l-emerald-500', focus: 'focus:ring-emerald-500', pageActive: 'bg-emerald-600 text-white shadow-emerald-100', pageBtn: 'hover:bg-emerald-50' }
+  }[themeColor as 'blue' | 'rose' | 'orange' | 'amber' | 'emerald'] || { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-100', sep: 'border-zinc-300', sepHex: '#a1a1aa', pseudoSep: 'after:bg-zinc-300', headText: 'text-zinc-900', headBg: 'bg-zinc-50', listBorder: 'border-l-zinc-500', focus: 'focus:ring-zinc-900', pageActive: 'bg-zinc-600 text-white shadow-zinc-100', pageBtn: 'hover:bg-zinc-50' };
 
   return (
     <div className="flex-1 !w-full flex flex-col min-h-0 animate-in fade-in duration-500 !max-w-none !m-0 !p-0 relative">
@@ -130,21 +137,23 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
             <span className="text-base font-normal text-zinc-500">检测到 {totalCount} 个符合筛选条件的订单</span>
           </h2>
         </div>
-        <button
-          onClick={() => {
-            if (allExpanded) {
-              setExpandedOrders(new Set());
-              setAllExpanded(false);
-            } else {
-              setExpandedOrders(new Set(displayOrders.map(o => o.id)));
-              setAllExpanded(true);
-            }
-          }}
-          className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors flex items-center gap-2"
-        >
-          {allExpanded ? <ChevronUp className="shrink-0 w-4 h-4" /> : <ChevronDown className="shrink-0 w-4 h-4" />}
-          {allExpanded ? '全部收起' : '全部展开'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              if (allExpanded) {
+                setExpandedOrders(new Set());
+                setAllExpanded(false);
+              } else {
+                setExpandedOrders(new Set(displayOrders.map(o => o.id)));
+                setAllExpanded(true);
+              }
+            }}
+            className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors flex items-center gap-2"
+          >
+            {allExpanded ? <ChevronUp className="shrink-0 w-4 h-4" /> : <ChevronDown className="shrink-0 w-4 h-4" />}
+            {allExpanded ? '全部收起' : '全部展开'}
+          </button>
+        </div>
       </div>
 
       {/* Mobile filter toggle */}
@@ -161,6 +170,22 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
 
       {/* Filters */}
       <div className={`${showFilters ? 'flex' : 'hidden'} md:flex px-4 md:px-8 flex-wrap gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm`}>
+        {deliveryMode && onPreviewDelivery && (
+          <div className="space-y-1.5 flex items-end">
+            <button
+              onClick={onPreviewDelivery}
+              disabled={!selectedOrderId}
+              className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${
+                selectedOrderId
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
+              }`}
+            >
+              <FileCheck className="w-4 h-4" />
+              预览送货单
+            </button>
+          </div>
+        )}
         {(filterConfigs || [
           { label: '订单交期', key: 'dueDate', type: 'date' as const, placeholder: '' },
           { label: '订单号', key: 'orderNumber', type: 'text' as const, placeholder: '搜索订单号...' },
@@ -248,9 +273,12 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
 
       {/* Desktop Table View */}
       <div className="hidden md:block flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto shadow-none" style={{ '--sep-color': colors.sepHex } as React.CSSProperties}>
-        <table className={`w-full text-left text-sm table-fixed border-b ${colors.sep}`} style={{ minWidth: showTotalAmount && showOutsourcingFee ? '2100px' : showTotalAmount || showOutsourcingFee ? '1972px' : '1364px' }}>
+        <table className={`w-full text-left text-sm table-fixed border-b ${colors.sep}`} style={{ minWidth: deliveryMode ? '1400px' : (showTotalAmount && showOutsourcingFee ? '2100px' : showTotalAmount || showOutsourcingFee ? '1972px' : '1364px') }}>
           <thead className={`${colors.headBg} sticky top-0 z-20`}>
             <tr className="whitespace-nowrap">
+              {deliveryMode && (
+                <th className={`px-4 py-4 w-12 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}></th>
+              )}
               <th className={`pl-4 pr-6 py-4 font-semibold ${colors.headText} w-[192px] sticky left-0 ${colors.headBg} z-20 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] cursor-pointer hover:brightness-95`}
                   onClick={() => {
                     if (allExpanded) {
@@ -294,7 +322,9 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
               )}
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>完工日期</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-64 font-bold text-sm shadow-[inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>备注</th>
-              <th className={`pl-4 pr-6 py-4 font-bold ${colors.headText} w-20 text-sm text-left sticky right-2 ${colors.headBg} z-20 shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>操作</th>
+              {!deliveryMode && (
+                <th className={`pl-4 pr-6 py-4 font-bold ${colors.headText} w-20 text-sm text-left sticky right-2 ${colors.headBg} z-20 shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>操作</th>
+              )}
               <th className={`w-2 sticky right-0 bg-white z-20 border-none`}></th>
             </tr>
           </thead>
@@ -313,6 +343,17 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                     className={`${colors.bg} border-b ${colors.sep} sticky top-[52px] z-[15] cursor-pointer hover:brightness-95 transition-colors`}
                     onClick={() => toggleOrder(order.id)}
                   >
+                    {deliveryMode && (
+                      <td className={`px-4 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.bg}`} onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedOrderId === order.id}
+                          onChange={() => {}}
+                          onClick={(e) => { e.stopPropagation(); onSelectOrder?.(order.id); }}
+                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded cursor-pointer"
+                        />
+                      </td>
+                    )}
                     <td className={`pl-4 pr-6 py-2 sticky left-0 ${colors.bg} z-[3] shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronUp className={`shrink-0 w-4 h-4 ${colors.text}`} /> : <ChevronDown className={`shrink-0 w-4 h-4 ${colors.text}`} />}
@@ -415,30 +456,43 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className={`pl-4 pr-6 py-2 sticky right-2 ${colors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => editOrder(order)}
-                          className={`p-2 ${colors.text} hover:text-blue-700 transition-colors hover:bg-white rounded-lg`}
-                          title="修改订单"
-                        >
-                          <Settings className="w-4 h-4" />
-                        </button>
-                        {deleteOrder && (
+                    {!deliveryMode && (
+                      <td className={`pl-4 pr-6 py-2 sticky right-2 ${colors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
+                        <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => deleteOrder(order)}
-                            className="p-2 text-zinc-400 hover:text-red-600 transition-colors hover:bg-red-50 rounded-lg"
-                            title="删除"
+                            onClick={() => editOrder(order)}
+                            className={`p-2 ${colors.text} hover:text-blue-700 transition-colors hover:bg-white rounded-lg`}
+                            title="修改订单"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Settings className="w-4 h-4" />
                           </button>
-                        )}
-                      </div>
-                    </td>
+                          {deleteOrder && (
+                            <button
+                              onClick={() => deleteOrder(order)}
+                              className="p-2 text-zinc-400 hover:text-red-600 transition-colors hover:bg-red-50 rounded-lg"
+                              title="删除"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                     <td className="w-2 sticky right-0 bg-white z-10 !border-0"></td>
                   </tr>
                   {isExpanded && sortedItems.map((item) => (
                     <tr key={item.id} className={`hover:${colors.bg}/10 transition-colors group`}>
+                      {deliveryMode && (
+                        <td className={`px-4 py-4 border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`} onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderId === order.id}
+                            onChange={() => {}}
+                            onClick={(e) => { e.stopPropagation(); onSelectOrder?.(order.id); }}
+                            className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className={`pl-4 pr-6 py-4 sticky left-0 bg-white z-[2] border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`}>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-zinc-900 whitespace-nowrap">{item.part_name}</span>
@@ -498,19 +552,21 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       <td className={`px-6 py-4 border-b ${colors.sep}`}>
                         <div className="text-xs text-zinc-500 truncate max-w-[200px]" title={item.notes}>{item.notes || '-'}</div>
                       </td>
-                      <td className={`pl-4 pr-6 py-4 text-left sticky right-2 bg-white group-hover:bg-zinc-50 border-b ${colors.sep} z-[2] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
-                        <div className="flex justify-start gap-2">
-                          {item.drawing_data && (
-                            <button
-                              onClick={() => setShowDrawingModal(item.drawing_data!)}
-                              className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors"
-                              title="查看图纸"
-                            >
-                              <Eye className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                      {!deliveryMode && (
+                        <td className={`pl-4 pr-6 py-4 text-left sticky right-2 bg-white group-hover:bg-zinc-50 border-b ${colors.sep} z-[2] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
+                          <div className="flex justify-start gap-2">
+                            {item.drawing_data && (
+                              <button
+                                onClick={() => setShowDrawingModal(item.drawing_data!)}
+                                className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors"
+                                title="查看图纸"
+                              >
+                                <Eye className="w-5 h-5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                       <td className="w-2 sticky right-0 bg-white z-10 !border-0"></td>
                     </tr>
                   ))}

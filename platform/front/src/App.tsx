@@ -74,6 +74,7 @@ const ProductionOrders = lazy(() => import('./pages/ProductionOrders'));
 const ProductionOverdue = lazy(() => import('./pages/ProductionOverdue'));
 const ProductionWarning = lazy(() => import('./pages/ProductionWarning'));
 const ProductionImminent = lazy(() => import('./pages/ProductionImminent'));
+const ProductionDelivery = lazy(() => import('./pages/ProductionDelivery'));
 
 // 管理相关页面
 const UserManagement = lazy(() => import('./pages/UserManagement'));
@@ -251,6 +252,10 @@ export default function App() {
   const [imminentPage, setImminentPage] = useState(1);
   const [imminentPageSize, setImminentPageSize] = useState(10);
   const [imminentFilters, setImminentFilters] = useState(createEmptyFilters);
+  // 送货管理筛选状态
+  const [deliveryPage, setDeliveryPage] = useState(1);
+  const [deliveryPageSize, setDeliveryPageSize] = useState(10);
+  const [deliveryFilters, setDeliveryFilters] = useState(createEmptyFilters);
   // 订单管理筛选状态
   const [orderFilters, setOrderFilters] = useState(createOrderFilters);
   const [appliedOrderFilters, setAppliedOrderFilters] = useState(createOrderFilters);
@@ -404,13 +409,17 @@ export default function App() {
   };
 
   // 只获取订单数据（订单管理、逾期/告警/临期订单页面使用）
-  const fetchOrdersData = async (dateType?: string) => {
+  const fetchOrdersData = async (dateType?: string, status?: string) => {
     try {
       // 订单管理使用后端分页，其他页面获取全部数据在客户端分页
-      if (!dateType) {
+      if (!dateType && !status) {
         const { data, total } = await fetchOrdersApi(undefined, currentPage, pageSize);
         setOrders(data);
         setOrderTotal(total);
+      } else if (status) {
+        // 送货管理按状态筛选
+        const { data } = await fetchOrdersApi(undefined, 1, 1000, status);
+        setOrders(data);
       } else {
         // 逾期/告警/临期订单获取全部数据
         const { data } = await fetchOrdersApi(dateType, 1, 1000);
@@ -614,6 +623,12 @@ export default function App() {
         setOrders([]);
         setImminentPage(1);
         fetchOrdersData('near_due');
+        if (customers.length === 0) fetchCustomersData();
+        break;
+      case 'production_delivery':
+        setOrders([]);
+        setDeliveryPage(1);
+        fetchOrdersData(undefined, 'completed');
         if (customers.length === 0) fetchCustomersData();
         break;
       case 'customers':
@@ -1115,6 +1130,19 @@ export default function App() {
             setImminentPage={setImminentPage}
             imminentPageSize={imminentPageSize}
             setImminentPageSize={setImminentPageSize}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
+          />
+        );
+      case 'production_delivery':
+        return (
+          <ProductionDelivery
+            {...baseOrderProps}
+            deliveryFilters={deliveryFilters}
+            setDeliveryFilters={setDeliveryFilters}
+            deliveryPage={deliveryPage}
+            setDeliveryPage={setDeliveryPage}
+            deliveryPageSize={deliveryPageSize}
+            setDeliveryPageSize={setDeliveryPageSize}
             fetchOrdersWithFilters={fetchOrdersWithFilters}
           />
         );
