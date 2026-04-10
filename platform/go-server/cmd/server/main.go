@@ -65,6 +65,7 @@ func main() {
 		&models.Role{},
 		&models.Permission{},
 		&models.Resource{},
+		&models.PrintTemplate{},
 	); err != nil {
 		log.Fatalf("Failed to auto migrate: %v", err)
 	}
@@ -82,6 +83,7 @@ func main() {
 	materialRepo := repository.NewMaterialRepository(db)
 	remnantRepo := repository.NewRemnantRepository(db)
 	adventRuleRepo := repository.NewAdventRuleRepository(db)
+	printTemplateRepo := repository.NewPrintTemplateRepository(db)
 
 	// 初始化服务
 	authService := services.NewAuthService(
@@ -111,6 +113,7 @@ func main() {
 	remnantHandler := handlers.NewRemnantHandler(remnantRepo)
 	financeHandler := handlers.NewFinanceHandler(db)
 	adventRuleHandler := handlers.NewAdventRuleHandler(adventRuleRepo)
+	printTemplateHandler := handlers.NewPrintTemplateHandler(printTemplateRepo)
 	userSettingsHandler := handlers.NewUserSettingsHandler(userRepo, emailSvc, authService)
 	userHandler := handlers.NewUserHandler(userRepo, roleRepo, authService)
 	roleHandler := handlers.NewRoleHandler(roleRepo, permissionRepo, resourceRepo, authService)
@@ -198,6 +201,11 @@ func main() {
 		api.POST("/advent-rules", adventRuleHandler.Create)
 		api.PATCH("/advent-rules/:id", adventRuleHandler.Update)
 		api.DELETE("/advent-rules/:id", adventRuleHandler.Delete)
+		// 打印模板
+		api.GET("/print-templates", printTemplateHandler.List)
+		api.POST("/print-templates", printTemplateHandler.Create)
+		api.PATCH("/print-templates/:id", printTemplateHandler.Update)
+		api.DELETE("/print-templates/:id", printTemplateHandler.Delete)
 
 		// 用户设置
 		api.GET("/user/info", userSettingsHandler.GetUserInfo)
@@ -225,6 +233,7 @@ func main() {
 
 		// 资源管理（只读）
 		api.GET("/resources", resourceHandler.List)
+		api.GET("/resources/page-buttons", resourceHandler.GetWithPageResources)
 	}
 
 	// 启动服务器

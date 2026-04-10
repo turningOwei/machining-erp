@@ -71,3 +71,16 @@ func (h *ResourceHandler) List(c *gin.Context) {
 		"pageSize": pageSize,
 	})
 }
+
+// GetWithPageResources 获取有页面资源的资源列表（用于打印模板绑定）
+func (h *ResourceHandler) GetWithPageResources(c *gin.Context) {
+	resources, err := h.resourceRepo.GetWithPageResources()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取资源列表失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": resources,
+	})
+}

@@ -77,3 +77,12 @@ func (r *ResourceRepository) List(page, pageSize int, filters map[string]string)
 
 	return resources, total, nil
 }
+
+// GetWithPageResources 获取page_resources不为空的资源
+func (r *ResourceRepository) GetWithPageResources() ([]models.Resource, error) {
+	var resources []models.Resource
+	err := r.db.Where("status = ? AND page_resources IS NOT NULL AND page_resources != '' AND page_resources != '[]'", "active").
+		Order("sort_order ASC").
+		Find(&resources).Error
+	return resources, err
+}

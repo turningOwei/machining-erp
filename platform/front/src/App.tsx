@@ -80,6 +80,7 @@ const ProductionDelivery = lazy(() => import('./pages/ProductionDelivery'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const RoleManagement = lazy(() => import('./pages/RoleManagement'));
 const ResourceManagement = lazy(() => import('./pages/ResourceManagement'));
+const PrintTemplates = lazy(() => import('./pages/PrintTemplates'));
 
 // 懒加载模态框组件
 const OrderModal = lazy(() => import('./components/OrderModal'));
@@ -224,6 +225,7 @@ export default function App() {
   const [remnants, setRemnants] = useState<Remnant[]>([]);
   const [reconciliation, setReconciliation] = useState<any[]>([]);
   const [adventRules, setAdventRules] = useState<any[]>([]);
+  const [printTemplates, setPrintTemplates] = useState<any[]>([]);
   const [showRuleModal, setShowRuleModal] = useState(false);
   const [ruleFilters, setRuleFilters] = useState({ name: '' });
   const [ruleForm, setRuleForm] = useState<RuleForm>({
@@ -557,6 +559,17 @@ export default function App() {
     }
   };
 
+  // 获取打印模板数据
+  const fetchPrintTemplatesData = async () => {
+    try {
+      const res = await authFetch('/api/platform/print-templates');
+      const result = await res.json();
+      setPrintTemplates(result.data || []);
+    } catch (error) {
+      console.error("Failed to fetch print templates data", error);
+    }
+  };
+
   // 监听菜单切换，按需加载数据
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -647,6 +660,10 @@ export default function App() {
       case 'advent_rules':
         setAdventRules([]);
         fetchRulesData();
+        break;
+      case 'print_template':
+        setPrintTemplates([]);
+        fetchPrintTemplatesData();
         break;
     }
   }, [activeTab, isAuthenticated]);
@@ -1153,6 +1170,8 @@ export default function App() {
         return <RoleManagement />;
       case 'resource_management':
         return <ResourceManagement />;
+      case 'print_template':
+        return <PrintTemplates printTemplates={printTemplates} setPrintTemplates={setPrintTemplates} />;
       default:
         return null;
     }

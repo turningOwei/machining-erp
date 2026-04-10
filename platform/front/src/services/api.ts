@@ -240,3 +240,43 @@ export const deleteRuleApi = async (id: number): Promise<void> => {
     throw new Error('删除规则失败');
   }
 };
+
+// 获取打印模板
+export const fetchPrintTemplatesApi = async (name?: string): Promise<any[]> => {
+  const params = name ? `?name=${encodeURIComponent(name)}` : '';
+  const res = await authFetch(`/api/platform/print-templates${params}`);
+  const result = await res.json();
+  return result.data || [];
+};
+
+// 创建打印模板
+export const createPrintTemplateApi = async (template: any): Promise<void> => {
+  const response = await authFetch('/api/platform/print-templates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(template)
+  });
+  if (!response.ok) {
+    throw new Error('创建模板失败');
+  }
+};
+
+// 更新打印模板
+export const updatePrintTemplateApi = async (id: number, template: any): Promise<void> => {
+  const response = await authFetch(`/api/platform/print-templates/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(template)
+  });
+  if (!response.ok) {
+    throw new Error('更新模板失败');
+  }
+};
+
+// 删除打印模板
+export const deletePrintTemplateApi = async (id: number): Promise<void> => {
+  const response = await authFetch(`/api/platform/print-templates/${id}`, { method: 'DELETE' });
+  if (!response.ok) {
+    throw new Error('删除模板失败');
+  }
+};

@@ -65,18 +65,19 @@ const (
 
 // Resource 资源表
 type Resource struct {
-	ID           int64        `gorm:"primaryKey;autoIncrement" json:"id"`
-	ResourceType string       `gorm:"column:resource_type;size:20;not null" json:"resource_type"` // menu, api, button
-	ResourceKey  string       `gorm:"column:resource_key;size:100;uniqueIndex;not null" json:"resource_key"`
-	Name         string       `gorm:"column:name;size:100;not null" json:"name"`
-	ParentID     *int64       `gorm:"column:parent_id;index" json:"parent_id,omitempty"`
-	Path         string       `gorm:"column:path;size:200" json:"path,omitempty"`
-	Icon         string       `gorm:"column:icon;size:50" json:"icon,omitempty"`
-	SortOrder    int          `gorm:"column:sort_order;default:0" json:"sort_order"`
-	PlatformType PlatformType `gorm:"column:platform_type;size:20;default:'business'" json:"platform_type"` // business, manage
-	Status       string       `gorm:"column:status;size:20;default:'active'" json:"status"`
-	CreatedAt    time.Time    `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	Children     []Resource   `gorm:"foreignKey:ParentID" json:"children,omitempty"`
+	ID            int64        `gorm:"primaryKey;autoIncrement" json:"id"`
+	ResourceType  string       `gorm:"column:resource_type;size:20;not null" json:"resource_type"` // menu, api, button
+	ResourceKey   string       `gorm:"column:resource_key;size:100;uniqueIndex;not null" json:"resource_key"`
+	Name          string       `gorm:"column:name;size:100;not null" json:"name"`
+	ParentID      *int64       `gorm:"column:parent_id;index" json:"parent_id,omitempty"`
+	Path          string       `gorm:"column:path;size:200" json:"path,omitempty"`
+	Icon          string       `gorm:"column:icon;size:50" json:"icon,omitempty"`
+	SortOrder     int          `gorm:"column:sort_order;default:0" json:"sort_order"`
+	PageResources string       `gorm:"column:page_resources;type:json" json:"page_resources,omitempty"` // 内部页面资源(按钮等)
+	PlatformType  PlatformType `gorm:"column:platform_type;size:20;default:'business'" json:"platform_type"` // business, manage
+	Status        string       `gorm:"column:status;size:20;default:'active'" json:"status"`
+	CreatedAt     time.Time    `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	Children      []Resource   `gorm:"foreignKey:ParentID" json:"children,omitempty"`
 }
 
 func (Resource) TableName() string { return "resources" }

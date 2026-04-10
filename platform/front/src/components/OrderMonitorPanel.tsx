@@ -173,6 +173,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
         {deliveryMode && onPreviewDelivery && (
           <div className="space-y-1.5 flex items-end">
             <button
+              id="btn-preview-delivery-note"
               onClick={onPreviewDelivery}
               disabled={!selectedOrderId}
               className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${

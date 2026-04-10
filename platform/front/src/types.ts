@@ -143,7 +143,26 @@ export interface Resource {
   path?: string;
   icon?: string;
   sort_order?: number;
+  page_resources?: PageResource[];
   platform_type?: string;
   status?: string;
   created_at?: string;
+}
+
+export interface PageResource {
+  key: string;
+  name: string;
+  type: 'button' | 'link' | 'other';
+}
+
+export interface PrintTemplate {
+  id?: number;
+  corp_id?: number;
+  name: string;
+  menu_route?: string;
+  button_key?: string;
+  button_name?: string;
+  preview?: string;
+  created_at?: string;
+  updated_at?: string;
 }
