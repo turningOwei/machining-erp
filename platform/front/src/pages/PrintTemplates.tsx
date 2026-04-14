@@ -1,6 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { Plus, FileText, Search, Settings, Trash2, RefreshCw, Eye, Upload, Link2, Unlink } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, FileText, Search, Settings, Trash2, RefreshCw, Eye, Upload, Link2, Unlink, Download, Printer } from 'lucide-react';
 import { authFetch } from '../components/shared';
+import LuckyExcel from 'luckyexcel';
+import pako from 'pako';
 
 interface PageResource {
   key: string;
@@ -21,7 +23,8 @@ interface PrintTemplate {
   menu_route: string;
   button_key: string;
   button_name: string;
-  preview: string;
+  template: string;
+  excel_filename?: string;
   created_at: string;
 }
 
@@ -48,12 +51,131 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
     menu_route: '',
     button_key: '',
     button_name: '',
-    preview: ''
+    template: ''
   });
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewContent, setPreviewContent] = useState('');
+  const [previewTemplateId, setPreviewTemplateId] = useState<number | null>(null);
   const [importingTemplateId, setImportingTemplateId] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const excelInputRef = useRef<HTMLInputElement>(null);
+
+  // Toast提示状态
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 1000);
+  };
+
+  // 初始化Luckysheet预览
+  useEffect(() => {
+    if (!showPreviewModal || !previewContent) return;
+
+    const initLuckysheet = async () => {
+      const luckysheet = (window as any).luckysheet;
+      if (!luckysheet) {
+        alert('Luckysheet未加载，请刷新页面重试');
+        return;
+      }
+
+      // 解析Luckysheet数据
+      let sheetData: any;
+      try {
+        // 检查是否是压缩数据
+        if (previewContent.startsWith('GZIP:')) {
+          // 解压数据
+          const base64 = previewContent.substring(5);
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          const decompressed = pako.inflate(bytes, { to: 'string' });
+          sheetData = JSON.parse(decompressed);
+        } else {
+          sheetData = JSON.parse(previewContent);
+        }
+      } catch {
+        const container = document.getElementById('luckysheet-preview-container');
+        if (container) {
+          container.innerHTML = previewContent;
+        }
+        return;
+      }
+
+      // 销毁之前的实例
+      try {
+        luckysheet.destroy();
+      } catch {}
+
+      // 等待DOM准备好
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // LuckyExcel返回的是数组格式
+      const data = Array.isArray(sheetData) ? sheetData : [sheetData];
+
+      // 清除单元格锁定状态，确保可以编辑
+      data.forEach((sheet: any) => {
+        // 清除工作表保护状态
+        sheet.isLocked = false;
+        if (sheet.config) {
+          sheet.config.isLocked = false;
+          sheet.config.lock = false;
+        } else {
+          sheet.config = { isLocked: false, lock: false };
+        }
+        // 清除单元格锁定状态
+        if (sheet.celldata) {
+          sheet.celldata.forEach((cell: any) => {
+            delete cell.is_locked;
+          });
+        }
+      });
+
+      // 初始化Luckysheet
+      luckysheet.create({
+        container: 'luckysheet-preview-container',
+        lang: 'zh',
+        showtoolbar: true,
+        showinfobar: false,
+        showsheetbar: true,
+        showstatisticBar: false,
+        sheetFormulaBar: true,
+        enableAddRow: false,
+        enableAddBackTop: false,
+        userInfo: false,
+        showConfigWindowResize: false,
+        enableContextMenu: true,
+        allowEdit: true,
+        hook: {
+          cellEditBefore: function(_range: any) {
+            return true;
+          },
+          cellDblclick: function(_cell: any, pos: any) {
+            if (pos) {
+              luckysheet.editCell && luckysheet.editCell(pos.r, pos.c);
+            }
+            return true;
+          }
+        },
+        data: data
+      });
+
+      // 添加额外的双击监听
+      setTimeout(() => {
+        const container = document.getElementById('luckysheet-preview-container');
+        if (container) {
+          container.addEventListener('dblclick', () => {
+            try {
+              luckysheet.enterEditMode && luckysheet.enterEditMode();
+            } catch {}
+          });
+        }
+      }, 500);
+    };
+
+    initLuckysheet();
+  }, [showPreviewModal, previewContent]);
 
   // 绑定弹框状态
   const [showBindModal, setShowBindModal] = useState(false);
@@ -61,6 +183,12 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
   const [bindingTemplateName, setBindingTemplateName] = useState('');
   const [resourcesWithButtons, setResourcesWithButtons] = useState<ResourceWithButtons[]>([]);
   const [bindLoading, setBindLoading] = useState(false);
+
+  // 测试打印弹框状态
+  const [showTestPrintModal, setShowTestPrintModal] = useState(false);
+  const [testPrintTemplateId, setTestPrintTemplateId] = useState<number | null>(null);
+  const [testPrintTemplateName, setTestPrintTemplateName] = useState('');
+  const [testPrintData, setTestPrintData] = useState('');
 
   const fetchData = async () => {
     const res = await authFetch('/api/platform/print-templates');
@@ -85,11 +213,11 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
         menu_route: template.menu_route || '',
         button_key: template.button_key || '',
         button_name: template.button_name || '',
-        preview: template.preview || ''
+        template: template.template || ''
       });
     } else {
       setEditingId(null);
-      setForm({ name: '', menu_route: '', button_key: '', button_name: '', preview: '' });
+      setForm({ name: '', menu_route: '', button_key: '', button_name: '', template: '' });
     }
     setShowModal(true);
   };
@@ -147,44 +275,139 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
     }
   };
 
-  const handlePreview = (preview: string) => {
+  const handlePreview = (templateId: number, preview: string) => {
+    setPreviewTemplateId(templateId);
     setPreviewContent(preview);
     setShowPreviewModal(true);
   };
 
-  const handleImport = (templateId: number) => {
-    setImportingTemplateId(templateId);
-    fileInputRef.current?.click();
+  const handleDownloadExcel = async (templateId: number, filename: string) => {
+    try {
+      const res = await authFetch(`/api/platform/print-templates/${templateId}/download-excel`);
+      if (!res.ok) {
+        const result = await res.json();
+        alert(result.error || '下载失败');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      alert('下载失败');
+    }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportExcel = (templateId: number) => {
+    setImportingTemplateId(templateId);
+    excelInputRef.current?.click();
+  };
+
+  const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !importingTemplateId) return;
 
-    const template = printTemplates.find(t => t.id === importingTemplateId);
-    if (!template) return;
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const header = new Uint8Array(arrayBuffer.slice(0, 8));
+      const isOLE2 = header[0] === 0xD0 && header[1] === 0xCF && header[2] === 0x11 && header[3] === 0xE0;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const content = event.target?.result as string;
-      try {
-        await authFetch(`/api/platform/print-templates/${importingTemplateId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: template.name,
-            preview: content
-          })
-        });
-        await fetchData();
-      } catch (err) {
-        alert('导入失败');
+      if (isOLE2) {
+        alert('该Excel文件是加密或旧格式(.xls)文件。\n请：\n1. 用Excel打开文件\n2. 取消密码保护\n3. 另存为.xlsx格式\n4. 重新导入');
+        setImportingTemplateId(null);
+        if (excelInputRef.current) excelInputRef.current.value = '';
+        return;
       }
-    };
-    reader.readAsText(file);
-    setImportingTemplateId(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+
+      LuckyExcel.transformExcelToLucky(arrayBuffer, (exportJson: any) => {
+        if (!exportJson || exportJson.sheets?.length === 0) {
+          alert('Excel解析失败');
+          setImportingTemplateId(null);
+          if (excelInputRef.current) excelInputRef.current.value = '';
+          return;
+        }
+
+        const templateJson = JSON.stringify(exportJson.sheets);
+
+        // 使用pako压缩数据
+        const compressed = pako.deflate(templateJson);
+        const base64 = btoa(String.fromCharCode(...compressed));
+        const compressedData = 'GZIP:' + base64;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('html', compressedData);
+
+        authFetch(`/api/platform/print-templates/${importingTemplateId}/import-excel`, {
+          method: 'POST',
+          body: formData
+        }).then(res => res.json())
+          .then(result => {
+            if (result.error) {
+              alert(result.error || '导入Excel失败');
+              return;
+            }
+            fetchData();
+          })
+          .catch(err => {
+            console.error('上传失败:', err);
+            alert('上传失败');
+          })
+          .finally(() => {
+            setImportingTemplateId(null);
+            if (excelInputRef.current) excelInputRef.current.value = '';
+          });
+      });
+
+    } catch (err: any) {
+      console.error('导入Excel失败:', err);
+      alert('导入Excel失败: ' + (err.message || '未知错误'));
+      setImportingTemplateId(null);
+      if (excelInputRef.current) excelInputRef.current.value = '';
+    }
+  };
+
+  
+  const handleTestPrint = (templateId: number) => {
+    const template = printTemplates.find(t => t.id === templateId);
+    if (!template) return;
+    setTestPrintTemplateId(templateId);
+    setTestPrintTemplateName(template.name);
+    setTestPrintData('{\n  "订单编号": "2024001",\n  "客户名称": "测试客户",\n  "订单金额": "10000"\n}');
+    setShowTestPrintModal(true);
+  };
+
+  const handleGenerateExcel = async () => {
+    if (!testPrintTemplateId) return;
+    try {
+      const data = JSON.parse(testPrintData);
+      const res = await authFetch(`/api/platform/print-templates/${testPrintTemplateId}/generate-excel?timestamp=${new Date().toISOString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) {
+        const result = await res.json();
+        alert(result.error || '生成失败');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `print_${testPrintTemplateName}_${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setShowTestPrintModal(false);
+    } catch (err) {
+      alert('JSON格式错误或生成失败');
     }
   };
 
@@ -311,7 +534,8 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
               <th className="px-6 py-4 font-semibold text-zinc-500">菜单路由</th>
               <th className="px-6 py-4 font-semibold text-zinc-500">按钮标识</th>
               <th className="px-6 py-4 font-semibold text-zinc-500">按钮名称</th>
-              <th className="px-6 py-4 font-semibold text-zinc-500 text-center">模板预览</th>
+              <th className="px-6 py-4 font-semibold text-zinc-500">Excel文件</th>
+              <th className="px-6 py-4 font-semibold text-zinc-500 text-center">模板操作</th>
               <th className="px-6 py-4 font-semibold text-zinc-500 text-left">操作</th>
             </tr>
           </thead>
@@ -341,25 +565,52 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
                     </button>
                   </div>
                 </td>
+                <td className="px-6 py-4">
+                  {template.excel_filename ? (
+                    <span className="text-zinc-600 text-sm">{template.excel_filename}</span>
+                  ) : (
+                    <span className="text-zinc-400 text-sm">-</span>
+                  )}
+                </td>
                 <td className="px-6 py-4 text-center">
                   <div className="flex items-center justify-center gap-2">
-                    {template.preview && (
+                    {(template.template || template.excel_filename) && (
                       <button
-                        onClick={() => handlePreview(template.preview)}
+                        onClick={() => handlePreview(template.id, template.template)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 border border-zinc-200 text-zinc-600 rounded-lg font-bold text-xs hover:bg-zinc-100 transition-all shadow-sm"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         预览
                       </button>
                     )}
+                    {template.excel_filename && (
+                      <button
+                        onClick={() => handleDownloadExcel(template.id, template.excel_filename || 'template.xlsx')}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 rounded-lg font-bold text-xs hover:bg-blue-100 transition-all shadow-sm"
+                        title="下载原始Excel"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        下载
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleImport(template.id)}
+                      onClick={() => handleImportExcel(template.id)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg font-bold text-xs hover:bg-emerald-100 transition-all shadow-sm"
                       title="导入模板文件"
                     >
                       <Upload className="w-3.5 h-3.5" />
                       导入
                     </button>
+                    {template.excel_filename && (
+                      <button
+                        onClick={() => handleTestPrint(template.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 text-purple-600 rounded-lg font-bold text-xs hover:bg-purple-100 transition-all shadow-sm"
+                        title="测试打印"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        打印
+                      </button>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-left">
@@ -459,32 +710,90 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
 
       {/* 预览弹窗 */}
       {showPreviewModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
-            <div className="p-6 border-b border-zinc-200 flex justify-between items-center">
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl h-[85vh] overflow-hidden">
+            <div className="p-4 border-b border-zinc-200 flex justify-between items-center">
               <h3 className="text-xl font-bold text-zinc-900">模板预览</h3>
-              <button
-                onClick={() => setShowPreviewModal(false)}
-                className="text-zinc-400 hover:text-zinc-600"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 overflow-auto max-h-[60vh]">
-              <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-50">
-                {previewContent}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    const luckysheet = (window as any).luckysheet;
+                    console.log('luckysheet对象:', luckysheet);
+                    console.log('previewTemplateId:', previewTemplateId);
+
+                    if (!luckysheet) {
+                      alert('Luckysheet未初始化');
+                      return;
+                    }
+                    if (!previewTemplateId) {
+                      alert('模板ID不存在');
+                      return;
+                    }
+
+                    try {
+                      // 获取Luckysheet当前数据
+                      const sheetData = luckysheet.getAllSheets();
+
+                      if (!sheetData || sheetData.length === 0) {
+                        alert('无法获取表格数据');
+                        return;
+                      }
+
+                      const templateJson = JSON.stringify(sheetData);
+
+                      // 使用pako压缩数据
+                      const compressed = pako.deflate(templateJson);
+                      // 转换为base64字符串
+                      const base64 = btoa(String.fromCharCode(...compressed));
+
+                      // 保存到数据库（压缩后的数据）
+                      const res = await authFetch(`/api/platform/print-templates/${previewTemplateId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ template: 'GZIP:' + base64 })
+                      });
+                      const result = await res.json();
+
+                      if (res.ok) {
+                        showToast('保存成功', 'success');
+                        fetchData();
+                      } else {
+                        showToast(result.error || '保存失败', 'error');
+                      }
+                    } catch (err) {
+                      console.error('保存错误:', err);
+                      showToast('保存失败: ' + (err as any).message, 'error');
+                    }
+                  }}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors"
+                >
+                  保存修改
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPreviewModal(false);
+                    setPreviewTemplateId(null);
+                    if ((window as any).luckysheet) {
+                      (window as any).luckysheet.destroy();
+                    }
+                  }}
+                  className="text-zinc-400 hover:text-zinc-600"
+                >
+                  ✕
+                </button>
               </div>
             </div>
+            <div id="luckysheet-preview-container" className="h-[calc(85vh-60px)] w-full"></div>
           </div>
         </div>
       )}
 
-      {/* 隐藏的文件输入框 */}
+      {/* 隐藏的Excel文件输入框 */}
       <input
         type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        accept=".html,.htm,.txt"
+        ref={excelInputRef}
+        onChange={handleExcelFileChange}
+        accept=".xlsx,.xls"
         className="hidden"
       />
 
@@ -632,6 +941,74 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
                 关闭
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 测试打印弹框 */}
+      {showTestPrintModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+            <div className="p-6 border-b border-zinc-200">
+              <h3 className="text-xl font-bold text-zinc-900">测试打印 - {testPrintTemplateName}</h3>
+              <p className="text-zinc-500 text-sm mt-1">输入JSON数据替换模板变量，生成Excel文件</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-zinc-600 mb-2">变量数据 (JSON格式)</label>
+                <textarea
+                  value={testPrintData}
+                  onChange={(e) => setTestPrintData(e.target.value)}
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 font-mono"
+                  rows={8}
+                  placeholder={'{"key1": "value1", "key2": "value2"}'}
+                />
+              </div>
+              <div className="text-xs text-zinc-400">
+                提示：模板中的 {"{{"}订单编号{"}}"} 将被替换为对应值
+              </div>
+            </div>
+            <div className="p-6 border-t border-zinc-200 flex justify-end gap-3">
+              <button
+                onClick={() => setShowTestPrintModal(false)}
+                className="px-4 py-2 text-zinc-600 hover:text-zinc-900 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleGenerateExcel}
+                className="bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                生成Excel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast提示 */}
+      {toast && (
+        <div
+          className={`fixed inset-0 z-[200] flex items-center justify-center bg-black/30 animate-in fade-in duration-200`}
+        >
+          <div
+            className={`px-8 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-in zoom-in duration-300 ${
+              toast.type === 'success'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-red-500 text-white'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+            <span className="font-medium text-lg">{toast.message}</span>
           </div>
         </div>
       )}

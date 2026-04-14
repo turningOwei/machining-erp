@@ -2,7 +2,16 @@ import React from 'react';
 import { Truck, FileCheck } from 'lucide-react';
 import { Order } from '../types';
 import OrderMonitorPanel from '../components/OrderMonitorPanel';
+import DeliveryPreviewModal from '../components/DeliveryPreviewModal';
 import { simpleFilterConfigs } from '../configs/filterConfigs';
+import { authFetch } from '../components/shared';
+
+interface PrintTemplate {
+  id: number;
+  name: string;
+  template: string;
+  excel_filename?: string;
+}
 
 interface DeliveryProps {
   orders: Order[];
@@ -39,6 +48,9 @@ const Delivery: React.FC<DeliveryProps> = ({
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
   const [selectedOrderId, setSelectedOrderId] = React.useState<number | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = React.useState(false);
+  const [previewOrder, setPreviewOrder] = React.useState<Order | null>(null);
+  const [previewTemplate, setPreviewTemplate] = React.useState<PrintTemplate | null>(null);
 
   const handleSearch = async () => {
     setIsSearching(true);
@@ -54,12 +66,25 @@ const Delivery: React.FC<DeliveryProps> = ({
     setSelectedOrderId(prev => prev === orderId ? null : orderId);
   };
 
-  const handlePreviewDelivery = () => {
+  const handlePreviewDelivery = async () => {
     if (!selectedOrderId) return;
-    const selectedOrder = orders.find(o => o.id === selectedOrderId);
-    if (selectedOrder) {
-      alert(`预览送货单：${selectedOrder.order_number}`);
-      // TODO: 打开送货单预览弹窗
+    const order = orders.find(o => o.id === selectedOrderId);
+    if (!order) return;
+
+    // 查询绑定的模板
+    try {
+      const res = await authFetch('/api/platform/print-templates/by-button?menu_route=production_delivery&button_key=btn-preview-delivery-note');
+      const result = await res.json();
+
+      if (result.data) {
+        setPreviewOrder(order);
+        setPreviewTemplate(result.data);
+        setShowPreviewModal(true);
+      } else {
+        alert(result.error || '未找到绑定的送货单模板，请先在打印模板管理中绑定');
+      }
+    } catch (err) {
+      alert('查询模板失败');
     }
   };
 
@@ -67,34 +92,45 @@ const Delivery: React.FC<DeliveryProps> = ({
   const completedOrders = orders;
 
   return (
-    <OrderMonitorPanel
-      title="送货管理"
-      icon={Truck}
-      orders={completedOrders}
-      filters={deliveryFilters}
-      setFilters={setDeliveryFilters}
-      filterConfigs={simpleFilterConfigs}
-      page={deliveryPage}
-      setPage={setDeliveryPage}
-      pageSize={deliveryPageSize}
-      setPageSize={setDeliveryPageSize}
-      total={completedOrders.length}
-      themeColor="emerald"
-      editOrder={editOrder}
-      setShowDrawingModal={setShowDrawingModal}
-      handleProcessClick={handleProcessClick}
-      getOrderMaxDueDate={getOrderMaxDueDate}
-      showOrderName={true}
-      showContactName={true}
-      showOutsourcingFee={!hideCostFields}
-      showTotalAmount={!hideCostFields}
-      onSearch={handleSearch}
-      isSearching={isSearching}
-      deliveryMode={true}
-      selectedOrderId={selectedOrderId}
-      onSelectOrder={handleSelectOrder}
-      onPreviewDelivery={handlePreviewDelivery}
-    />
+    <>
+      <OrderMonitorPanel
+        title="送货管理"
+        icon={Truck}
+        orders={completedOrders}
+        filters={deliveryFilters}
+        setFilters={setDeliveryFilters}
+        filterConfigs={simpleFilterConfigs}
+        page={deliveryPage}
+        setPage={setDeliveryPage}
+        pageSize={deliveryPageSize}
+        setPageSize={setDeliveryPageSize}
+        total={completedOrders.length}
+        themeColor="emerald"
+        editOrder={editOrder}
+        setShowDrawingModal={setShowDrawingModal}
+        handleProcessClick={handleProcessClick}
+        getOrderMaxDueDate={getOrderMaxDueDate}
+        showOrderName={true}
+        showContactName={true}
+        showOutsourcingFee={!hideCostFields}
+        showTotalAmount={!hideCostFields}
+        onSearch={handleSearch}
+        isSearching={isSearching}
+        deliveryMode={true}
+        selectedOrderId={selectedOrderId}
+        onSelectOrder={handleSelectOrder}
+        onPreviewDelivery={handlePreviewDelivery}
+      />
+
+      {/* 送货单预览弹窗 */}
+      {showPreviewModal && previewOrder && previewTemplate && (
+        <DeliveryPreviewModal
+          order={previewOrder}
+          template={previewTemplate}
+          onClose={() => setShowPreviewModal(false)}
+        />
+      )}
+    </>
   );
 };
 

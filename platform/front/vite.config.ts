@@ -50,7 +50,8 @@ export default defineConfig(({mode}) => {
       },
     },
     esbuild: {
-      drop: ['console', 'debugger'],
+      // drop: ['console', 'debugger'], // 临时禁用以便调试
+      drop: ['debugger'],
       legalComments: 'none',
     },
   };

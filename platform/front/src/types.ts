@@ -156,13 +156,14 @@ export interface PageResource {
 }
 
 export interface PrintTemplate {
-  id?: number;
-  corp_id?: number;
-  name: string;
-  menu_route?: string;
-  button_key?: string;
-  button_name?: string;
-  preview?: string;
-  created_at?: string;
-  updated_at?: string;
+	id?: number;
+	corp_id?: number;
+	name: string;
+	menu_route?: string;
+	button_key?: string;
+	button_name?: string;
+	template?: string;
+	excel_filename?: string;
+	created_at?: string;
+	updated_at?: string;
 }

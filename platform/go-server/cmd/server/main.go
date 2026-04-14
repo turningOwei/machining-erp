@@ -203,9 +203,14 @@ func main() {
 		api.DELETE("/advent-rules/:id", adventRuleHandler.Delete)
 		// 打印模板
 		api.GET("/print-templates", printTemplateHandler.List)
+		api.GET("/print-templates/by-button", printTemplateHandler.FindByButtonKey)  // 必须在 :id 路由之前
 		api.POST("/print-templates", printTemplateHandler.Create)
 		api.PATCH("/print-templates/:id", printTemplateHandler.Update)
 		api.DELETE("/print-templates/:id", printTemplateHandler.Delete)
+		api.POST("/print-templates/:id/import-excel", printTemplateHandler.ImportExcel)
+		api.GET("/print-templates/:id/download-excel", printTemplateHandler.DownloadExcel)
+		api.POST("/print-templates/:id/render", printTemplateHandler.RenderTemplate)
+		api.POST("/print-templates/:id/generate-excel", printTemplateHandler.GeneratePrintExcel)
 
 		// 用户设置
 		api.GET("/user/info", userSettingsHandler.GetUserInfo)
