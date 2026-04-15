@@ -11,7 +11,7 @@ type PrintTemplate struct {
 	MenuRoute     string    `gorm:"column:menu_route;type:varchar(100)" json:"menu_route"`
 	ButtonKey     string    `gorm:"column:button_key;type:varchar(100);index" json:"button_key"`
 	ButtonName    string    `gorm:"column:button_name;type:varchar(50)" json:"button_name"`
-	Template      string    `gorm:"column:template;type:longtext" json:"template"`
+	Template      string    `gorm:"column:template;type:longtext" json:"template"` // gzip压缩的snapshot JSON（base64编码）
 	ExcelData     []byte    `gorm:"column:excel_data;type:longblob" json:"-"`
 	ExcelFilename string    `gorm:"column:excel_filename;type:varchar(255)" json:"excel_filename"`
 	CreatedAt     time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`

@@ -209,7 +209,7 @@ export default function App() {
     setAuthUser(null);
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'production_dashboard' | 'orders' | 'production_orders' | 'inventory' | 'finance' | 'overdue' | 'production_overdue' | 'warning_orders' | 'production_warning' | 'imminent_orders' | 'production_imminent' | 'advent_rules' | 'customers'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'production_dashboard' | 'orders' | 'production_orders' | 'inventory' | 'finance' | 'overdue' | 'production_overdue' | 'warning_orders' | 'production_warning' | 'imminent_orders' | 'production_imminent' | 'advent_rules' | 'customers' | 'print_template' | 'user_management' | 'role_management' | 'resource_management'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
   const [dashboardStats, setDashboardStats] = useState<{

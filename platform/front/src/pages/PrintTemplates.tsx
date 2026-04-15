@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Plus, FileText, Search, Settings, Trash2, RefreshCw, Eye, Upload, Link2, Unlink, Download, Printer } from 'lucide-react';
 import { authFetch } from '../components/shared';
-import LuckyExcel from 'luckyexcel';
+import UniverSheet from '../components/UniverSheet';
 import pako from 'pako';
+import UniverImportExport from '@mertdeveci55/univer-import-export';
 
 interface PageResource {
   key: string;
@@ -54,10 +55,11 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
     template: ''
   });
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [previewContent, setPreviewContent] = useState('');
+  const [previewSheetData, setPreviewSheetData] = useState<any>(null);
   const [previewTemplateId, setPreviewTemplateId] = useState<number | null>(null);
   const [importingTemplateId, setImportingTemplateId] = useState<number | null>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
+  const univerRef = useRef<any>(null);
 
   // Toast提示状态
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -66,116 +68,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
     setToast({ message, type });
     setTimeout(() => setToast(null), 1000);
   };
-
-  // 初始化Luckysheet预览
-  useEffect(() => {
-    if (!showPreviewModal || !previewContent) return;
-
-    const initLuckysheet = async () => {
-      const luckysheet = (window as any).luckysheet;
-      if (!luckysheet) {
-        alert('Luckysheet未加载，请刷新页面重试');
-        return;
-      }
-
-      // 解析Luckysheet数据
-      let sheetData: any;
-      try {
-        // 检查是否是压缩数据
-        if (previewContent.startsWith('GZIP:')) {
-          // 解压数据
-          const base64 = previewContent.substring(5);
-          const binary = atob(base64);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
-          }
-          const decompressed = pako.inflate(bytes, { to: 'string' });
-          sheetData = JSON.parse(decompressed);
-        } else {
-          sheetData = JSON.parse(previewContent);
-        }
-      } catch {
-        const container = document.getElementById('luckysheet-preview-container');
-        if (container) {
-          container.innerHTML = previewContent;
-        }
-        return;
-      }
-
-      // 销毁之前的实例
-      try {
-        luckysheet.destroy();
-      } catch {}
-
-      // 等待DOM准备好
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // LuckyExcel返回的是数组格式
-      const data = Array.isArray(sheetData) ? sheetData : [sheetData];
-
-      // 清除单元格锁定状态，确保可以编辑
-      data.forEach((sheet: any) => {
-        // 清除工作表保护状态
-        sheet.isLocked = false;
-        if (sheet.config) {
-          sheet.config.isLocked = false;
-          sheet.config.lock = false;
-        } else {
-          sheet.config = { isLocked: false, lock: false };
-        }
-        // 清除单元格锁定状态
-        if (sheet.celldata) {
-          sheet.celldata.forEach((cell: any) => {
-            delete cell.is_locked;
-          });
-        }
-      });
-
-      // 初始化Luckysheet
-      luckysheet.create({
-        container: 'luckysheet-preview-container',
-        lang: 'zh',
-        showtoolbar: true,
-        showinfobar: false,
-        showsheetbar: true,
-        showstatisticBar: false,
-        sheetFormulaBar: true,
-        enableAddRow: false,
-        enableAddBackTop: false,
-        userInfo: false,
-        showConfigWindowResize: false,
-        enableContextMenu: true,
-        allowEdit: true,
-        hook: {
-          cellEditBefore: function(_range: any) {
-            return true;
-          },
-          cellDblclick: function(_cell: any, pos: any) {
-            if (pos) {
-              luckysheet.editCell && luckysheet.editCell(pos.r, pos.c);
-            }
-            return true;
-          }
-        },
-        data: data
-      });
-
-      // 添加额外的双击监听
-      setTimeout(() => {
-        const container = document.getElementById('luckysheet-preview-container');
-        if (container) {
-          container.addEventListener('dblclick', () => {
-            try {
-              luckysheet.enterEditMode && luckysheet.enterEditMode();
-            } catch {}
-          });
-        }
-      }, 500);
-    };
-
-    initLuckysheet();
-  }, [showPreviewModal, previewContent]);
 
   // 绑定弹框状态
   const [showBindModal, setShowBindModal] = useState(false);
@@ -228,7 +120,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
       return;
     }
 
-    // 检查模板名称唯一性
     const existingTemplate = printTemplates.find(t => t.id !== editingId && t.name === form.name);
     if (existingTemplate) {
       alert(`模板名称 "${form.name}" 已存在，请使用其他名称`);
@@ -275,10 +166,49 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
     }
   };
 
+  // 预览模板 - 解压数据并用Univer显示
   const handlePreview = (templateId: number, preview: string) => {
     setPreviewTemplateId(templateId);
-    setPreviewContent(preview);
-    setShowPreviewModal(true);
+
+    if (!preview) {
+      alert('模板数据为空');
+      return;
+    }
+
+    try {
+      let workbookData: any;
+
+      // 检查数据格式
+      if (preview.startsWith('GZIP:')) {
+        const base64 = preview.substring(5);
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const decompressed = pako.inflate(bytes, { to: 'string' });
+        workbookData = JSON.parse(decompressed);
+      } else if (preview.startsWith('UNIVER:')) {
+        // 新格式：Univer workbook数据
+        const base64 = preview.substring(7);
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const decompressed = pako.inflate(bytes, { to: 'string' });
+        workbookData = JSON.parse(decompressed);
+      } else {
+        // 直接JSON
+        workbookData = JSON.parse(preview);
+      }
+
+      setPreviewSheetData(workbookData);
+      setShowPreviewModal(true);
+    } catch (err) {
+      console.error('解析模板数据失败:', err);
+      alert('模板数据解析失败');
+    }
   };
 
   const handleDownloadExcel = async (templateId: number, filename: string) => {
@@ -324,21 +254,24 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
         return;
       }
 
-      LuckyExcel.transformExcelToLucky(arrayBuffer, (exportJson: any) => {
-        if (!exportJson || exportJson.sheets?.length === 0) {
+      // 使用 UniverImportExport.transformExcelToUniver 直接转换为Univer格式
+      UniverImportExport.transformExcelToUniver(file, (workbookData: any) => {
+        if (!workbookData) {
           alert('Excel解析失败');
           setImportingTemplateId(null);
           if (excelInputRef.current) excelInputRef.current.value = '';
           return;
         }
 
-        const templateJson = JSON.stringify(exportJson.sheets);
+        console.log('Excel转换成功:', workbookData);
 
-        // 使用pako压缩数据
-        const compressed = pako.deflate(templateJson);
+        // gzip压缩Univer workbook数据
+        const workbookJson = JSON.stringify(workbookData);
+        const compressed = pako.gzip(workbookJson);
         const base64 = btoa(String.fromCharCode(...compressed));
-        const compressedData = 'GZIP:' + base64;
+        const compressedData = 'UNIVER:' + base64;
 
+        // 上传到后端
         const formData = new FormData();
         formData.append('file', file);
         formData.append('html', compressedData);
@@ -352,6 +285,7 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
               alert(result.error || '导入Excel失败');
               return;
             }
+            showToast('导入成功', 'success');
             fetchData();
           })
           .catch(err => {
@@ -362,8 +296,12 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
             setImportingTemplateId(null);
             if (excelInputRef.current) excelInputRef.current.value = '';
           });
+      }, (err: Error) => {
+        console.error('Excel解析失败:', err);
+        alert('Excel解析失败: ' + err.message);
+        setImportingTemplateId(null);
+        if (excelInputRef.current) excelInputRef.current.value = '';
       });
-
     } catch (err: any) {
       console.error('导入Excel失败:', err);
       alert('导入Excel失败: ' + (err.message || '未知错误'));
@@ -372,7 +310,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
     }
   };
 
-  
   const handleTestPrint = (templateId: number) => {
     const template = printTemplates.find(t => t.id === templateId);
     if (!template) return;
@@ -424,7 +361,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
       const res = await authFetch('/api/platform/resources/page-buttons');
       const result = await res.json();
       if (result.data) {
-        // 解析page_resources
         const parsed = result.data.map((r: any) => ({
           ...r,
           page_resources: typeof r.page_resources === 'string' ? JSON.parse(r.page_resources) : r.page_resources
@@ -444,7 +380,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
     const template = printTemplates.find(t => t.id === bindingTemplateId);
     if (!template) return;
 
-    // 检查 button_key 是否已被其他模板绑定
     const existingTemplate = printTemplates.find(t => t.id !== bindingTemplateId && t.button_key === button.key);
     if (existingTemplate) {
       alert(`按钮标识 "${button.key}" 已被模板 "${existingTemplate.name}" 绑定，请先解绑后再使用`);
@@ -456,7 +391,7 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: template.name,  // 保持原有名称不变
+          name: template.name,
           menu_route: resourcesWithButtons.find(r => r.id === resourceId)?.resource_key,
           button_key: button.key,
           button_name: button.name
@@ -468,6 +403,41 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
       await fetchData();
     } catch (err) {
       alert('绑定失败');
+    }
+  };
+
+  // 保存模板修改
+  const handleSaveTemplate = async () => {
+    if (!univerRef.current || !previewTemplateId) return;
+
+    const workbookData = univerRef.current.getRawData();
+    if (!workbookData) {
+      showToast('获取模板数据失败', 'error');
+      return;
+    }
+
+    try {
+      // gzip压缩Univer workbook数据
+      const workbookJson = JSON.stringify(workbookData);
+      const compressed = pako.gzip(workbookJson);
+      const base64 = btoa(String.fromCharCode(...compressed));
+
+      const res = await authFetch(`/api/platform/print-templates/${previewTemplateId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: 'UNIVER:' + base64 })
+      });
+      const result = await res.json();
+
+      if (res.ok) {
+        showToast('保存成功', 'success');
+        fetchData();
+      } else {
+        showToast(result.error || '保存失败', 'error');
+      }
+    } catch (err) {
+      console.error('保存错误:', err);
+      showToast('保存失败', 'error');
     }
   };
 
@@ -574,7 +544,7 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
                 </td>
                 <td className="px-6 py-4 text-center">
                   <div className="flex items-center justify-center gap-2">
-                    {(template.template || template.excel_filename) && (
+                    {template.template && (
                       <button
                         onClick={() => handlePreview(template.id, template.template)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 border border-zinc-200 text-zinc-600 rounded-lg font-bold text-xs hover:bg-zinc-100 transition-all shadow-sm"
@@ -634,7 +604,7 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
             ))}
             {filteredTemplates.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-zinc-400">
+                <td colSpan={7} className="px-6 py-12 text-center text-zinc-400">
                   暂无模板，点击右上角新建
                 </td>
               </tr>
@@ -708,63 +678,15 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
         </div>
       )}
 
-      {/* 预览弹窗 */}
-      {showPreviewModal && (
+      {/* 预览弹窗 - 使用Univer */}
+      {showPreviewModal && previewSheetData && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl h-[85vh] overflow-hidden">
             <div className="p-4 border-b border-zinc-200 flex justify-between items-center">
               <h3 className="text-xl font-bold text-zinc-900">模板预览</h3>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={async () => {
-                    const luckysheet = (window as any).luckysheet;
-                    console.log('luckysheet对象:', luckysheet);
-                    console.log('previewTemplateId:', previewTemplateId);
-
-                    if (!luckysheet) {
-                      alert('Luckysheet未初始化');
-                      return;
-                    }
-                    if (!previewTemplateId) {
-                      alert('模板ID不存在');
-                      return;
-                    }
-
-                    try {
-                      // 获取Luckysheet当前数据
-                      const sheetData = luckysheet.getAllSheets();
-
-                      if (!sheetData || sheetData.length === 0) {
-                        alert('无法获取表格数据');
-                        return;
-                      }
-
-                      const templateJson = JSON.stringify(sheetData);
-
-                      // 使用pako压缩数据
-                      const compressed = pako.deflate(templateJson);
-                      // 转换为base64字符串
-                      const base64 = btoa(String.fromCharCode(...compressed));
-
-                      // 保存到数据库（压缩后的数据）
-                      const res = await authFetch(`/api/platform/print-templates/${previewTemplateId}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ template: 'GZIP:' + base64 })
-                      });
-                      const result = await res.json();
-
-                      if (res.ok) {
-                        showToast('保存成功', 'success');
-                        fetchData();
-                      } else {
-                        showToast(result.error || '保存失败', 'error');
-                      }
-                    } catch (err) {
-                      console.error('保存错误:', err);
-                      showToast('保存失败: ' + (err as any).message, 'error');
-                    }
-                  }}
+                  onClick={handleSaveTemplate}
                   className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors"
                 >
                   保存修改
@@ -773,9 +695,7 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
                   onClick={() => {
                     setShowPreviewModal(false);
                     setPreviewTemplateId(null);
-                    if ((window as any).luckysheet) {
-                      (window as any).luckysheet.destroy();
-                    }
+                    setPreviewSheetData(null);
                   }}
                   className="text-zinc-400 hover:text-zinc-600"
                 >
@@ -783,7 +703,14 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
                 </button>
               </div>
             </div>
-            <div id="luckysheet-preview-container" className="h-[calc(85vh-60px)] w-full"></div>
+            <div className="h-[calc(85vh-60px)] w-full">
+              <UniverSheet
+                ref={univerRef}
+                data={previewSheetData}
+                height="100%"
+                editable={true}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -890,7 +817,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
                               </div>
                               <div className="p-2 space-y-1">
                                 {resource.page_resources?.map((button) => {
-                                  // 检查按钮是否已被其他模板绑定
                                   const boundTemplate = printTemplates.find(t => t.id !== bindingTemplateId && t.button_key === button.key);
                                   const isBound = !!boundTemplate;
                                   const isCurrentBound = printTemplates.find(t => t.id === bindingTemplateId)?.button_key === button.key;

@@ -46,6 +46,7 @@ const Delivery: React.FC<DeliveryProps> = ({
   fetchOrdersWithFilters,
   hideCostFields = false
 }) => {
+  console.log('Delivery component loaded, orders:', orders?.length);
   const [isSearching, setIsSearching] = React.useState(false);
   const [selectedOrderId, setSelectedOrderId] = React.useState<number | null>(null);
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
