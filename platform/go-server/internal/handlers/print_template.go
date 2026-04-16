@@ -6,6 +6,7 @@ import (
 	"log"
 	"machining-erp/internal/models"
 	"machining-erp/internal/repository"
+	"machining-erp/internal/services"
 	"strconv"
 	"strings"
 
@@ -14,11 +15,12 @@ import (
 )
 
 type PrintTemplateHandler struct {
-	repo *repository.PrintTemplateRepository
+	repo           *repository.PrintTemplateRepository
+	deliveryService *services.DeliveryService
 }
 
-func NewPrintTemplateHandler(repo *repository.PrintTemplateRepository) *PrintTemplateHandler {
-	return &PrintTemplateHandler{repo: repo}
+func NewPrintTemplateHandler(repo *repository.PrintTemplateRepository, deliveryService *services.DeliveryService) *PrintTemplateHandler {
+	return &PrintTemplateHandler{repo: repo, deliveryService: deliveryService}
 }
 
 func (h *PrintTemplateHandler) List(c *gin.Context) {
@@ -39,6 +41,8 @@ func (h *PrintTemplateHandler) FindByButtonKey(c *gin.Context) {
 	corpID := c.GetInt64("corpID")
 	menuRoute := c.Query("menu_route")
 	buttonKey := c.Query("button_key")
+	mode := c.Query("mode") // preview 或 config
+	orderIDStr := c.Query("order_id")
 
 	if menuRoute == "" || buttonKey == "" {
 		c.JSON(400, gin.H{"error": "缺少menu_route或button_key参数"})
@@ -55,7 +59,29 @@ func (h *PrintTemplateHandler) FindByButtonKey(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, gin.H{"data": template})
+
+	// 根据 mode 返回不同数据
+	result := gin.H{"data": template, "mode": mode}
+
+	// 返回配置模板ID（用于关联）
+	configTemplate, err := h.repo.FindByButtonKey(corpID, menuRoute, "btn-config-delivery-note")
+	if err == nil && configTemplate != nil {
+		result["config_template_id"] = configTemplate.ID
+	}
+
+	// 预览模式：查询订单数据返回 order
+	if mode == "preview" && orderIDStr != "" && h.deliveryService != nil {
+		orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
+		if err == nil {
+			corpName := c.GetString("corpName") // 从token获取公司名称
+			order, err := h.deliveryService.GetOrderByID(orderID, corpName)
+			if err == nil {
+				result["order"] = order
+			}
+		}
+	}
+
+	c.JSON(200, result)
 }
 
 func (h *PrintTemplateHandler) Create(c *gin.Context) {
@@ -578,6 +604,108 @@ func (h *PrintTemplateHandler) GeneratePrintExcel(c *gin.Context) {
 		filename = filename[:len(filename)-4]
 	}
 	filename = fmt.Sprintf("%s_%s%s", filename, strings.ReplaceAll(strings.Split(c.Query("timestamp"), ".")[0], ":", "-"), ext)
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
+}
+// ExportSnapshot 导出快照数据为Excel（本地导出）
+func (h *PrintTemplateHandler) ExportSnapshot(c *gin.Context) {
+	var req struct {
+		Snapshot map[string]interface{} `json:"snapshot"`
+		Filename string                  `json:"filename"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Snapshot == nil {
+		c.JSON(400, gin.H{"error": "缺少快照数据"})
+		return
+	}
+
+	// 创建新的Excel文件
+	f := excelize.NewFile()
+	defer f.Close()
+
+	sheetName := "Sheet1"
+	sheets := req.Snapshot["sheets"]
+	sheetOrder := req.Snapshot["sheetOrder"]
+
+	// 获取第一个工作表ID
+	var firstSheetID string
+	if sheetOrder != nil {
+		if orderSlice, ok := sheetOrder.([]interface{}); ok && len(orderSlice) > 0 {
+			firstSheetID = fmt.Sprintf("%v", orderSlice[0])
+		}
+	}
+
+	// 获取工作表数据
+	if sheets != nil {
+		if sheetsMap, ok := sheets.(map[string]interface{}); ok {
+			if firstSheetID != "" {
+				if sheetData, ok := sheetsMap[firstSheetID].(map[string]interface{}); ok {
+					sheetName = fmt.Sprintf("%v", sheetData["name"])
+					if sheetName == "" || sheetName == "<nil>" {
+						sheetName = "Sheet1"
+					}
+
+					// 处理单元格数据
+					cellData := sheetData["cellData"]
+					if cellData != nil {
+						if cellDataMap, ok := cellData.(map[string]interface{}); ok {
+							for rowKey, rowData := range cellDataMap {
+								rowNum := 0
+								if parsed, err := strconv.Atoi(rowKey); err == nil {
+									rowNum = parsed + 1 // excelize使用1-based行号
+								}
+
+								if rowDataMap, ok := rowData.(map[string]interface{}); ok {
+									for colKey, cell := range rowDataMap {
+										colNum := 0
+										if parsed, err := strconv.Atoi(colKey); err == nil {
+											colNum = parsed + 1 // excelize使用1-based列号
+										}
+
+										if cellMap, ok := cell.(map[string]interface{}); ok {
+											// 获取单元格值
+											var value string
+											if v, ok := cellMap["v"]; ok {
+												value = fmt.Sprintf("%v", v)
+											}
+
+											// 设置单元格值
+											cellName, err := excelize.CoordinatesToCellName(colNum, rowNum)
+											if err == nil && value != "" {
+												f.SetCellValue(sheetName, cellName, value)
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 保存到内存
+	buf := new(bytes.Buffer)
+	if err := f.Write(buf); err != nil {
+		c.JSON(500, gin.H{"error": "生成Excel失败"})
+		return
+	}
+
+	filename := req.Filename
+	if filename == "" {
+		filename = "export.xlsx"
+	}
+	if !strings.HasSuffix(filename, ".xlsx") {
+		filename += ".xlsx"
+	}
 
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

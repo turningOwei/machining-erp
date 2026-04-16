@@ -45,6 +45,7 @@ interface OrderMonitorPanelProps {
   selectedOrderId?: number | null;
   onSelectOrder?: (orderId: number | null) => void;
   onPreviewDelivery?: () => void;
+  onConfigDelivery?: () => void;
 }
 
 const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
@@ -52,7 +53,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
   editOrder, deleteOrder, setShowDrawingModal, handleProcessClick, getOrderMaxDueDate,
   showOrderName = false, showContactName = false, showOrderNotes = false, showOutsourcingFee = true, showTotalAmount = false,
   onSearch, isSearching = false, onNewOrder,
-  deliveryMode = false, selectedOrderId, onSelectOrder, onPreviewDelivery
+  deliveryMode = false, selectedOrderId, onSelectOrder, onPreviewDelivery, onConfigDelivery
 }) => {
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
@@ -171,7 +172,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
       {/* Filters */}
       <div className={`${showFilters ? 'flex' : 'hidden'} md:flex px-4 md:px-8 flex-wrap gap-4 bg-white p-4 rounded-none border border-zinc-200 shadow-sm`}>
         {deliveryMode && onPreviewDelivery && (
-          <div className="space-y-1.5 flex items-end">
+          <div className="flex items-center gap-3">
             <button
               id="btn-preview-delivery-note"
               onClick={onPreviewDelivery}
@@ -185,6 +186,21 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
               <FileCheck className="w-4 h-4" />
               预览送货单
             </button>
+            {onConfigDelivery && (
+              <button
+                id="btn-config-delivery-note"
+                onClick={onConfigDelivery}
+                disabled={!selectedOrderId}
+                className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${
+                  selectedOrderId
+                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                配置送货单
+              </button>
+            )}
           </div>
         )}
         {(filterConfigs || [

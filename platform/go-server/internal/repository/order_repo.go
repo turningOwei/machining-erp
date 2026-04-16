@@ -493,6 +493,48 @@ func (r *OrderRepository) Delete(id int64) error {
 	})
 }
 
+// GetByID 根据订单ID获取完整订单信息（包含零件和工序）
+func (r *OrderRepository) GetByID(orderID int64) (*models.Order, error) {
+	var order models.Order
+	if err := r.db.First(&order, orderID).Error; err != nil {
+		return nil, err
+	}
+
+	// 查询零件信息
+	var items []models.OrderItem
+	if err := r.db.Where("order_id = ?", orderID).Order("id ASC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	// 收集零件ID
+	itemIDs := make([]int64, len(items))
+	for i, it := range items {
+		itemIDs[i] = it.ID
+	}
+
+	// 查询工序信息
+	var processes []models.OrderProcess
+	if len(itemIDs) > 0 {
+		if err := r.db.Where("order_item_id IN ?", itemIDs).Order("sort_order ASC").Find(&processes).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// 构建工序映射
+	processMap := make(map[int64][]models.OrderProcess)
+	for _, p := range processes {
+		processMap[p.OrderItemID] = append(processMap[p.OrderItemID], p)
+	}
+
+	// 组装零件的工序
+	for i := range items {
+		items[i].Processes = processMap[items[i].ID]
+	}
+
+	order.Items = items
+	return &order, nil
+}
+
 // DashboardItem 工作看板零件数据
 type DashboardItem struct {
 	OrderID           int64                  `json:"order_id"`

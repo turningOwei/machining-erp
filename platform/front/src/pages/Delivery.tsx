@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, FileCheck } from 'lucide-react';
+import { Truck } from 'lucide-react';
 import { Order } from '../types';
 import OrderMonitorPanel from '../components/OrderMonitorPanel';
 import DeliveryPreviewModal from '../components/DeliveryPreviewModal';
@@ -28,6 +28,7 @@ interface DeliveryProps {
   fetchData: () => void;
   fetchOrdersWithFilters: (filters: any, page?: number, pageSize?: number, dateType?: string) => Promise<void>;
   hideCostFields?: boolean;
+  showToast?: (message: string, type: 'success' | 'error') => void;
 }
 
 const Delivery: React.FC<DeliveryProps> = ({
@@ -44,7 +45,8 @@ const Delivery: React.FC<DeliveryProps> = ({
   getOrderMaxDueDate,
   fetchData,
   fetchOrdersWithFilters,
-  hideCostFields = false
+  hideCostFields = false,
+  showToast
 }) => {
   console.log('Delivery component loaded, orders:', orders?.length);
   const [isSearching, setIsSearching] = React.useState(false);
@@ -52,6 +54,14 @@ const Delivery: React.FC<DeliveryProps> = ({
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
   const [previewOrder, setPreviewOrder] = React.useState<Order | null>(null);
   const [previewTemplate, setPreviewTemplate] = React.useState<PrintTemplate | null>(null);
+  const [previewMode, setPreviewMode] = React.useState<'preview' | 'config'>('preview');
+  const [previewTitle, setPreviewTitle] = React.useState('预览送货单');
+  const [previewOrderData, setPreviewOrderData] = React.useState<any>(null);
+  const [showConfigModal, setShowConfigModal] = React.useState(false);
+  const [configOrder, setConfigOrder] = React.useState<Order | null>(null);
+  const [configTemplate, setConfigTemplate] = React.useState<PrintTemplate | null>(null);
+  const [configMode, setConfigMode] = React.useState<'preview' | 'config'>('config');
+  const [configTitle, setConfigTitle] = React.useState('配置送货单');
 
   const handleSearch = async () => {
     setIsSearching(true);
@@ -72,20 +82,45 @@ const Delivery: React.FC<DeliveryProps> = ({
     const order = orders.find(o => o.id === selectedOrderId);
     if (!order) return;
 
-    // 查询绑定的模板
     try {
-      const res = await authFetch('/api/platform/print-templates/by-button?menu_route=production_delivery&button_key=btn-preview-delivery-note');
+      const res = await authFetch(`/api/platform/print-templates/by-button?menu_route=production_delivery&button_key=btn-config-delivery-note&mode=preview&order_id=${selectedOrderId}`);
       const result = await res.json();
 
       if (result.data) {
         setPreviewOrder(order);
         setPreviewTemplate(result.data);
+        setPreviewMode(result.mode || 'preview');
+        setPreviewTitle('预览送货单'); // 使用按钮名称
+        setPreviewOrderData(result.order || null);
         setShowPreviewModal(true);
       } else {
-        alert(result.error || '未找到绑定的送货单模板，请先在打印模板管理中绑定');
+        showToast?.(result.error || '未找到绑定的送货单模板', 'error');
       }
     } catch (err) {
-      alert('查询模板失败');
+      showToast?.('查询模板失败', 'error');
+    }
+  };
+
+  const handleConfigDelivery = async () => {
+    if (!selectedOrderId) return;
+    const order = orders.find(o => o.id === selectedOrderId);
+    if (!order) return;
+
+    try {
+      const res = await authFetch(`/api/platform/print-templates/by-button?menu_route=production_delivery&button_key=btn-config-delivery-note&mode=config`);
+      const result = await res.json();
+
+      if (result.data) {
+        setConfigOrder(order);
+        setConfigTemplate(result.data);
+        setConfigMode(result.mode || 'config');
+        setConfigTitle('配置送货单'); // 使用按钮名称
+        setShowConfigModal(true);
+      } else {
+        showToast?.(result.error || '未找到绑定的送货单配置模板', 'error');
+      }
+    } catch (err) {
+      showToast?.('查询模板失败', 'error');
     }
   };
 
@@ -121,6 +156,7 @@ const Delivery: React.FC<DeliveryProps> = ({
         selectedOrderId={selectedOrderId}
         onSelectOrder={handleSelectOrder}
         onPreviewDelivery={handlePreviewDelivery}
+        onConfigDelivery={handleConfigDelivery}
       />
 
       {/* 送货单预览弹窗 */}
@@ -128,7 +164,21 @@ const Delivery: React.FC<DeliveryProps> = ({
         <DeliveryPreviewModal
           order={previewOrder}
           template={previewTemplate}
+          mode={previewMode}
+          title={previewTitle}
+          orderData={previewOrderData}
           onClose={() => setShowPreviewModal(false)}
+        />
+      )}
+
+      {/* 送货单配置弹窗 */}
+      {showConfigModal && configOrder && configTemplate && (
+        <DeliveryPreviewModal
+          order={configOrder}
+          template={configTemplate}
+          mode={configMode}
+          title={configTitle}
+          onClose={() => setShowConfigModal(false)}
         />
       )}
     </>
