@@ -70,7 +70,7 @@ const UniverSheet = forwardRef((props: UniverSheetProps, ref: React.Ref<any>) =>
       setIsReady(true);
 
     } catch (err) {
-      console.error('Univer初始化错误:', err);
+      // Univer初始化失败
     }
 
     return () => {
@@ -78,7 +78,7 @@ const UniverSheet = forwardRef((props: UniverSheetProps, ref: React.Ref<any>) =>
         try {
           univerAPIRef.current.dispose();
         } catch (e) {
-          console.error('Dispose error:', e);
+          // Dispose失败
         }
       }
       univerAPIRef.current = null;
@@ -138,7 +138,6 @@ const UniverSheet = forwardRef((props: UniverSheetProps, ref: React.Ref<any>) =>
         sheet.insertRows?.(row, count);
         return true;
       } catch (e) {
-        console.error('Insert rows above error:', e);
         return false;
       }
     },
@@ -151,7 +150,6 @@ const UniverSheet = forwardRef((props: UniverSheetProps, ref: React.Ref<any>) =>
         sheet.insertRows?.(row + 1, count);
         return true;
       } catch (e) {
-        console.error('Insert rows below error:', e);
         return false;
       }
     },
@@ -166,7 +164,6 @@ const UniverSheet = forwardRef((props: UniverSheetProps, ref: React.Ref<any>) =>
         sourceRange.copyTo?.(targetRange);
         return true;
       } catch (e) {
-        console.error('Copy row error:', e);
         return false;
       }
     },
@@ -187,15 +184,12 @@ const UniverSheet = forwardRef((props: UniverSheetProps, ref: React.Ref<any>) =>
       const rowCount = sheet.getRowCount?.() || 1000;
       const colCount = sheet.getColumnCount?.() || 26;
 
-      console.log('findCellWithText: rowCount', rowCount, 'colCount', colCount);
-
       // Univer API 使用 0-based 索引
       for (let r = 0; r < rowCount; r++) {
         for (let c = 0; c < colCount; c++) {
           try {
             const value = sheet.getRange(r, c).getValue?.() || '';
             if (value.includes(text)) {
-              console.log('findCellWithText: found at row', r, 'col', c, 'value:', value);
               return { row: r, col: c };
             }
           } catch (e) {
@@ -218,7 +212,6 @@ const UniverSheet = forwardRef((props: UniverSheetProps, ref: React.Ref<any>) =>
         range.setValue(value);
         return true;
       } catch (e) {
-        console.error('Replace placeholders error:', e);
         return false;
       }
     },

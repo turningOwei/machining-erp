@@ -43,25 +43,18 @@ const Delivery: React.FC<DeliveryProps> = ({
   setShowDrawingModal,
   handleProcessClick,
   getOrderMaxDueDate,
-  fetchData,
   fetchOrdersWithFilters,
   hideCostFields = false,
   showToast
 }) => {
-  console.log('Delivery component loaded, orders:', orders?.length);
   const [isSearching, setIsSearching] = React.useState(false);
   const [selectedOrderId, setSelectedOrderId] = React.useState<number | null>(null);
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
   const [previewOrder, setPreviewOrder] = React.useState<Order | null>(null);
   const [previewTemplate, setPreviewTemplate] = React.useState<PrintTemplate | null>(null);
-  const [previewMode, setPreviewMode] = React.useState<'preview' | 'config'>('preview');
-  const [previewTitle, setPreviewTitle] = React.useState('预览送货单');
   const [previewOrderData, setPreviewOrderData] = React.useState<any>(null);
   const [showConfigModal, setShowConfigModal] = React.useState(false);
-  const [configOrder, setConfigOrder] = React.useState<Order | null>(null);
   const [configTemplate, setConfigTemplate] = React.useState<PrintTemplate | null>(null);
-  const [configMode, setConfigMode] = React.useState<'preview' | 'config'>('config');
-  const [configTitle, setConfigTitle] = React.useState('配置送货单');
 
   const handleSearch = async () => {
     setIsSearching(true);
@@ -89,8 +82,6 @@ const Delivery: React.FC<DeliveryProps> = ({
       if (result.data) {
         setPreviewOrder(order);
         setPreviewTemplate(result.data);
-        setPreviewMode(result.mode || 'preview');
-        setPreviewTitle('预览送货单'); // 使用按钮名称
         setPreviewOrderData(result.order || null);
         setShowPreviewModal(true);
       } else {
@@ -102,19 +93,12 @@ const Delivery: React.FC<DeliveryProps> = ({
   };
 
   const handleConfigDelivery = async () => {
-    if (!selectedOrderId) return;
-    const order = orders.find(o => o.id === selectedOrderId);
-    if (!order) return;
-
     try {
       const res = await authFetch(`/api/platform/print-templates/by-button?menu_route=production_delivery&button_key=btn-config-delivery-note&mode=config`);
       const result = await res.json();
 
       if (result.data) {
-        setConfigOrder(order);
         setConfigTemplate(result.data);
-        setConfigMode(result.mode || 'config');
-        setConfigTitle('配置送货单'); // 使用按钮名称
         setShowConfigModal(true);
       } else {
         showToast?.(result.error || '未找到绑定的送货单配置模板', 'error');
@@ -124,7 +108,6 @@ const Delivery: React.FC<DeliveryProps> = ({
     }
   };
 
-  // 后端已通过 status='completed' 筛选
   const completedOrders = orders;
 
   return (
@@ -164,20 +147,19 @@ const Delivery: React.FC<DeliveryProps> = ({
         <DeliveryPreviewModal
           order={previewOrder}
           template={previewTemplate}
-          mode={previewMode}
-          title={previewTitle}
+          mode="preview"
+          title="预览送货单"
           orderData={previewOrderData}
           onClose={() => setShowPreviewModal(false)}
         />
       )}
 
-      {/* 送货单配置弹窗 */}
-      {showConfigModal && configOrder && configTemplate && (
+      {/* 送货单配置弹窗 - 不传订单 */}
+      {showConfigModal && configTemplate && (
         <DeliveryPreviewModal
-          order={configOrder}
           template={configTemplate}
-          mode={configMode}
-          title={configTitle}
+          mode="config"
+          title="配置送货单"
           onClose={() => setShowConfigModal(false)}
         />
       )}

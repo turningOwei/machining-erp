@@ -14,11 +14,11 @@ interface PrintTemplate {
 }
 
 interface DeliveryPreviewModalProps {
-  order: Order;
+  order?: Order; // 可选，配置模式不需要
   template: PrintTemplate;
-  mode?: 'preview' | 'config'; // preview: 只预览, config: 可配置字段
-  title?: string; // 弹窗标题
-  orderData?: any; // 后端返回的完整订单数据（用于预览填充）
+  mode?: 'preview' | 'config';
+  title?: string;
+  orderData?: any;
   onClose: () => void;
 }
 
@@ -91,12 +91,12 @@ const getFieldValue = (obj: any, key: string): string => {
 
 // 检查单元格是否包含零件字段占位符
 const hasItemPlaceholder = (cellValue: string): boolean => {
-  return cellValue && cellValue.includes('{{#items.');
+  return !!cellValue && cellValue.includes('{{#items.');
 };
 
 // 检查单元格是否包含订单字段占位符
 const hasOrderPlaceholder = (cellValue: string): boolean => {
-  return cellValue && cellValue.includes('{{order.');
+  return !!cellValue && cellValue.includes('{{order.');
 };
 
 // 替换订单占位符（包含other字段）
@@ -124,7 +124,6 @@ const replaceOrderPlaceholders = (cellValue: string, orderData: any): string => 
 // 获取其他字段值（从后端返回的other对象获取）
 const getOtherFieldValue = (orderData: any, fieldKey: string): string => {
   const other = orderData.other || {};
-  console.log('getOtherFieldValue: fieldKey', fieldKey, 'orderData.other', other);
   // 转换为小写处理（支持大小写不敏感）
   const key = fieldKey.toLowerCase();
   switch (key) {
@@ -262,7 +261,7 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
 
   // 加载模板数据
   useEffect(() => {
-    if (!template.template) return;
+    if (!template?.template) return;
 
     try {
       let workbookData: any;
@@ -296,11 +295,10 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
 
       // 只设置原始模板数据，不预处理
       setSheetData(workbookData);
-      console.log('Template loaded successfully');
     } catch (err) {
-      console.error('Parse template failed:', err);
+      // 解析失败，静默处理
     }
-  }, [template.template]);
+  }, [template?.template]);
 
   // preview 模式下，使用 Univer API 填充数据
   useEffect(() => {
@@ -320,20 +318,16 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
   // 使用 Univer API 填充数据
   const fillDataWithUniverAPI = () => {
     if (!univerRef.current || !orderData) {
-      console.log('fillDataWithUniverAPI: univerRef or orderData not ready');
       return;
     }
 
     const items = orderData.items || [];
-    console.log('fillDataWithUniverAPI: items count', items.length, 'orderData', orderData);
 
     // 1. 查找包含零件占位符的模板行
     const templateCell = univerRef.current.findCellWithText?.('{{#items.');
-    console.log('fillDataWithUniverAPI: templateCell', templateCell);
 
     if (!templateCell) {
       // 没有零件占位符，只替换订单字段
-      console.log('fillDataWithUniverAPI: no item placeholder, replacing order fields only');
       replaceOrderFields(orderData);
       return;
     }
@@ -350,7 +344,6 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
         const val = univerRef.current.getCellValue?.(templateRow, col) || '';
         if (val) {
           templateRowValues.set(col, val);
-          console.log(`fillDataWithUniverAPI: col ${col} value:`, val);
         }
       } catch (e) {
         break;
@@ -363,7 +356,6 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
         const val = univerRef.current.getCellValue?.(templateRow, col) || '';
         if (val) {
           templateRowValues.set(col, val);
-          console.log(`fillDataWithUniverAPI: col ${col} value:`, val);
         } else if (!templateRowValues.has(col - 1)) {
           // 如果前一列没有内容且当前列也没有，停止
           break;
@@ -373,21 +365,16 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
       }
     }
 
-    console.log('fillDataWithUniverAPI: templateRow', templateRow, 'cols found:', Array.from(templateRowValues.keys()));
-
     // 3. 如果有多个零件，在模板行下方插入 N-1 行
     if (items.length > 1) {
-      console.log('fillDataWithUniverAPI: inserting', items.length - 1, 'rows below row', templateRow);
       // 在模板行下方插入行
-      const result = univerRef.current.insertRowsBelow?.(templateRow, items.length - 1);
-      console.log('fillDataWithUniverAPI: insertRowsBelow result', result);
+      univerRef.current.insertRowsBelow?.(templateRow, items.length - 1);
     }
 
     // 4. 填充每个零件的数据（模板行 + 下方插入的行）
     for (let i = 0; i < items.length; i++) {
       const currentRow = templateRow + i; // 模板行开始，往下填充
       const item = { ...items[i], row_index: i + 1 }; // 添加序号（1-based）
-      console.log('fillDataWithUniverAPI: filling item', i, 'at row', currentRow, 'item data:', item);
 
       // 遍历已找到的有内容的列
       for (const [col, cellValue] of templateRowValues) {
@@ -398,7 +385,6 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
         while ((match = itemRegex.exec(cellValue)) !== null) {
           const fieldKey = match[1];
           const value = getFieldValue(item, fieldKey);
-          console.log(`fillDataWithUniverAPI: replacing ${match[0]} with ${value}`);
           newValue = newValue.replace(match[0], value);
         }
 
@@ -406,11 +392,10 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
         newValue = replaceOrderPlaceholders(newValue, orderData);
 
         if (newValue !== cellValue) {
-          console.log(`fillDataWithUniverAPI: setting cell (${currentRow}, ${col}) to`, newValue);
           try {
             univerRef.current.setCellValue?.(currentRow, col, newValue);
           } catch (e) {
-            console.error('setCellValue error:', e);
+            // 设置失败，静默处理
           }
         }
       }
@@ -502,7 +487,6 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
       await exportUniverToExcel(snapshot, filename);
       showToast('导出成功', 'success');
     } catch (err) {
-      console.error('Export error:', err);
       showToast('导出失败', 'error');
     }
   };
@@ -540,7 +524,6 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
         showToast(result.error || '保存失败', 'error');
       }
     } catch (err) {
-      console.error('Save template error:', err);
       showToast('保存失败', 'error');
     }
   };
@@ -552,17 +535,21 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
         <div className="p-4 border-b border-zinc-200 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <h3 className="text-xl font-bold text-zinc-900">{title}</h3>
-            <span className="text-sm text-zinc-500">订单号: {order.order_number}</span>
+            {order?.order_number && (
+              <span className="text-sm text-zinc-500">订单号: {order.order_number}</span>
+            )}
           </div>
           <div className="flex items-center gap-3">
-            {/* 导出按钮 - preview 和 config 模式都可用 */}
-            <button
-              onClick={handleExportExcel}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              导出Excel
-            </button>
+            {/* 导出按钮 - 仅preview模式 */}
+            {mode === 'preview' && (
+              <button
+                onClick={handleExportExcel}
+                className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                导出Excel
+              </button>
+            )}
             {mode === 'config' && (
               <button
                 onClick={handleSaveTemplate}
@@ -680,6 +667,7 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
               </div>
 
               {/* 零件数据预览 */}
+              {order && (
               <div className="mt-6 pt-4 border-t border-zinc-200">
                 <h4 className="text-sm font-bold text-zinc-700 mb-2">当前订单零件 ({order.items?.length || 0})</h4>
                 <div className="space-y-2">
@@ -698,6 +686,7 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
                   )}
                 </div>
               </div>
+              )}
             </div>
           </div>
           )}
