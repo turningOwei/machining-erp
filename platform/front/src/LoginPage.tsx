@@ -102,7 +102,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (lockedInfo.locked) return;
@@ -252,16 +252,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <div className="relative z-10 w-full max-w-md p-6">
           <div className="w-full">
             {/* 图标和标题 */}
-            <div className="flex flex-col items-center mb-10 text-center">
-              <div className={`mb-6 flex items-center justify-center space-x-6 ${initialAnimation ? 'initial-animate' : ''}`}>
+            <div className="flex flex-col items-center mb-8 sm:mb-10 text-center">
+              <div className={`mb-4 sm:mb-6 flex items-center justify-center space-x-3 sm:space-x-6 ${initialAnimation ? 'initial-animate' : ''}`}>
                 <div className="cursor-pointer group">
-                  <Cog className="cog-icon w-12 h-12 text-blue-500 transition-transform duration-700 group-hover:rotate-180" />
+                  <Cog className="cog-icon w-8 h-8 sm:w-12 sm:h-12 text-blue-500 transition-transform duration-700 group-hover:rotate-180" />
                 </div>
                 <div className="cursor-pointer group">
-                  <Wrench className="wrench-icon w-12 h-12 text-slate-400 transition-transform duration-500 group-hover:rotate-0" />
+                  <Wrench className="wrench-icon w-8 h-8 sm:w-12 sm:h-12 text-slate-400 transition-transform duration-500 group-hover:rotate-0" />
                 </div>
-                <div className={`screwdriver-container relative w-12 h-12 flex items-center justify-center cursor-pointer ${initialAnimation ? 'initial-animate' : ''}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-blue-400">
+                <div className={`screwdriver-container relative w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center cursor-pointer ${initialAnimation ? 'initial-animate' : ''}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 sm:w-12 sm:h-12 text-blue-400">
                     <path d="M9 3h6a1 1 0 0 1 1 1v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z" />
                     <g className="animate-scroll">
                       <path d="M11 5v3" className="stroke-blue-200" />
@@ -273,7 +273,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 </div>
                 {/* 工业机床图标 - 刀具高频微颤效果 */}
                 <div className={`cnc-machine cursor-pointer ${initialAnimation ? 'initial-animate' : ''}`}>
-                  <svg viewBox="0 0 24 24" className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg viewBox="0 0 24 24" className="w-8 h-8 sm:w-12 sm:h-12 text-blue-400" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 20h18M4 20V5a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v15" stroke="currentColor" />
                     <path d="M10.5 4h3v2.5h-3z" fill="currentColor" fillOpacity="0.15" stroke="none" />
                     <rect x="11.2" y="6.5" width="1.6" height="1" fill="currentColor" fillOpacity="0.3" stroke="none" />
@@ -290,15 +290,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              <h1 className="text-3xl font-light tracking-tight text-white">
+              <h1 className="text-2xl sm:text-3xl font-light tracking-tight text-white">
                 裕合森 <span className="font-bold text-blue-500">ERP 系统</span>
               </h1>
               <div className="flex items-center mt-2 justify-center space-x-2">
-                <div className="h-[1px] w-4 bg-blue-500/30"></div>
-                <p className="text-slate-500 text-[10px] tracking-[0.2em] font-medium uppercase">
+                <div className="h-[1px] w-3 sm:w-4 bg-blue-500/30"></div>
+                <p className="text-slate-500 text-[8px] sm:text-[10px] tracking-[0.15em] sm:tracking-[0.2em] font-medium uppercase">
                   YUHESEN Machining Resource Planning
                 </p>
-                <div className="h-[1px] w-4 bg-blue-500/30"></div>
+                <div className="h-[1px] w-3 sm:w-4 bg-blue-500/30"></div>
               </div>
             </div>
 
@@ -379,18 +379,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   ) : (
                     <>
                       <ShieldCheck className="w-[18px] h-[18px]" />
-                      <span className="tracking-widest font-bold">进入 ERP 系统</span>
+                      <span className="tracking-widest font-bold">登录</span>
                     </>
                   )}
                 </button>
               </div>
             </form>
-
-            {/* 底部链接 */}
-            <div className="mt-8 flex justify-between px-2 text-[11px] text-slate-500 font-medium">
-              <a href="#" className="hover:text-blue-400 transition-colors uppercase tracking-wider">忘记密码 / Forgot Password</a>
-              <a href="#" className="hover:text-blue-400 transition-colors uppercase tracking-wider">系统支持 / Support</a>
-            </div>
 
             {/* 版权信息 */}
             <div className="mt-16 text-center opacity-20">
