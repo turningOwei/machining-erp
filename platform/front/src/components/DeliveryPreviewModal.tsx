@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Info, Plus } from 'lucide-react';
+import { X, Info, Plus, Download } from 'lucide-react';
 import { Order } from '../types';
 import { authFetch } from './shared';
 import UniverSheet from './UniverSheet';
 import pako from 'pako';
+import { exportUniverToExcel } from '../utils/univerExport';
 
 interface PrintTemplate {
   id: number;
@@ -483,6 +484,29 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
     insertField(field);
   };
 
+  // 导出Excel
+  const handleExportExcel = async () => {
+    if (!univerRef.current) {
+      showToast('表格未加载完成', 'error');
+      return;
+    }
+
+    const snapshot = univerRef.current.getSnapshot();
+    if (!snapshot) {
+      showToast('获取数据失败', 'error');
+      return;
+    }
+
+    try {
+      const filename = `送货单_${order.order_number || '未知'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      await exportUniverToExcel(snapshot, filename);
+      showToast('导出成功', 'success');
+    } catch (err) {
+      console.error('Export error:', err);
+      showToast('导出失败', 'error');
+    }
+  };
+
   // 保存模板
   const handleSaveTemplate = async () => {
     if (!univerRef.current) return;
@@ -531,6 +555,14 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
             <span className="text-sm text-zinc-500">订单号: {order.order_number}</span>
           </div>
           <div className="flex items-center gap-3">
+            {/* 导出按钮 - preview 和 config 模式都可用 */}
+            <button
+              onClick={handleExportExcel}
+              className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              导出Excel
+            </button>
             {mode === 'config' && (
               <button
                 onClick={handleSaveTemplate}
