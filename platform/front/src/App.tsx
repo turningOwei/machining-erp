@@ -75,6 +75,7 @@ const ProductionOverdue = lazy(() => import('./pages/ProductionOverdue'));
 const ProductionWarning = lazy(() => import('./pages/ProductionWarning'));
 const ProductionImminent = lazy(() => import('./pages/ProductionImminent'));
 const ProductionDelivery = lazy(() => import('./pages/ProductionDelivery'));
+const Reconciliation = lazy(() => import('./pages/Reconciliation'));
 
 // 管理相关页面
 const UserManagement = lazy(() => import('./pages/UserManagement'));
@@ -209,7 +210,7 @@ export default function App() {
     setAuthUser(null);
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'production_dashboard' | 'orders' | 'production_orders' | 'inventory' | 'finance' | 'overdue' | 'production_overdue' | 'warning_orders' | 'production_warning' | 'imminent_orders' | 'production_imminent' | 'advent_rules' | 'customers' | 'print_template' | 'user_management' | 'role_management' | 'resource_management'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'production_dashboard' | 'orders' | 'production_orders' | 'inventory' | 'finance' | 'overdue' | 'production_overdue' | 'warning_orders' | 'production_warning' | 'imminent_orders' | 'production_imminent' | 'advent_rules' | 'customers' | 'reconciliation' | 'print_template' | 'user_management' | 'role_management' | 'resource_management'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
   const [dashboardStats, setDashboardStats] = useState<{
@@ -258,6 +259,10 @@ export default function App() {
   const [deliveryPage, setDeliveryPage] = useState(1);
   const [deliveryPageSize, setDeliveryPageSize] = useState(10);
   const [deliveryFilters, setDeliveryFilters] = useState(createEmptyFilters);
+  // 对账管理筛选状态
+  const [reconciliationPage, setReconciliationPage] = useState(1);
+  const [reconciliationPageSize, setReconciliationPageSize] = useState(10);
+  const [reconciliationFilters, setReconciliationFilters] = useState(createEmptyFilters);
   // 订单管理筛选状态
   const [orderFilters, setOrderFilters] = useState(createOrderFilters);
   const [appliedOrderFilters, setAppliedOrderFilters] = useState(createOrderFilters);
@@ -641,6 +646,12 @@ export default function App() {
       case 'production_delivery':
         setOrders([]);
         setDeliveryPage(1);
+        fetchOrdersData(undefined, 'completed');
+        if (customers.length === 0) fetchCustomersData();
+        break;
+      case 'reconciliation':
+        setOrders([]);
+        setReconciliationPage(1);
         fetchOrdersData(undefined, 'completed');
         if (customers.length === 0) fetchCustomersData();
         break;
@@ -1160,6 +1171,19 @@ export default function App() {
             setDeliveryPage={setDeliveryPage}
             deliveryPageSize={deliveryPageSize}
             setDeliveryPageSize={setDeliveryPageSize}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
+          />
+        );
+      case 'reconciliation':
+        return (
+          <Reconciliation
+            {...baseOrderProps}
+            reconciliationFilters={reconciliationFilters}
+            setReconciliationFilters={setReconciliationFilters}
+            reconciliationPage={reconciliationPage}
+            setReconciliationPage={setReconciliationPage}
+            reconciliationPageSize={reconciliationPageSize}
+            setReconciliationPageSize={setReconciliationPageSize}
             fetchOrdersWithFilters={fetchOrdersWithFilters}
           />
         );
