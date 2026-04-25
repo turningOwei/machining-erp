@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { X, Calendar, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { Order, Customer, OrderItem } from '../types';
@@ -47,6 +47,20 @@ const OrderModal: React.FC<OrderModalProps> = ({
   hideCostFields = false
 }) => {
   if (!show) return null;
+
+  // 订单总额自动计算：零件数量 × 单价的汇总
+  const calculatedTotal = useMemo(() => {
+    const items = newOrder.items || [];
+    return items.reduce((sum, item) => sum + (item.quantity || 0) * (item.unit_price || 0), 0);
+  }, [newOrder.items]);
+
+  // 同步计算总额到 newOrder（仅在值不同时更新，避免循环）
+  useEffect(() => {
+    const currentTotal = newOrder.total_amount || 0;
+    if (Math.abs(calculatedTotal - currentTotal) > 0.01) {
+      setNewOrder({ ...newOrder, total_amount: calculatedTotal });
+    }
+  }, [calculatedTotal, newOrder, setNewOrder]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -238,13 +252,9 @@ const OrderModal: React.FC<OrderModalProps> = ({
               <div className="flex gap-2 items-end flex-1">
                 <div className="shrink-0 w-[90px]">
                   <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单总额</label>
-                  <input
-                    type="number"
-                    placeholder="订单总额..."
-                    value={newOrder.total_amount || ''}
-                    onChange={e => setNewOrder({ ...newOrder, total_amount: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-2 py-1.5 bg-white border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 outline-none text-xs h-[34px]"
-                  />
+                  <div className="w-full px-2 py-1.5 bg-zinc-50 border border-zinc-100 rounded-lg text-zinc-500 font-medium text-xs h-[34px] flex items-center">
+                    ¥{calculatedTotal.toFixed(2)}
+                  </div>
                 </div>
                 <div className="shrink-0 w-[200px]">
                   <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-0.5">订单备注</label>

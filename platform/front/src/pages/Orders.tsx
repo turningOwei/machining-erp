@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Plus, ClipboardList } from 'lucide-react';
 import { Order } from '../types';
 import OrderMonitorPanel from '../components/OrderMonitorPanel';
@@ -59,6 +59,14 @@ const Orders: React.FC<OrdersProps> = ({
   const [isSearching, setIsSearching] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [deletingOrder, setDeletingOrder] = React.useState<Order | null>(null);
+
+  // 组件挂载时检查是否有筛选条件（如从Dashboard点击卡片跳转）
+  useEffect(() => {
+    const hasFilters = orderFilters.status || orderFilters.orderNumber || orderFilters.customerName || orderFilters.partNumber || orderFilters.priority || orderFilters.dueDateStart || orderFilters.dueDateEnd;
+    if (hasFilters) {
+      fetchOrdersWithFilters(orderFilters, currentPage, pageSize);
+    }
+  }, []); // 只在挂载时执行一次
 
   // Handle search with API call
   const handleSearch = async () => {
