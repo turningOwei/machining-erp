@@ -1,8 +1,8 @@
 import React from 'react';
-import { Truck } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { Order } from '../types';
 import OrderMonitorPanel from '../components/OrderMonitorPanel';
-import DeliveryPreviewModal from '../components/DeliveryPreviewModal';
+import ReconciliationPreviewModal from '../components/ReconciliationPreviewModal';
 import { simpleFilterConfigs } from '../configs/filterConfigs';
 import { authFetch } from '../components/shared';
 
@@ -13,14 +13,14 @@ interface PrintTemplate {
   excel_filename?: string;
 }
 
-interface DeliveryProps {
+interface ReconciliationProps {
   orders: Order[];
-  deliveryFilters: any;
-  setDeliveryFilters: (filters: any) => void;
-  deliveryPage: number;
-  setDeliveryPage: (page: number) => void;
-  deliveryPageSize: number;
-  setDeliveryPageSize: (size: number) => void;
+  reconciliationFilters: any;
+  setReconciliationFilters: (filters: any) => void;
+  reconciliationPage: number;
+  setReconciliationPage: (page: number) => void;
+  reconciliationPageSize: number;
+  setReconciliationPageSize: (size: number) => void;
   editOrder: (order: Order) => void;
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
@@ -31,14 +31,14 @@ interface DeliveryProps {
   showToast?: (message: string, type: 'success' | 'error') => void;
 }
 
-const Delivery: React.FC<DeliveryProps> = ({
+const Reconciliation: React.FC<ReconciliationProps> = ({
   orders,
-  deliveryFilters,
-  setDeliveryFilters,
-  deliveryPage,
-  setDeliveryPage,
-  deliveryPageSize,
-  setDeliveryPageSize,
+  reconciliationFilters,
+  setReconciliationFilters,
+  reconciliationPage,
+  setReconciliationPage,
+  reconciliationPageSize,
+  setReconciliationPageSize,
   editOrder,
   setShowDrawingModal,
   handleProcessClick,
@@ -48,9 +48,10 @@ const Delivery: React.FC<DeliveryProps> = ({
   showToast
 }) => {
   const [isSearching, setIsSearching] = React.useState(false);
-  const [selectedOrderId, setSelectedOrderId] = React.useState<number | null>(null);
+  // 多选订单ID
+  const [selectedOrderIds, setSelectedOrderIds] = React.useState<Set<number>>(new Set());
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
-  const [previewOrder, setPreviewOrder] = React.useState<Order | null>(null);
+  const [previewOrders, setPreviewOrders] = React.useState<Order[]>([]);
   const [previewTemplate, setPreviewTemplate] = React.useState<PrintTemplate | null>(null);
   const [previewOrderData, setPreviewOrderData] = React.useState<any>(null);
   const [showConfigModal, setShowConfigModal] = React.useState(false);
@@ -59,49 +60,68 @@ const Delivery: React.FC<DeliveryProps> = ({
   const handleSearch = async () => {
     setIsSearching(true);
     try {
-      const filtersWithStatus = { ...deliveryFilters, status: 'completed' };
-      await fetchOrdersWithFilters(filtersWithStatus, deliveryPage, deliveryPageSize);
+      const filtersWithStatus = { ...reconciliationFilters, status: 'completed' };
+      await fetchOrdersWithFilters(filtersWithStatus, reconciliationPage, reconciliationPageSize);
     } finally {
       setIsSearching(false);
     }
   };
 
+  // 多选订单处理
   const handleSelectOrder = (orderId: number | null) => {
-    setSelectedOrderId(prev => prev === orderId ? null : orderId);
+    if (orderId === null) return;
+    setSelectedOrderIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
   };
 
-  const handlePreviewDelivery = async () => {
-    if (!selectedOrderId) return;
-    const order = orders.find(o => o.id === selectedOrderId);
-    if (!order) return;
+  // 获取选中的订单列表
+  const getSelectedOrders = () => {
+    return orders.filter(o => selectedOrderIds.has(o.id || 0));
+  };
+
+  const handlePreviewReconciliation = async () => {
+    if (selectedOrderIds.size === 0) {
+      showToast?.('请选择订单', 'error');
+      return;
+    }
+
+    const selectedOrders = getSelectedOrders();
+    const orderIdsParam = Array.from(selectedOrderIds).join(',');
 
     try {
-      const res = await authFetch(`/api/platform/print-templates/by-button?menu_route=production_delivery&button_key=btn-config-delivery-note&mode=preview&order_id=${selectedOrderId}`);
+      const res = await authFetch(`/api/platform/print-templates/by-button?menu_route=reconciliation&button_key=btn-config-reconciliation&mode=preview&order_ids=${orderIdsParam}`);
       const result = await res.json();
 
       if (result.data) {
-        setPreviewOrder(order);
+        setPreviewOrders(selectedOrders);
         setPreviewTemplate(result.data);
         setPreviewOrderData(result.order || null);
         setShowPreviewModal(true);
       } else {
-        showToast?.(result.error || '未找到绑定的送货单模板', 'error');
+        showToast?.(result.error || '未找到绑定的对账单模板', 'error');
       }
     } catch (err) {
       showToast?.('查询模板失败', 'error');
     }
   };
 
-  const handleConfigDelivery = async () => {
+  const handleConfigReconciliation = async () => {
     try {
-      const res = await authFetch(`/api/platform/print-templates/by-button?menu_route=production_delivery&button_key=btn-config-delivery-note&mode=config`);
+      const res = await authFetch(`/api/platform/print-templates/by-button?menu_route=reconciliation&button_key=btn-config-reconciliation&mode=config`);
       const result = await res.json();
 
       if (result.data) {
         setConfigTemplate(result.data);
         setShowConfigModal(true);
       } else {
-        showToast?.(result.error || '未找到绑定的送货单配置模板', 'error');
+        showToast?.(result.error || '未找到绑定的对账单配置模板', 'error');
       }
     } catch (err) {
       showToast?.('查询模板失败', 'error');
@@ -113,18 +133,18 @@ const Delivery: React.FC<DeliveryProps> = ({
   return (
     <>
       <OrderMonitorPanel
-        title="送货管理"
-        icon={Truck}
+        title="对账管理"
+        icon={FileText}
         orders={completedOrders}
-        filters={deliveryFilters}
-        setFilters={setDeliveryFilters}
+        filters={reconciliationFilters}
+        setFilters={setReconciliationFilters}
         filterConfigs={simpleFilterConfigs}
-        page={deliveryPage}
-        setPage={setDeliveryPage}
-        pageSize={deliveryPageSize}
-        setPageSize={setDeliveryPageSize}
+        page={reconciliationPage}
+        setPage={setReconciliationPage}
+        pageSize={reconciliationPageSize}
+        setPageSize={setReconciliationPageSize}
         total={completedOrders.length}
-        themeColor="emerald"
+        themeColor="blue"
         editOrder={editOrder}
         setShowDrawingModal={setShowDrawingModal}
         handleProcessClick={handleProcessClick}
@@ -135,31 +155,31 @@ const Delivery: React.FC<DeliveryProps> = ({
         showTotalAmount={!hideCostFields}
         onSearch={handleSearch}
         isSearching={isSearching}
-        deliveryMode={true}
-        selectedOrderId={selectedOrderId}
+        reconciliationMode={true}
+        selectedOrderIds={selectedOrderIds}
         onSelectOrder={handleSelectOrder}
-        onPreviewDelivery={handlePreviewDelivery}
-        onConfigDelivery={handleConfigDelivery}
+        onPreviewReconciliation={handlePreviewReconciliation}
+        onConfigReconciliation={handleConfigReconciliation}
       />
 
-      {/* 送货单预览弹窗 */}
-      {showPreviewModal && previewOrder && previewTemplate && (
-        <DeliveryPreviewModal
-          order={previewOrder}
+      {/* 对账单预览弹窗 */}
+      {showPreviewModal && previewOrders.length > 0 && previewTemplate && (
+        <ReconciliationPreviewModal
+          orders={previewOrders}
           template={previewTemplate}
           mode="preview"
-          title="预览送货单"
+          title="预览对账单"
           orderData={previewOrderData}
           onClose={() => setShowPreviewModal(false)}
         />
       )}
 
-      {/* 送货单配置弹窗 - 不传订单 */}
+      {/* 对账单配置弹窗 - 不传订单 */}
       {showConfigModal && configTemplate && (
-        <DeliveryPreviewModal
+        <ReconciliationPreviewModal
           template={configTemplate}
           mode="config"
-          title="配置送货单"
+          title="配置对账单"
           onClose={() => setShowConfigModal(false)}
         />
       )}
@@ -167,4 +187,4 @@ const Delivery: React.FC<DeliveryProps> = ({
   );
 };
 
-export default Delivery;
+export default Reconciliation;

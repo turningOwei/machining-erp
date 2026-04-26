@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, ClipboardList } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { ClipboardList } from 'lucide-react';
 import { Order } from '../types';
 import OrderMonitorPanel from '../components/OrderMonitorPanel';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
@@ -60,11 +60,32 @@ const Orders: React.FC<OrdersProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [deletingOrder, setDeletingOrder] = React.useState<Order | null>(null);
 
+  // 组件挂载时检查是否有筛选条件（如从Dashboard点击卡片跳转）
+  useEffect(() => {
+    const hasFilters = orderFilters.status || orderFilters.orderNumber || orderFilters.customerName || orderFilters.partNumber || orderFilters.priority || orderFilters.dueDateStart || orderFilters.dueDateEnd;
+    if (hasFilters) {
+      fetchOrdersWithFilters(orderFilters, currentPage, pageSize);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 只在挂载时执行一次
+
   // Handle search with API call
   const handleSearch = async () => {
     setIsSearching(true);
     try {
       await fetchOrdersWithFilters(orderFilters, currentPage, pageSize);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // 分页切换时带筛选条件查询
+  const handlePageChangeWithFilters = async (newPage: number, newPageSize?: number) => {
+    setIsSearching(true);
+    try {
+      await fetchOrdersWithFilters(orderFilters, newPage, newPageSize || pageSize);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     } finally {
@@ -106,6 +127,7 @@ const Orders: React.FC<OrdersProps> = ({
         showOutsourcingFee={!hideCostFields}
         showTotalAmount={!hideCostFields}
         onSearch={handleSearch}
+        onPageChangeWithFilters={handlePageChangeWithFilters}
         isSearching={isSearching}
         onNewOrder={resetAndOpenModal}
       />
@@ -120,7 +142,7 @@ const Orders: React.FC<OrdersProps> = ({
           setDeletingOrder(null);
         }}
         onConfirm={() => {
-          if (deletingOrder) {
+          if (deletingOrder && deletingOrder.id) {
             deleteOrder(deletingOrder.id);
           }
           setShowDeleteConfirm(false);

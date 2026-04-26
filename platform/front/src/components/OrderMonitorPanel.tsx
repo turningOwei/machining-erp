@@ -38,6 +38,8 @@ interface OrderMonitorPanelProps {
   showOutsourcingFee?: boolean;
   showTotalAmount?: boolean;
   onSearch?: () => void;
+  // 分页切换回调（带筛选条件的服务端分页）
+  onPageChangeWithFilters?: (page: number, pageSize?: number) => void;
   isSearching?: boolean;
   onNewOrder?: () => void;
   // 送货管理模式
@@ -46,14 +48,20 @@ interface OrderMonitorPanelProps {
   onSelectOrder?: (orderId: number | null) => void;
   onPreviewDelivery?: () => void;
   onConfigDelivery?: () => void;
+  // 对账管理模式（支持多选）
+  reconciliationMode?: boolean;
+  selectedOrderIds?: Set<number>;
+  onPreviewReconciliation?: () => void;
+  onConfigReconciliation?: () => void;
 }
 
 const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
   title, icon: Icon, orders, filters, setFilters, filterConfigs, localFilter, page, setPage, pageSize, setPageSize, total, themeColor,
   editOrder, deleteOrder, setShowDrawingModal, handleProcessClick, getOrderMaxDueDate,
   showOrderName = false, showContactName = false, showOrderNotes = false, showOutsourcingFee = true, showTotalAmount = false,
-  onSearch, isSearching = false, onNewOrder,
-  deliveryMode = false, selectedOrderId, onSelectOrder, onPreviewDelivery, onConfigDelivery
+  onSearch, onPageChangeWithFilters, isSearching = false, onNewOrder,
+  deliveryMode = false, selectedOrderId, onSelectOrder, onPreviewDelivery, onConfigDelivery,
+  reconciliationMode = false, selectedOrderIds, onPreviewReconciliation, onConfigReconciliation
 }) => {
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
@@ -203,6 +211,33 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
             )}
           </div>
         )}
+        {reconciliationMode && onPreviewReconciliation && (
+          <div className="flex items-center gap-3">
+            <button
+              id="btn-preview-reconciliation"
+              onClick={onPreviewReconciliation}
+              disabled={!selectedOrderIds || selectedOrderIds.size === 0}
+              className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${
+                selectedOrderIds && selectedOrderIds.size > 0
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
+              }`}
+            >
+              <FileCheck className="w-4 h-4" />
+              预览对账单 {selectedOrderIds && selectedOrderIds.size > 0 && `(${selectedOrderIds.size})`}
+            </button>
+            {onConfigReconciliation && (
+              <button
+                id="btn-config-reconciliation"
+                onClick={onConfigReconciliation}
+                className="px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors bg-purple-600 text-white hover:bg-purple-700"
+              >
+                <Settings className="w-4 h-4" />
+                配置对账单
+              </button>
+            )}
+          </div>
+        )}
         {(filterConfigs || [
           { label: '订单交期', key: 'dueDate', type: 'date' as const, placeholder: '' },
           { label: '订单号', key: 'orderNumber', type: 'text' as const, placeholder: '搜索订单号...' },
@@ -290,10 +325,10 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
 
       {/* Desktop Table View */}
       <div className="hidden md:block flex-1 min-h-0 bg-white rounded-none border-y border-l-0 border-zinc-200 overflow-auto shadow-none" style={{ '--sep-color': colors.sepHex } as React.CSSProperties}>
-        <table className={`w-full text-left text-sm table-fixed border-b ${colors.sep}`} style={{ minWidth: deliveryMode ? '1400px' : (showTotalAmount && showOutsourcingFee ? '2100px' : showTotalAmount || showOutsourcingFee ? '1972px' : '1364px') }}>
+        <table className={`w-full text-left text-sm table-fixed border-b ${colors.sep}`} style={{ minWidth: (deliveryMode || reconciliationMode) ? '1400px' : (showTotalAmount && showOutsourcingFee ? '2100px' : showTotalAmount || showOutsourcingFee ? '1972px' : '1364px') }}>
           <thead className={`${colors.headBg} sticky top-0 z-20`}>
             <tr className="whitespace-nowrap">
-              {deliveryMode && (
+              {(deliveryMode || reconciliationMode) && (
                 <th className={`px-4 py-4 w-12 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}></th>
               )}
               <th className={`pl-4 pr-6 py-4 font-semibold ${colors.headText} w-[192px] sticky left-0 ${colors.headBg} z-20 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] cursor-pointer hover:brightness-95`}
@@ -339,7 +374,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
               )}
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-32 font-bold text-sm shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>完工日期</th>
               <th className={`px-6 py-4 font-semibold ${colors.headText} ${colors.headBg} w-64 font-bold text-sm shadow-[inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>备注</th>
-              {!deliveryMode && (
+              {!(deliveryMode || reconciliationMode) && (
                 <th className={`pl-4 pr-6 py-4 font-bold ${colors.headText} w-20 text-sm text-left sticky right-2 ${colors.headBg} z-20 shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_-1px_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)]`}>操作</th>
               )}
               <th className={`w-2 sticky right-0 bg-white z-20 border-none`}></th>
@@ -360,14 +395,14 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                     className={`${colors.bg} border-b ${colors.sep} sticky top-[52px] z-[15] cursor-pointer hover:brightness-95 transition-colors`}
                     onClick={() => toggleOrder(order.id)}
                   >
-                    {deliveryMode && (
+                    {(deliveryMode || reconciliationMode) && (
                       <td className={`px-4 py-2 shadow-[inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color)] ${colors.bg}`} onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
-                          checked={selectedOrderId === order.id}
+                          checked={deliveryMode ? selectedOrderId === order.id : (selectedOrderIds?.has(order.id || 0) || false)}
                           onChange={() => {}}
                           onClick={(e) => { e.stopPropagation(); onSelectOrder?.(order.id); }}
-                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded cursor-pointer"
+                          className={`w-4 h-4 focus:ring-2 rounded cursor-pointer ${deliveryMode ? 'text-emerald-600 focus:ring-emerald-500' : 'text-blue-600 focus:ring-blue-500'}`}
                         />
                       </td>
                     )}
@@ -473,7 +508,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                         </div>
                       )}
                     </td>
-                    {!deliveryMode && (
+                    {!(deliveryMode || reconciliationMode) && (
                       <td className={`pl-4 pr-6 py-2 sticky right-2 ${colors.bg} z-[3] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),inset_0_1px_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
                         <div className="flex items-center justify-center gap-1">
                           <button
@@ -499,14 +534,14 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                   </tr>
                   {isExpanded && sortedItems.map((item) => (
                     <tr key={item.id} className={`hover:${colors.bg}/10 transition-colors group`}>
-                      {deliveryMode && (
+                      {(deliveryMode || reconciliationMode) && (
                         <td className={`px-4 py-4 border-b ${colors.sep} shadow-[inset_-1px_0_0_0_var(--sep-color)]`} onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
-                            checked={selectedOrderId === order.id}
+                            checked={deliveryMode ? selectedOrderId === order.id : (selectedOrderIds?.has(order.id || 0) || false)}
                             onChange={() => {}}
                             onClick={(e) => { e.stopPropagation(); onSelectOrder?.(order.id); }}
-                            className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded cursor-pointer"
+                            className={`w-4 h-4 focus:ring-2 rounded cursor-pointer ${deliveryMode ? 'text-emerald-600 focus:ring-emerald-500' : 'text-blue-600 focus:ring-blue-500'}`}
                           />
                         </td>
                       )}
@@ -569,7 +604,7 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                       <td className={`px-6 py-4 border-b ${colors.sep}`}>
                         <div className="text-xs text-zinc-500 truncate max-w-[200px]" title={item.notes}>{item.notes || '-'}</div>
                       </td>
-                      {!deliveryMode && (
+                      {!(deliveryMode || reconciliationMode) && (
                         <td className={`pl-4 pr-6 py-4 text-left sticky right-2 bg-white group-hover:bg-zinc-50 border-b ${colors.sep} z-[2] shadow-[inset_1px_0_0_0_var(--sep-color),inset_-1px_0_0_0_var(--sep-color),-4px_0_8px_rgba(0,0,0,0.02)]`}>
                           <div className="flex justify-start gap-2">
                             {item.drawing_data && (
@@ -655,8 +690,21 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
         total={totalCount}
         page={page}
         pageSize={pageSize}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
+        onPageChange={(newPage) => {
+          setPage(newPage);
+          // 如果有分页回调，触发查询
+          if (onPageChangeWithFilters) {
+            onPageChangeWithFilters(newPage);
+          }
+        }}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setPage(1);
+          // 如果有分页回调，触发查询
+          if (onPageChangeWithFilters) {
+            onPageChangeWithFilters(1, newSize);
+          }
+        }}
         activeColor={themeColor}
       />
     </div>

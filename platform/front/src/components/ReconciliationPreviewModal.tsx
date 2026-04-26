@@ -5,6 +5,13 @@ import { authFetch } from './shared';
 import UniverSheet from './UniverSheet';
 import pako from 'pako';
 import { exportUniverToExcel } from '../utils/univerExport';
+import {
+  getFieldValue,
+  replaceReconciliationOrderPlaceholders,
+  replaceItemPlaceholders,
+  hasItemPlaceholder,
+  hasOrderPlaceholder
+} from '../utils/templateReplace';
 
 interface PrintTemplate {
   id: number;
@@ -13,8 +20,8 @@ interface PrintTemplate {
   excel_filename?: string;
 }
 
-interface DeliveryPreviewModalProps {
-  order?: Order; // 可选，配置模式不需要
+interface ReconciliationPreviewModalProps {
+  orders?: Order[]; // 多选订单（预览模式）
   template: PrintTemplate;
   mode?: 'preview' | 'config';
   title?: string;
@@ -36,12 +43,12 @@ const orderFields = [
   { key: 'order.priority', label: '优先级' },
 ];
 
-// 其他字段列表（计算字段）
+// 其他字段列表（计算字段）- 对账单专用
 const otherFields = [
   { key: 'other.small_total', label: '小写总计' },
   { key: 'other.big_total', label: '大写总计' },
   { key: 'other.total_quantity', label: '总数量' },
-  { key: 'other.delivery_number', label: '送货单号' },
+  { key: 'other.reconciliation_number', label: '对账单号' },
 ];
 
 // 零件字段列表（带#前缀表示列表变量）
@@ -58,200 +65,11 @@ const itemFields = [
   { key: 'items.notes', label: '零件备注', isList: true },
 ];
 
-// 格式化日期
-const formatDate = (date: any): string => {
-  if (!date) return '';
-  if (typeof date === 'string') return date.split('T')[0];
-  if (date instanceof Date) return date.toISOString().split('T')[0];
-  return String(date);
-};
-
-// 格式化金额
-const formatAmount = (amount: any): string => {
-  if (!amount) return '0';
-  return Number(amount).toFixed(2);
-};
-
-// 获取字段值
-const getFieldValue = (obj: any, key: string): string => {
-  const parts = key.split('.');
-  let value = obj;
-  for (const part of parts) {
-    if (value && typeof value === 'object') {
-      value = value[part];
-    } else {
-      return '';
-    }
-  }
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'object' && value instanceof Date) return formatDate(value);
-  if (typeof value === 'number' && key.includes('amount') || key.includes('price')) return formatAmount(value);
-  return String(value);
-};
-
-// 检查单元格是否包含零件字段占位符
-const hasItemPlaceholder = (cellValue: string): boolean => {
-  return !!cellValue && cellValue.includes('{{#items.');
-};
-
-// 检查单元格是否包含订单字段占位符
-const hasOrderPlaceholder = (cellValue: string): boolean => {
-  return !!cellValue && cellValue.includes('{{order.');
-};
-
-// 替换订单占位符（包含other字段）
-const replaceOrderPlaceholders = (cellValue: string, orderData: any): string => {
-  if (!cellValue) return cellValue;
-  let result = cellValue;
-  // 匹配 {{order.xxx}} 格式
-  const orderRegex = /\{\{order\.([^}]+)\}\}/g;
-  let match;
-  while ((match = orderRegex.exec(cellValue)) !== null) {
-    const fieldKey = match[1];
-    const value = getFieldValue(orderData, fieldKey);
-    result = result.replace(match[0], value);
-  }
-  // 匹配 {{other.xxx}} 格式（计算字段）
-  const otherRegex = /\{\{other\.([^}]+)\}\}/g;
-  while ((match = otherRegex.exec(result)) !== null) {
-    const fieldKey = match[1];
-    const value = getOtherFieldValue(orderData, fieldKey);
-    result = result.replace(match[0], value);
-  }
-  return result;
-};
-
-// 获取其他字段值（从后端返回的other对象获取）
-const getOtherFieldValue = (orderData: any, fieldKey: string): string => {
-  const other = orderData.other || {};
-  // 转换为小写处理（支持大小写不敏感）
-  const key = fieldKey.toLowerCase();
-  switch (key) {
-    case 'small_total':
-      return other.small_total || '0.00';
-    case 'big_total':
-      return other.big_total || '零元整';
-    case 'total_quantity':
-      return String(other.total_quantity || 0);
-    case 'delivery_number':
-      return other.delivery_number || '';
-    default:
-      // 直接尝试从 other 对象获取
-      return other[key] || '';
-  }
-};
-
-// 替换零件占位符
-const replaceItemPlaceholders = (cellValue: string, itemData: any): string => {
-  if (!cellValue) return cellValue;
-  let result = cellValue;
-  // 匹配 {{#items.xxx}} 格式
-  const regex = /\{\{#items\.([^}]+)\}\}/g;
-  let match;
-  while ((match = regex.exec(cellValue)) !== null) {
-    const fieldKey = match[1];
-    const value = getFieldValue(itemData, fieldKey);
-    result = result.replace(match[0], value);
-  }
-  return result;
-};
-
-// 填充模板数据（订单字段 + 零件逐行填充）
-const fillTemplateData = (workbookData: any, orderData: any): any => {
-  // 深拷贝 workbookData
-  const newData = JSON.parse(JSON.stringify(workbookData));
-
-  // 获取第一个工作表
-  const sheetId = newData.sheetOrder?.[0];
-  if (!sheetId) return newData;
-
-  const sheet = newData.sheets?.[sheetId];
-  if (!sheet || !sheet.cellData) return newData;
-
-  const cellData = sheet.cellData;
-  const items = orderData.item || orderData.items || [];
-
-  // 1. 找到包含零件字段的模板行
-  let itemTemplateRow = -1;
-  for (const rowKey in cellData) {
-    const row = parseInt(rowKey);
-    for (const colKey in cellData[rowKey]) {
-      const cell = cellData[rowKey][colKey];
-      if (cell && cell.v && hasItemPlaceholder(String(cell.v))) {
-        itemTemplateRow = row;
-        break;
-      }
-    }
-    if (itemTemplateRow >= 0) break;
-  }
-
-  // 2. 处理所有单元格
-  if (itemTemplateRow >= 0 && items.length > 0) {
-    // 有零件模板行：复制行并填充数据
-    const templateRowData = cellData[itemTemplateRow] || {};
-
-    // 删除原模板行（后面会插入填充后的行）
-    delete cellData[itemTemplateRow];
-
-    // 为每个零件插入一行
-    items.forEach((item: any, idx: number) => {
-      const newRow = itemTemplateRow + idx;
-      cellData[newRow] = {};
-      for (const colKey in templateRowData) {
-        const templateCell = templateRowData[colKey];
-        const cellValue = templateCell?.v || '';
-
-        // 替换零件占位符
-        let newValue = replaceItemPlaceholders(cellValue, item);
-        // 也替换订单占位符（零件行可能也有订单字段）
-        newValue = replaceOrderPlaceholders(newValue, orderData);
-
-        cellData[newRow][colKey] = {
-          ...templateCell,
-          v: newValue
-        };
-      }
-    });
-
-    // 处理其他行的订单占位符
-    for (const rowKey in cellData) {
-      const row = parseInt(rowKey);
-      // 跳过零件行
-      if (row >= itemTemplateRow && row < itemTemplateRow + items.length) continue;
-
-      for (const colKey in cellData[rowKey]) {
-        const cell = cellData[rowKey][colKey];
-        if (cell && cell.v && hasOrderPlaceholder(String(cell.v))) {
-          cellData[rowKey][colKey] = {
-            ...cell,
-            v: replaceOrderPlaceholders(String(cell.v), orderData)
-          };
-        }
-      }
-    }
-  } else {
-    // 无零件模板行：只替换订单占位符
-    for (const rowKey in cellData) {
-      for (const colKey in cellData[rowKey]) {
-        const cell = cellData[rowKey][colKey];
-        if (cell && cell.v) {
-          cellData[rowKey][colKey] = {
-            ...cell,
-            v: replaceOrderPlaceholders(String(cell.v), orderData)
-          };
-        }
-      }
-    }
-  }
-
-  return newData;
-};
-
-const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
-  order,
+const ReconciliationPreviewModal: React.FC<ReconciliationPreviewModalProps> = ({
+  orders,
   template,
   mode = 'config',
-  title = '送货单',
+  title = '对账单',
   orderData,
   onClose
 }) => {
@@ -321,88 +139,91 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
       return;
     }
 
-    const items = orderData.items || [];
+    // 处理订单数据：如果是数组，合并所有订单的 items
+    let mergedOrderData: any = orderData;
+    if (Array.isArray(orderData)) {
+      const allItems: any[] = [];
+      let totalQuantity = 0;
+      let totalAmount = 0;
+      let rowIndex = 0;
 
-    // 1. 查找包含零件占位符的模板行
+      for (const order of orderData) {
+        for (const item of (order.items || [])) {
+          allItems.push({
+            ...item,
+            row_index: rowIndex + 1
+          });
+          rowIndex++;
+          totalQuantity += item.quantity || 0;
+          totalAmount += item.total_price || 0;
+        }
+      }
+
+      mergedOrderData = {
+        ...orderData[0],
+        items: allItems,
+        other: {
+          ...orderData[0]?.other,
+          total_quantity: totalQuantity,
+          small_total: totalAmount.toFixed(2),
+          big_total: orderData[0]?.other?.big_total || '零元整'
+        }
+      };
+    }
+
+    const items = mergedOrderData.items || [];
+
+    // 1. 查找零件模板行
     const templateCell = univerRef.current.findCellWithText?.('{{#items.');
 
     if (!templateCell) {
       // 没有零件占位符，只替换订单字段
-      replaceOrderFields(orderData);
+      replaceOrderFields(mergedOrderData);
       return;
     }
 
     const templateRow = templateCell.row;
-    const templateCol = templateCell.col; // 从找到的位置开始向左右扩展查找有内容的列
 
-    // 2. 先获取模板行所有有内容的列
+    // 2. 获取模板行所有列的值
     const templateRowValues: Map<number, string> = new Map();
-
-    // 从找到的列开始，向左查找有内容的列
-    for (let col = templateCol; col >= 0; col--) {
+    for (let col = 0; col < 20; col++) {
       try {
         const val = univerRef.current.getCellValue?.(templateRow, col) || '';
         if (val) {
           templateRowValues.set(col, val);
         }
-      } catch (e) {
-        break;
-      }
+      } catch (e) {}
     }
 
-    // 从找到的列开始，向右查找有内容的列
-    for (let col = templateCol + 1; col < 50; col++) {
-      try {
-        const val = univerRef.current.getCellValue?.(templateRow, col) || '';
-        if (val) {
-          templateRowValues.set(col, val);
-        } else if (!templateRowValues.has(col - 1)) {
-          // 如果前一列没有内容且当前列也没有，停止
-          break;
-        }
-      } catch (e) {
-        break;
-      }
-    }
-
-    // 3. 如果有多个零件，在模板行下方插入 N-1 行
+    // 3. 插入行（如果零件数量大于1）
     if (items.length > 1) {
-      // 在模板行下方插入行
       univerRef.current.insertRowsBelow?.(templateRow, items.length - 1);
     }
 
-    // 4. 填充每个零件的数据（模板行 + 下方插入的行）
+    // 4. 遍历每个零件，替换占位符
     for (let i = 0; i < items.length; i++) {
-      const currentRow = templateRow + i; // 模板行开始，往下填充
-      const item = { ...items[i], row_index: i + 1 }; // 添加序号（1-based）
+      const currentRow = templateRow + i;
+      const item = { ...items[i], row_index: i + 1 };
 
-      // 遍历已找到的有内容的列
       for (const [col, cellValue] of templateRowValues) {
-        // 替换零件占位符
         let newValue = cellValue;
-        const itemRegex = /\{\{#items\.([^}]+)\}\}/g;
-        let match;
-        while ((match = itemRegex.exec(cellValue)) !== null) {
-          const fieldKey = match[1];
-          const value = getFieldValue(item, fieldKey);
-          newValue = newValue.replace(match[0], value);
-        }
 
-        // 替换订单和其他占位符
-        newValue = replaceOrderPlaceholders(newValue, orderData);
+        // 替换零件占位符 {{#items.xxx}}
+        newValue = replaceItemPlaceholders(newValue, item);
+
+        // 替换订单占位符 {{order.xxx}} {{other.xxx}}
+        newValue = replaceReconciliationOrderPlaceholders(newValue, mergedOrderData);
 
         if (newValue !== cellValue) {
           try {
             univerRef.current.setCellValue?.(currentRow, col, newValue);
-          } catch (e) {
-            // 设置失败，静默处理
-          }
+          } catch (e) {}
         }
       }
     }
 
     // 5. 替换其他行的订单字段
-    replaceOrderFields(orderData, templateRow, items.length);
+    replaceOrderFields(mergedOrderData, templateRow, items.length);
   };
 
   // 替换订单字段占位符
@@ -422,7 +243,7 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
         try {
           const cellValue = univerRef.current.getCellValue?.(row, col) || '';
           if (cellValue.includes('{{order.') || cellValue.includes('{{other.')) {
-            const newValue = replaceOrderPlaceholders(cellValue, orderData);
+            const newValue = replaceReconciliationOrderPlaceholders(cellValue, orderData);
             if (newValue !== cellValue) {
               univerRef.current.setCellValue?.(row, col, newValue);
             }
@@ -445,12 +266,9 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
 
     const placeholder = field.isList ? `{{#${field.key}}}` : `{{${field.key}}}`;
 
-    // 检查是否在编辑模式（双击单元格后）
     if (univerRef.current.isEditing && univerRef.current.isEditing()) {
-      // 在编辑模式下，在光标位置插入文本
       univerRef.current.insertTextAtCursor(placeholder);
     } else {
-      // 非编辑模式，获取当前选中单元格并设置值
       const selection = univerRef.current.getSelection();
       if (!selection) {
         showToast('请先选择单元格', 'error');
@@ -460,7 +278,7 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
     }
   };
 
-  // 订单字段点击处理（右侧面板）
+  // 字段点击处理
   const handleFieldClick = (field: { key: string; label: string; isList?: boolean }) => {
     if (!univerRef.current || !univerRef.current.isReady()) {
       showToast('模板正在加载，请稍候', 'error');
@@ -483,7 +301,10 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
     }
 
     try {
-      const filename = `送货单_${order.order_number || '未知'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const orderNumberStr = orders && orders.length > 0
+        ? (orders.length === 1 ? orders[0].order_number : `${orders.length}单汇总`)
+        : '未知';
+      const filename = `对账单_${orderNumberStr}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       await exportUniverToExcel(snapshot, filename);
       showToast('导出成功', 'success');
     } catch (err) {
@@ -502,15 +323,11 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
     }
 
     try {
-      // gzip 压缩 workbook JSON
       const workbookJson = JSON.stringify(workbookData);
       const compressed = pako.gzip(workbookJson);
-
-      // 转为 base64，使用 UNIVER: 前缀
       const base64 = btoa(String.fromCharCode(...compressed));
       const compressedData = 'UNIVER:' + base64;
 
-      // 保存到数据库
       const res = await authFetch(`/api/platform/print-templates/${template.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -535,12 +352,15 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
         <div className="p-4 border-b border-zinc-200 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <h3 className="text-xl font-bold text-zinc-900">{title}</h3>
-            {order?.order_number && (
-              <span className="text-sm text-zinc-500">订单号: {order.order_number}</span>
+            {orders && orders.length > 0 && (
+              <span className="text-sm text-zinc-500">
+                {orders.length === 1
+                  ? `订单号: ${orders[0].order_number}`
+                  : `已选 ${orders.length} 个订单`}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-3">
-            {/* 导出按钮 - 仅preview模式 */}
             {mode === 'preview' && (
               <button
                 onClick={handleExportExcel}
@@ -576,7 +396,6 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
                 ref={univerRef}
                 data={sheetData}
                 height="100%"
-                editable={true}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-zinc-400">
@@ -667,11 +486,13 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
               </div>
 
               {/* 零件数据预览 */}
-              {order && (
+              {orders && orders.length > 0 && (
               <div className="mt-6 pt-4 border-t border-zinc-200">
-                <h4 className="text-sm font-bold text-zinc-700 mb-2">当前订单零件 ({order.items?.length || 0})</h4>
+                <h4 className="text-sm font-bold text-zinc-700 mb-2">
+                  零件汇总 ({orders.reduce((sum, o) => sum + (o.items?.length || 0), 0)} 个)
+                </h4>
                 <div className="space-y-2">
-                  {(order.items || []).slice(0, 5).map((item, idx) => (
+                  {orders.flatMap(o => o.items || []).slice(0, 5).map((item, idx) => (
                     <div key={idx} className="p-2 bg-white rounded-lg border border-zinc-200 text-xs">
                       <div className="font-medium text-zinc-900">{item.part_name}</div>
                       <div className="text-zinc-500 mt-1">
@@ -679,9 +500,9 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
                       </div>
                     </div>
                   ))}
-                  {(order.items?.length || 0) > 5 && (
+                  {orders.reduce((sum, o) => sum + (o.items?.length || 0), 0) > 5 && (
                     <div className="text-xs text-zinc-400 text-center">
-                      还有 {(order.items?.length || 0) - 5} 个零件...
+                      还有 {orders.reduce((sum, o) => sum + (o.items?.length || 0), 0) - 5} 个零件...
                     </div>
                   )}
                 </div>
@@ -722,4 +543,4 @@ const DeliveryPreviewModal: React.FC<DeliveryPreviewModalProps> = ({
   );
 };
 
-export default DeliveryPreviewModal;
+export default ReconciliationPreviewModal;

@@ -206,7 +206,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
       setPreviewSheetData(workbookData);
       setShowPreviewModal(true);
     } catch (err) {
-      console.error('解析模板数据失败:', err);
       alert('模板数据解析失败');
     }
   };
@@ -263,8 +262,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
           return;
         }
 
-        console.log('Excel转换成功:', workbookData);
-
         // gzip压缩Univer workbook数据
         const workbookJson = JSON.stringify(workbookData);
         const compressed = pako.gzip(workbookJson);
@@ -289,7 +286,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
             fetchData();
           })
           .catch(err => {
-            console.error('上传失败:', err);
             alert('上传失败');
           })
           .finally(() => {
@@ -297,13 +293,11 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
             if (excelInputRef.current) excelInputRef.current.value = '';
           });
       }, (err: Error) => {
-        console.error('Excel解析失败:', err);
         alert('Excel解析失败: ' + err.message);
         setImportingTemplateId(null);
         if (excelInputRef.current) excelInputRef.current.value = '';
       });
     } catch (err: any) {
-      console.error('导入Excel失败:', err);
       alert('导入Excel失败: ' + (err.message || '未知错误'));
       setImportingTemplateId(null);
       if (excelInputRef.current) excelInputRef.current.value = '';
@@ -368,7 +362,7 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
         setResourcesWithButtons(parsed);
       }
     } catch (err) {
-      console.error('Failed to fetch resources:', err);
+      // 获取资源失败
     } finally {
       setBindLoading(false);
     }
@@ -436,7 +430,6 @@ const PrintTemplates: React.FC<PrintTemplatesProps> = ({
         showToast(result.error || '保存失败', 'error');
       }
     } catch (err) {
-      console.error('保存错误:', err);
       showToast('保存失败', 'error');
     }
   };

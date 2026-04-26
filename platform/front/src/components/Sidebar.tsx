@@ -111,7 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               </button>
             </div>
 
-            <nav className="flex-1 px-2 py-4 space-y-1 overflow-x-hidden">
+            <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-x-hidden">
               {navItems.map((item) => (
                 <button
                   key={item.id}
@@ -127,7 +127,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <motion.span
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="whitespace-nowrap"
+                      className="whitespace-nowrap text-sm"
                     >
                       {item.label}
                     </motion.span>

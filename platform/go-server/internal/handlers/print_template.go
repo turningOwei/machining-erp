@@ -15,12 +15,13 @@ import (
 )
 
 type PrintTemplateHandler struct {
-	repo           *repository.PrintTemplateRepository
-	deliveryService *services.DeliveryService
+	repo              *repository.PrintTemplateRepository
+	deliveryService   *services.DeliveryService
+	reconciliationSvc *services.ReconciliationService
 }
 
-func NewPrintTemplateHandler(repo *repository.PrintTemplateRepository, deliveryService *services.DeliveryService) *PrintTemplateHandler {
-	return &PrintTemplateHandler{repo: repo, deliveryService: deliveryService}
+func NewPrintTemplateHandler(repo *repository.PrintTemplateRepository, deliveryService *services.DeliveryService, reconciliationSvc *services.ReconciliationService) *PrintTemplateHandler {
+	return &PrintTemplateHandler{repo: repo, deliveryService: deliveryService, reconciliationSvc: reconciliationSvc}
 }
 
 func (h *PrintTemplateHandler) List(c *gin.Context) {
@@ -36,6 +37,58 @@ func (h *PrintTemplateHandler) List(c *gin.Context) {
 	c.JSON(200, gin.H{"data": templates})
 }
 
+// parseOrderIDs 解析逗号分隔的订单ID字符串
+func parseOrderIDs(orderIDsStr string) []int64 {
+	orderIDStrs := strings.Split(orderIDsStr, ",")
+	var orderIDs []int64
+	for _, oidStr := range orderIDStrs {
+		orderID, err := strconv.ParseInt(strings.TrimSpace(oidStr), 10, 64)
+		if err == nil {
+			orderIDs = append(orderIDs, orderID)
+		}
+	}
+	return orderIDs
+}
+
+// convertToChineseAmount 数字转大写中文金额
+func convertToChineseAmount(num float64) string {
+	n := int(num * 100)
+	if n == 0 {
+		return "零元整"
+	}
+
+	digits := []string{"零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"}
+	units := []string{"分", "角", "元", "拾", "佰", "仟", "万", "拾", "佰", "仟", "亿"}
+
+	var result []string
+	zeroFlag := false
+
+	for i := 0; n > 0 && i < len(units); i++ {
+		digit := n % 10
+		n = n / 10
+
+		if digit == 0 {
+			zeroFlag = true
+			if i == 2 {
+				result = append([]string{"元"}, result...)
+			}
+		} else {
+			if zeroFlag {
+				result = append([]string{"零"}, result...)
+				zeroFlag = false
+			}
+			result = append([]string{digits[digit] + units[i]}, result...)
+		}
+	}
+
+	// 补"整"
+	if len(result) > 0 && !strings.HasSuffix(result[len(result)-1], "分") && !strings.HasSuffix(result[len(result)-1], "角") {
+		result = append(result, "整")
+	}
+
+	return strings.Join(result, "")
+}
+
 // FindByButtonKey 根据按钮标识查询模板
 func (h *PrintTemplateHandler) FindByButtonKey(c *gin.Context) {
 	corpID := c.GetInt64("corpID")
@@ -43,6 +96,7 @@ func (h *PrintTemplateHandler) FindByButtonKey(c *gin.Context) {
 	buttonKey := c.Query("button_key")
 	mode := c.Query("mode") // preview 或 config
 	orderIDStr := c.Query("order_id")
+	orderIDsStr := c.Query("order_ids") // 支持多订单（逗号分隔）
 
 	if menuRoute == "" || buttonKey == "" {
 		c.JSON(400, gin.H{"error": "缺少menu_route或button_key参数"})
@@ -63,20 +117,98 @@ func (h *PrintTemplateHandler) FindByButtonKey(c *gin.Context) {
 	// 根据 mode 返回不同数据
 	result := gin.H{"data": template, "mode": mode}
 
+	// 根据button_key动态确定配置模板的button_key
+	configButtonKey := buttonKey
+	if strings.HasPrefix(buttonKey, "btn-preview-") {
+		configButtonKey = strings.Replace(buttonKey, "btn-preview-", "btn-config-", 1)
+	}
+
 	// 返回配置模板ID（用于关联）
-	configTemplate, err := h.repo.FindByButtonKey(corpID, menuRoute, "btn-config-delivery-note")
+	configTemplate, err := h.repo.FindByButtonKey(corpID, menuRoute, configButtonKey)
 	if err == nil && configTemplate != nil {
 		result["config_template_id"] = configTemplate.ID
 	}
 
 	// 预览模式：查询订单数据返回 order
-	if mode == "preview" && orderIDStr != "" && h.deliveryService != nil {
-		orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
-		if err == nil {
-			corpName := c.GetString("corpName") // 从token获取公司名称
-			order, err := h.deliveryService.GetOrderByID(orderID, corpName)
-			if err == nil {
-				result["order"] = order
+	// 根据menu_route选择不同的service
+	if mode == "preview" {
+		corpName := c.GetString("corpName")
+
+		// 对账单使用ReconciliationService，送货单使用DeliveryService
+		if menuRoute == "reconciliation" && h.reconciliationSvc != nil {
+			// 对账单查询
+			log.Printf("Reconciliation preview: orderIDsStr=%s, orderIDStr=%s", orderIDsStr, orderIDStr)
+			if orderIDsStr != "" {
+				// 多订单：返回订单数组，每个订单只包含自己的零件
+				orderIDs := parseOrderIDs(orderIDsStr)
+				orders := make([]*services.ReconciliationOrder, 0)
+				for _, orderID := range orderIDs {
+					order, err := h.reconciliationSvc.GetOrderByID(orderID, corpName)
+					if err == nil {
+						orders = append(orders, order)
+					}
+				}
+				if len(orders) > 0 {
+					result["order"] = orders
+					log.Printf("Reconciliation orders returned: count=%d", len(orders))
+				}
+			} else if orderIDStr != "" {
+				// 单订单：返回单个订单对象
+				orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
+				if err == nil {
+					order, err := h.reconciliationSvc.GetOrderByID(orderID, corpName)
+					if err == nil {
+						result["order"] = order
+						log.Printf("Reconciliation single order: items=%d", len(order.Items))
+					}
+				}
+			}
+		} else if h.deliveryService != nil {
+			// 送货单查询
+			if orderIDsStr != "" {
+				// 多订单：汇总所有零件
+				orderIDs := strings.Split(orderIDsStr, ",")
+				var allItems []services.DeliveryItem
+				var firstOrder *services.DeliveryOrder
+				var totalAmount float64
+				var totalQuantity int
+
+				for _, oidStr := range orderIDs {
+					orderID, err := strconv.ParseInt(oidStr, 10, 64)
+					if err != nil {
+						continue
+					}
+					order, err := h.deliveryService.GetOrderByID(orderID, corpName)
+					if err != nil {
+						continue
+					}
+					if firstOrder == nil {
+						firstOrder = order
+					}
+					allItems = append(allItems, order.Items...)
+					totalAmount += order.TotalAmount
+					totalQuantity += order.Other.TotalQuantity
+				}
+
+				if firstOrder != nil {
+					// 汇总数据
+					mergedOrder := *firstOrder
+					mergedOrder.Items = allItems
+					mergedOrder.TotalAmount = totalAmount
+					mergedOrder.Other.TotalQuantity = totalQuantity
+					mergedOrder.Other.SmallTotal = fmt.Sprintf("%.2f", totalAmount)
+					mergedOrder.Other.BigTotal = convertToChineseAmount(totalAmount)
+					result["order"] = mergedOrder
+				}
+			} else if orderIDStr != "" {
+				// 单订单
+				orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
+				if err == nil {
+					order, err := h.deliveryService.GetOrderByID(orderID, corpName)
+					if err == nil {
+						result["order"] = order
+					}
+				}
 			}
 		}
 	}
@@ -278,9 +410,9 @@ func convertExcelToHTML(xlFile *excelize.File) string {
 
 	// CSS样式 - 边框由单元格样式控制
 	html.WriteString(`<style>
-		.excel-table { border-collapse: collapse; width: 100%; }
-		.excel-table td { padding: 4px 8px; }
-	</style>`)
+			.excel-table { border-collapse: collapse; width: 100%; }
+			.excel-table td { padding: 4px 8px; }
+		</style>`)
 
 	html.WriteString(`<table class="excel-table">`)
 
@@ -609,6 +741,7 @@ func (h *PrintTemplateHandler) GeneratePrintExcel(c *gin.Context) {
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 }
+
 // ExportSnapshot 导出快照数据为Excel（本地导出）
 func (h *PrintTemplateHandler) ExportSnapshot(c *gin.Context) {
 	var req struct {
