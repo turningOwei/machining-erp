@@ -82,7 +82,8 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
               const matchCustomer = !filters.customerName || (o.customer_name || '').toLowerCase().includes(filters.customerName.toLowerCase());
               const matchPriority = !filters.priority || o.priority === filters.priority;
               const matchPartNumber = !filters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(filters.partNumber.toLowerCase()));
-              return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
+              const matchPartName = !filters.partName || (o.items || []).some(item => (item.part_name || '').toLowerCase().includes(filters.partName.toLowerCase()));
+              return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber && matchPartName;
             });
         return filtered.slice((page - 1) * pageSize, page * pageSize);
       })();
@@ -97,7 +98,8 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
         const matchCustomer = !filters.customerName || (o.customer_name || '').toLowerCase().includes(filters.customerName.toLowerCase());
         const matchPriority = !filters.priority || o.priority === filters.priority;
         const matchPartNumber = !filters.partNumber || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(filters.partNumber.toLowerCase()));
-        return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber;
+        const matchPartName = !filters.partName || (o.items || []).some(item => (item.part_name || '').toLowerCase().includes(filters.partName.toLowerCase()));
+        return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber && matchPartName;
       }).length);
 
   React.useEffect(() => {
@@ -268,6 +270,11 @@ const OrderMonitorPanel: React.FC<OrderMonitorPanelProps> = ({
                 onChange={(e) => {
                   setFilters({ ...filters, [f.key]: e.target.value });
                   setPage(1);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && onSearch) {
+                    onSearch();
+                  }
                 }}
                 className={`w-full px-3 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 ${colors.focus}`}
               />

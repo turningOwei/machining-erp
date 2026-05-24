@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"gorm.io/gorm"
 	"machining-erp/internal/models"
 	"machining-erp/pkg/utils"
+
+	"gorm.io/gorm"
 )
 
 type OrderRepository struct {
@@ -24,6 +25,7 @@ type OrderFilters struct {
 	DueDateEnd   string
 	OrderNumber  string
 	PartNumber   string
+	PartName     string
 	CustomerName string
 	Priority     string
 	Status       string
@@ -100,7 +102,7 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 	}
 
 	// 如果有零件级别筛选，需要子查询
-	if filters.DueDateStart != "" || filters.DueDateEnd != "" || filters.PartNumber != "" {
+	if filters.DueDateStart != "" || filters.DueDateEnd != "" || filters.PartNumber != "" || filters.PartName != "" {
 		subQuery := r.db.Model(&models.OrderItem{}).Select("DISTINCT order_id")
 		if filters.DueDateStart != "" {
 			subQuery = subQuery.Where("due_date >= ?", filters.DueDateStart)
@@ -110,6 +112,9 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		}
 		if filters.PartNumber != "" {
 			subQuery = subQuery.Where("part_number LIKE ?", "%"+filters.PartNumber+"%")
+		}
+		if filters.PartName != "" {
+			subQuery = subQuery.Where("part_name LIKE ?", "%"+filters.PartName+"%")
 		}
 		baseQuery = baseQuery.Where("id IN (?)", subQuery)
 	}
@@ -168,7 +173,7 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 			}
 		}
 	}
-	if filters.DueDateStart != "" || filters.DueDateEnd != "" || filters.PartNumber != "" {
+	if filters.DueDateStart != "" || filters.DueDateEnd != "" || filters.PartNumber != "" || filters.PartName != "" {
 		subQuery := r.db.Model(&models.OrderItem{}).Select("DISTINCT order_id")
 		if filters.DueDateStart != "" {
 			subQuery = subQuery.Where("due_date >= ?", filters.DueDateStart)
@@ -179,11 +184,14 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		if filters.PartNumber != "" {
 			subQuery = subQuery.Where("part_number LIKE ?", "%"+filters.PartNumber+"%")
 		}
+		if filters.PartName != "" {
+			subQuery = subQuery.Where("part_name LIKE ?", "%"+filters.PartName+"%")
+		}
 		orderQuery = orderQuery.Where("id IN (?)", subQuery)
 	}
 
 	// 排序和分页
-	orderQuery = orderQuery.Order("status DESC, start_date DESC, id DESC")
+	orderQuery = orderQuery.Order("start_date DESC")
 	if filters.PageSize > 0 {
 		offset := 0
 		if filters.Page > 1 {
@@ -404,18 +412,18 @@ func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) 
 				if items[i].ID != 0 {
 					// 更新已存在的订单项
 					updateFields := map[string]interface{}{
-						"part_name":       items[i].PartName,
-						"part_number":     items[i].PartNumber,
-						"quantity":        items[i].Quantity,
-						"scrap_quantity":  items[i].ScrapQuantity,
-						"status":          items[i].Status,
-						"drawing_data":    items[i].DrawingData,
-						"notes":           items[i].Notes,
-						"start_date":      items[i].StartDate,
-						"due_date":        items[i].DueDate,
+						"part_name":          items[i].PartName,
+						"part_number":        items[i].PartNumber,
+						"quantity":           items[i].Quantity,
+						"scrap_quantity":     items[i].ScrapQuantity,
+						"status":             items[i].Status,
+						"drawing_data":       items[i].DrawingData,
+						"notes":              items[i].Notes,
+						"start_date":         items[i].StartDate,
+						"due_date":           items[i].DueDate,
 						"delivered_quantity": items[i].DeliveredQty,
-						"item_notes":      items[i].ItemNotes,
-						"completion_date": items[i].CompletionDate,
+						"item_notes":         items[i].ItemNotes,
+						"completion_date":    items[i].CompletionDate,
 					}
 					// 只有当费用字段有值时才更新（避免清空原有值）
 					if items[i].UnitPrice != 0 {
@@ -537,19 +545,19 @@ func (r *OrderRepository) GetByID(orderID int64) (*models.Order, error) {
 
 // DashboardItem 工作看板零件数据
 type DashboardItem struct {
-	OrderID           int64                  `json:"order_id"`
-	OrderNumber       string                 `json:"order_number"`
-	CustomerShortName string                 `json:"customer_short_name"`
-	Priority          string                 `json:"priority"`
-	ItemID            int64                  `json:"item_id"`
-	PartName          string                 `json:"part_name"`
-	PartNumber        string                 `json:"part_number"`
-	Quantity          int                    `json:"quantity"`
-	Status            string                 `json:"status"`
-	StartDate         *time.Time             `json:"start_date"`
-	DueDate           *time.Time             `json:"due_date"`
-	DrawingData       string                 `json:"drawing_data"`
-	Processes         []models.OrderProcess  `json:"processes"`
+	OrderID           int64                 `json:"order_id"`
+	OrderNumber       string                `json:"order_number"`
+	CustomerShortName string                `json:"customer_short_name"`
+	Priority          string                `json:"priority"`
+	ItemID            int64                 `json:"item_id"`
+	PartName          string                `json:"part_name"`
+	PartNumber        string                `json:"part_number"`
+	Quantity          int                   `json:"quantity"`
+	Status            string                `json:"status"`
+	StartDate         *time.Time            `json:"start_date"`
+	DueDate           *time.Time            `json:"due_date"`
+	DrawingData       string                `json:"drawing_data"`
+	Processes         []models.OrderProcess `json:"processes"`
 }
 
 // DashboardResult 工作看板返回结果
@@ -563,12 +571,12 @@ type DashboardResult struct {
 
 // OrderInfo 订单简要信息
 type OrderInfo struct {
-	ID              int64  `json:"id"`
-	OrderNumber     string `json:"order_number"`
-	CustomerName    string `json:"customer_name"`
+	ID                int64  `json:"id"`
+	OrderNumber       string `json:"order_number"`
+	CustomerName      string `json:"customer_name"`
 	CustomerShortName string `json:"customer_short_name"`
-	Status          string `json:"status"`
-	Priority        string `json:"priority"`
+	Status            string `json:"status"`
+	Priority          string `json:"priority"`
 }
 
 // DashboardStats 看板卡片统计数据
@@ -576,9 +584,9 @@ type DashboardStats struct {
 	PendingCount    int64 `json:"pending_count"`
 	ProcessingCount int64 `json:"processing_count"`
 	CompletedCount  int64 `json:"completed_count"`
-	OverdueCount    int64 `json:"overdue_count"`    // 逾期订单
-	WarningCount    int64 `json:"warning_count"`    // 告警订单
-	NearDueCount    int64 `json:"near_due_count"`   // 临期订单
+	OverdueCount    int64 `json:"overdue_count"`  // 逾期订单
+	WarningCount    int64 `json:"warning_count"`  // 告警订单
+	NearDueCount    int64 `json:"near_due_count"` // 临期订单
 }
 
 // GetDashboardStats 获取看板卡片统计数据

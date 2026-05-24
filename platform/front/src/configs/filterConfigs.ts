@@ -6,6 +6,7 @@ export const createEmptyFilters = () => ({
   dueDateEnd: '',
   orderNumber: '',
   partNumber: '',
+  partName: '',
   customerName: '',
   priority: ''
 });
@@ -21,6 +22,7 @@ export const orderFilterConfigs: FilterConfig[] = [
   { key: 'dueDateStart', label: '订单交期(起)', type: 'date', width: 'w-32' },
   { key: 'dueDateEnd', label: '订单交期(止)', type: 'date', width: 'w-32' },
   { key: 'orderNumber', label: '订单号', type: 'text', placeholder: '搜索订单号...' },
+  { key: 'partName', label: '零件名称', type: 'text', placeholder: '搜索零件名称...' },
   { key: 'partNumber', label: '零件号', type: 'text', placeholder: '搜索零件号...' },
   { key: 'customerName', label: '客户名称', type: 'text', placeholder: '搜索客户...' },
   {
@@ -54,6 +56,7 @@ export const simpleFilterConfigs: FilterConfig[] = [
   { key: 'dueDateStart', label: '订单交期(起)', type: 'date', width: 'w-32' },
   { key: 'dueDateEnd', label: '订单交期(止)', type: 'date', width: 'w-32' },
   { key: 'orderNumber', label: '订单号', type: 'text', placeholder: '搜索订单号...' },
+  { key: 'partName', label: '零件名称', type: 'text', placeholder: '搜索零件名称...' },
   { key: 'partNumber', label: '零件号', type: 'text', placeholder: '搜索零件号...' },
   { key: 'customerName', label: '客户名称', type: 'text', placeholder: '搜索客户...' },
   {

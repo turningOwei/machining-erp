@@ -29,7 +29,8 @@ export const getFieldValue = (obj: any, key: string): string => {
     }
   }
   if (value === null || value === undefined) return '';
-  if (typeof value === 'object' && value instanceof Date) return formatDate(value);
+  if (value instanceof Date) return formatDate(value);
+  if (typeof value === 'string' && /T\d/.test(value)) return formatDate(value);
   if (typeof value === 'number' && (key.includes('amount') || key.includes('price'))) return formatAmount(value);
   return String(value);
 };

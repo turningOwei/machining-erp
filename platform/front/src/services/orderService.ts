@@ -7,6 +7,7 @@ export interface OrderFilters {
   dueDateEnd?: string;
   orderNumber?: string;
   partNumber?: string;
+  partName?: string;
   customerName?: string;
   priority?: string;
   status?: string;
@@ -19,6 +20,7 @@ export const fetchOrders = async (filters?: OrderFilters): Promise<Order[]> => {
   if (filters?.dueDateEnd) params.set('dueDateEnd', filters.dueDateEnd);
   if (filters?.orderNumber) params.set('orderNumber', filters.orderNumber);
   if (filters?.partNumber) params.set('partNumber', filters.partNumber);
+  if (filters?.partName) params.set('partName', filters.partName);
   if (filters?.customerName) params.set('customerName', filters.customerName);
   if (filters?.priority) params.set('priority', filters.priority);
   if (filters?.status) params.set('status', filters.status);
@@ -45,9 +47,10 @@ export const filterOrdersLocal = (
     const matchCustomer = !filters.customerName || filters.customerName.trim() === '' || o.customer_name.toLowerCase().includes(filters.customerName.toLowerCase());
     const matchPriority = !filters.priority || filters.priority === '' || o.priority === filters.priority;
     const matchPartNumber = !filters.partNumber || filters.partNumber.trim() === '' || (o.items || []).some(item => (item.part_number || '').toLowerCase().includes(filters.partNumber.toLowerCase()));
+    const matchPartName = !filters.partName || filters.partName.trim() === '' || (o.items || []).some(item => (item.part_name || '').toLowerCase().includes(filters.partName.toLowerCase()));
     const matchStatus = !filters.status || filters.status === '' || o.status === filters.status;
 
-    return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber && matchStatus;
+    return matchDueDateStart && matchDueDateEnd && matchOrderNumber && matchCustomer && matchPriority && matchPartNumber && matchPartName && matchStatus;
   });
 };
 

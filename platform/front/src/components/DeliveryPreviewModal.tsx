@@ -58,11 +58,15 @@ const itemFields = [
   { key: 'items.notes', label: '零件备注', isList: true },
 ];
 
-// 格式化日期
+// 格式化日期为 YYYY-MM-DD
 const formatDate = (date: any): string => {
   if (!date) return '';
-  if (typeof date === 'string') return date.split('T')[0];
-  if (date instanceof Date) return date.toISOString().split('T')[0];
+  if (typeof date === 'string') {
+    return date.split('T')[0];
+  }
+  if (date instanceof Date) {
+    return date.toISOString().split('T')[0];
+  }
   return String(date);
 };
 
@@ -84,8 +88,9 @@ const getFieldValue = (obj: any, key: string): string => {
     }
   }
   if (value === null || value === undefined) return '';
-  if (typeof value === 'object' && value instanceof Date) return formatDate(value);
-  if (typeof value === 'number' && key.includes('amount') || key.includes('price')) return formatAmount(value);
+  if (value instanceof Date) return formatDate(value);
+  if (typeof value === 'string' && /T\d/.test(value)) return formatDate(value);
+  if (typeof value === 'number' && (key.includes('amount') || key.includes('price'))) return formatAmount(value);
   return String(value);
 };
 

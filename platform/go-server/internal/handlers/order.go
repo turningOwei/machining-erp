@@ -45,6 +45,7 @@ func (h *OrderHandler) List(c *gin.Context) {
 		DueDateEnd:   c.Query("dueDateEnd"),
 		OrderNumber:  c.Query("orderNumber"),
 		PartNumber:   c.Query("partNumber"),
+		PartName:     c.Query("partName"),
 		CustomerName: c.Query("customerName"),
 		Priority:     c.Query("priority"),
 		Status:       c.Query("status"),

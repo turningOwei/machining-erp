@@ -727,6 +727,7 @@ export default function App() {
     if (filters.dueDateEnd) params.append('dueDateEnd', filters.dueDateEnd);
     if (filters.orderNumber) params.append('orderNumber', filters.orderNumber);
     if (filters.partNumber) params.append('partNumber', filters.partNumber);
+    if (filters.partName) params.append('partName', filters.partName);
     if (filters.customerName) params.append('customerName', filters.customerName);
     if (filters.priority) params.append('priority', filters.priority);
     if (filters.status) params.append('status', filters.status);

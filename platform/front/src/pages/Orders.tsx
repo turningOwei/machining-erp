@@ -62,7 +62,7 @@ const Orders: React.FC<OrdersProps> = ({
 
   // 组件挂载时检查是否有筛选条件（如从Dashboard点击卡片跳转）
   useEffect(() => {
-    const hasFilters = orderFilters.status || orderFilters.orderNumber || orderFilters.customerName || orderFilters.partNumber || orderFilters.priority || orderFilters.dueDateStart || orderFilters.dueDateEnd;
+    const hasFilters = orderFilters.status || orderFilters.orderNumber || orderFilters.customerName || orderFilters.partNumber || orderFilters.partName || orderFilters.priority || orderFilters.dueDateStart || orderFilters.dueDateEnd;
     if (hasFilters) {
       fetchOrdersWithFilters(orderFilters, currentPage, pageSize);
     }
