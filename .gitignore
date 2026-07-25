@@ -17,3 +17,7 @@ platform/go-server/tmp/
 *.dll
 *.so
 *.dylib
+
+# 部署构建产物
+nginx/html/
+out/

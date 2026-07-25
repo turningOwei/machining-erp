@@ -30,6 +30,8 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
+      outDir: '../../out/html/platform',
+      emptyOutDir: true,
       target: 'esnext',
       minify: 'esbuild',
       sourcemap: false,
