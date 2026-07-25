@@ -66,6 +66,7 @@ const Imminent = lazy(() => import('./pages/Imminent'));
 const Customers = lazy(() => import('./pages/Customers'));
 const Inventory = lazy(() => import('./pages/Inventory'));
 const Finance = lazy(() => import('./pages/Finance'));
+const MonthlyOutput = lazy(() => import('./pages/MonthlyOutput'));
 const Rules = lazy(() => import('./pages/Rules'));
 
 // 生产相关页面
@@ -210,7 +211,7 @@ export default function App() {
     setAuthUser(null);
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'production_dashboard' | 'orders' | 'production_orders' | 'inventory' | 'finance' | 'overdue' | 'production_overdue' | 'warning_orders' | 'production_warning' | 'imminent_orders' | 'production_imminent' | 'advent_rules' | 'customers' | 'reconciliation' | 'print_template' | 'user_management' | 'role_management' | 'resource_management'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'production_dashboard' | 'orders' | 'production_orders' | 'inventory' | 'finance' | 'monthly_output' | 'overdue' | 'production_overdue' | 'warning_orders' | 'production_warning' | 'imminent_orders' | 'production_imminent' | 'production_delivery' | 'advent_rules' | 'customers' | 'reconciliation' | 'print_template' | 'user_management' | 'role_management' | 'resource_management'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [dashboardItems, setDashboardItems] = useState<any[]>([]);
   const [dashboardStats, setDashboardStats] = useState<{
@@ -220,7 +221,10 @@ export default function App() {
     overdue_count: number;
     warning_count: number;
     near_due_count: number;
-  }>({ pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 });
+    pending_order_count: number;
+    processing_order_count: number;
+    completed_order_count: number;
+  }>({ pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0, pending_order_count: 0, processing_order_count: 0, completed_order_count: 0 });
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [remnants, setRemnants] = useState<Remnant[]>([]);
@@ -266,6 +270,7 @@ export default function App() {
   // 订单管理筛选状态
   const [orderFilters, setOrderFilters] = useState(createOrderFilters);
   const [appliedOrderFilters, setAppliedOrderFilters] = useState(createOrderFilters);
+  const skipNextOrdersLoadRef = useRef(false);
   const [dashboardPage, setDashboardPage] = useState(1);
   const [dashboardPageSize, setDashboardPageSize] = useState(10);
   const [dashboardTotal, setDashboardTotal] = useState(0);
@@ -425,8 +430,9 @@ export default function App() {
         setOrderTotal(total);
       } else if (status) {
         // 送货管理按状态筛选
-        const { data } = await fetchOrdersApi(undefined, 1, 1000, status);
+        const { data, total } = await fetchOrdersApi(undefined, 1, 1000, status);
         setOrders(data);
+        setOrderTotal(total);
       } else {
         // 逾期/告警/临期订单获取全部数据
         const { data } = await fetchOrdersApi(dateType, 1, 1000);
@@ -596,9 +602,13 @@ export default function App() {
         if (customers.length === 0) fetchCustomersData();
         break;
       case 'orders':
-        setOrders([]);
         setCurrentPage(1);
-        fetchOrdersData();
+        if (skipNextOrdersLoadRef.current) {
+          skipNextOrdersLoadRef.current = false;
+        } else {
+          setOrders([]);
+          fetchOrdersData();
+        }
         if (customers.length === 0) fetchCustomersData();
         break;
       case 'overdue':
@@ -620,9 +630,13 @@ export default function App() {
         if (customers.length === 0) fetchCustomersData();
         break;
       case 'production_orders':
-        setOrders([]);
         setCurrentPage(1);
-        fetchOrdersData();
+        if (skipNextOrdersLoadRef.current) {
+          skipNextOrdersLoadRef.current = false;
+        } else {
+          setOrders([]);
+          fetchOrdersData();
+        }
         if (customers.length === 0) fetchCustomersData();
         break;
       case 'production_overdue':
@@ -646,7 +660,10 @@ export default function App() {
       case 'production_delivery':
         setOrders([]);
         setDeliveryPage(1);
-        fetchOrdersData(undefined, 'completed');
+        fetchOrdersApi(undefined, 1, deliveryPageSize, 'completed').then(({ data, total }) => {
+          setOrders(data);
+          setOrderTotal(total);
+        });
         if (customers.length === 0) fetchCustomersData();
         break;
       case 'reconciliation':
@@ -668,6 +685,8 @@ export default function App() {
         setReconciliation([]);
         fetchFinanceData();
         break;
+      case 'monthly_output':
+        break;
       case 'advent_rules':
         setAdventRules([]);
         fetchRulesData();
@@ -688,7 +707,10 @@ export default function App() {
   // 监听订单管理分页变化
   useEffect(() => {
     if (!isAuthenticated || (activeTab !== 'orders' && activeTab !== 'production_orders')) return;
-    fetchOrdersData();
+    const hasFilters = orderFilters.status || orderFilters.orderNumber || orderFilters.customerName || orderFilters.partNumber || orderFilters.partName || orderFilters.priority || orderFilters.dueDateStart || orderFilters.dueDateEnd || orderFilters.completionDateStart || orderFilters.completionDateEnd || orderFilters.zeroPrice;
+    if (!hasFilters) {
+      fetchOrdersData();
+    }
   }, [currentPage, pageSize]);
 
   const fetchData = async () => {
@@ -725,12 +747,15 @@ export default function App() {
     const params = new URLSearchParams();
     if (filters.dueDateStart) params.append('dueDateStart', filters.dueDateStart);
     if (filters.dueDateEnd) params.append('dueDateEnd', filters.dueDateEnd);
+    if (filters.completionDateStart) params.append('completionDateStart', filters.completionDateStart);
+    if (filters.completionDateEnd) params.append('completionDateEnd', filters.completionDateEnd);
     if (filters.orderNumber) params.append('orderNumber', filters.orderNumber);
     if (filters.partNumber) params.append('partNumber', filters.partNumber);
     if (filters.partName) params.append('partName', filters.partName);
     if (filters.customerName) params.append('customerName', filters.customerName);
     if (filters.priority) params.append('priority', filters.priority);
     if (filters.status) params.append('status', filters.status);
+    if (filters.zeroPrice) params.append('zeroPrice', filters.zeroPrice);
     if (dateType) params.append('dateType', dateType);
     if (page) params.append('page', String(page));
     if (pageSize) params.append('pageSize', String(pageSize));
@@ -739,7 +764,7 @@ export default function App() {
     const res = await authFetch(url);
     const data = await res.json();
     setOrders(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []);
-    if (data.total) setOrderTotal(data.total);
+    if (typeof data.total === 'number') setOrderTotal(data.total);
   };
 
   const deleteOrder = async (orderId: number) => {
@@ -947,6 +972,16 @@ export default function App() {
     ...baseOrderProps,
   };
 
+  const handleMenuTabChange = (tab: typeof activeTab) => {
+    if (tab === 'orders' || tab === 'production_orders') {
+      const emptyFilters = createOrderFilters();
+      setOrderFilters(emptyFilters);
+      setAppliedOrderFilters(emptyFilters);
+      setCurrentPage(1);
+    }
+    setActiveTab(tab);
+  };
+
   // Render active tab based on activeTab state
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -1058,6 +1093,17 @@ export default function App() {
         return (
           <Finance
             reconciliation={reconciliation}
+          />
+        );
+      case 'monthly_output':
+        return (
+          <MonthlyOutput
+            setActiveTab={setActiveTab}
+            setOrderFilters={setOrderFilters}
+            setAppliedOrderFilters={setAppliedOrderFilters}
+            setCurrentPage={setCurrentPage}
+            skipNextOrdersLoadRef={skipNextOrdersLoadRef}
+            fetchOrdersWithFilters={fetchOrdersWithFilters}
           />
         );
       case 'advent_rules':
@@ -1172,6 +1218,7 @@ export default function App() {
             setDeliveryPage={setDeliveryPage}
             deliveryPageSize={deliveryPageSize}
             setDeliveryPageSize={setDeliveryPageSize}
+            orderTotal={orderTotal}
             fetchOrdersWithFilters={fetchOrdersWithFilters}
           />
         );
@@ -1211,7 +1258,7 @@ export default function App() {
           icon: (LucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[r.icon] || LucideIcons.LayoutDashboard
         })) : NAV_ITEMS}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleMenuTabChange}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         isSidebarCollapsed={isSidebarCollapsed}

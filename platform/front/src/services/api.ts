@@ -52,6 +52,9 @@ export const fetchDashboardDataApiNew = async (page: number = 1, pageSize: numbe
     overdue_count: number;
     warning_count: number;
     near_due_count: number;
+    pending_order_count: number;
+    processing_order_count: number;
+    completed_order_count: number;
   }
 }> => {
   const [itemsRes, statsRes] = await Promise.all([
@@ -66,7 +69,7 @@ export const fetchDashboardDataApiNew = async (page: number = 1, pageSize: numbe
     items: itemsResult.data?.items || [],
     orders: itemsResult.data?.orders || [],
     total: itemsResult.data?.total || 0,
-    stats: statsResult.data || { pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0 }
+    stats: statsResult.data || { pending_count: 0, processing_count: 0, completed_count: 0, overdue_count: 0, warning_count: 0, near_due_count: 0, pending_order_count: 0, processing_order_count: 0, completed_order_count: 0 }
   };
 };
 

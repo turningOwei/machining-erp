@@ -112,6 +112,7 @@ func main() {
 	materialHandler := handlers.NewMaterialHandler(materialRepo)
 	remnantHandler := handlers.NewRemnantHandler(remnantRepo)
 	financeHandler := handlers.NewFinanceHandler(db)
+	statsHandler := handlers.NewStatsHandler(db)
 	adventRuleHandler := handlers.NewAdventRuleHandler(adventRuleRepo)
 	deliveryService := services.NewDeliveryService(db)
 	reconciliationService := services.NewReconciliationService(db)
@@ -198,6 +199,9 @@ func main() {
 		// 财务
 		api.GET("/finance/reconciliation", financeHandler.GetReconciliation)
 
+		// 统计
+		api.GET("/stats/monthly-output", statsHandler.GetMonthlyOutput)
+
 		// 预警规则
 		api.GET("/advent-rules", adventRuleHandler.List)
 		api.POST("/advent-rules", adventRuleHandler.Create)
@@ -205,7 +209,7 @@ func main() {
 		api.DELETE("/advent-rules/:id", adventRuleHandler.Delete)
 		// 打印模板
 		api.GET("/print-templates", printTemplateHandler.List)
-		api.GET("/print-templates/by-button", printTemplateHandler.FindByButtonKey)  // 必须在 :id 路由之前
+		api.GET("/print-templates/by-button", printTemplateHandler.FindByButtonKey) // 必须在 :id 路由之前
 		api.POST("/print-templates", printTemplateHandler.Create)
 		api.PATCH("/print-templates/:id", printTemplateHandler.Update)
 		api.DELETE("/print-templates/:id", printTemplateHandler.Delete)

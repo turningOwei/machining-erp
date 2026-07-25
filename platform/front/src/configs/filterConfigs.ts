@@ -4,6 +4,8 @@ import { FilterConfig } from '../components/OrderMonitorPanel';
 export const createEmptyFilters = () => ({
   dueDateStart: '',
   dueDateEnd: '',
+  completionDateStart: '',
+  completionDateEnd: '',
   orderNumber: '',
   partNumber: '',
   partName: '',
@@ -14,7 +16,8 @@ export const createEmptyFilters = () => ({
 // 订单管理筛选初始状态（包含状态筛选）
 export const createOrderFilters = () => ({
   ...createEmptyFilters(),
-  status: ''
+  status: '',
+  zeroPrice: ''
 });
 
 // 订单管理页面的筛选配置
@@ -47,6 +50,16 @@ export const orderFilterConfigs: FilterConfig[] = [
       { value: 'pending', label: '待加工' },
       { value: 'processing', label: '加工中' },
       { value: 'completed', label: '已完成' }
+    ]
+  },
+  {
+    key: 'zeroPrice',
+    label: '价格异常',
+    type: 'select',
+    width: 'w-32',
+    placeholder: '全部',
+    options: [
+      { value: 'true', label: '价格为0' }
     ]
   }
 ];

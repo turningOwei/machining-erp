@@ -1,4 +1,4 @@
-import { LayoutDashboard, ClipboardList, AlertCircle, AlertTriangle, Clock, Users, Package, CircleDollarSign, Settings2, LucideIcon, FileText } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, AlertCircle, AlertTriangle, Clock, Users, Package, CircleDollarSign, Settings2, LucideIcon, FileText, BarChart3 } from 'lucide-react';
 
 export interface NavItem {
   id: string;
@@ -16,5 +16,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'reconciliation', label: '对账管理', icon: FileText },
   { id: 'inventory', label: '仓库余料', icon: Package },
   { id: 'finance', label: '财务对账', icon: CircleDollarSign },
+  { id: 'monthly_output', label: '产值统计', icon: BarChart3 },
   { id: 'advent_rules', label: '规则管理', icon: Settings2 },
 ];

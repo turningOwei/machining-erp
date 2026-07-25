@@ -20,18 +20,21 @@ func NewOrderRepository(db *gorm.DB) *OrderRepository {
 
 // OrderFilters 订单筛选条件
 type OrderFilters struct {
-	CorpID       int64
-	DueDateStart string
-	DueDateEnd   string
-	OrderNumber  string
-	PartNumber   string
-	PartName     string
-	CustomerName string
-	Priority     string
-	Status       string
-	Page         int
-	PageSize     int
-	DateType     string // "overdue" 逾期, "warning" 告警, "near_due" 临期
+	CorpID              int64
+	DueDateStart        string
+	DueDateEnd          string
+	CompletionDateStart string
+	CompletionDateEnd   string
+	OrderNumber         string
+	PartNumber          string
+	PartName            string
+	CustomerName        string
+	Priority            string
+	Status              string
+	ZeroPrice           bool
+	Page                int
+	PageSize            int
+	DateType            string // "overdue" 逾期, "warning" 告警, "near_due" 临期
 }
 
 // OrderListResult 订单列表返回结果
@@ -102,7 +105,7 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 	}
 
 	// 如果有零件级别筛选，需要子查询
-	if filters.DueDateStart != "" || filters.DueDateEnd != "" || filters.PartNumber != "" || filters.PartName != "" {
+	if filters.DueDateStart != "" || filters.DueDateEnd != "" || filters.CompletionDateStart != "" || filters.CompletionDateEnd != "" || filters.PartNumber != "" || filters.PartName != "" || filters.ZeroPrice {
 		subQuery := r.db.Model(&models.OrderItem{}).Select("DISTINCT order_id")
 		if filters.DueDateStart != "" {
 			subQuery = subQuery.Where("due_date >= ?", filters.DueDateStart)
@@ -110,11 +113,20 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		if filters.DueDateEnd != "" {
 			subQuery = subQuery.Where("due_date <= ?", filters.DueDateEnd)
 		}
+		if filters.CompletionDateStart != "" {
+			subQuery = subQuery.Where("completion_date >= ?", filters.CompletionDateStart)
+		}
+		if filters.CompletionDateEnd != "" {
+			subQuery = subQuery.Where("completion_date <= ?", filters.CompletionDateEnd)
+		}
 		if filters.PartNumber != "" {
 			subQuery = subQuery.Where("part_number LIKE ?", "%"+filters.PartNumber+"%")
 		}
 		if filters.PartName != "" {
 			subQuery = subQuery.Where("part_name LIKE ?", "%"+filters.PartName+"%")
+		}
+		if filters.ZeroPrice {
+			subQuery = subQuery.Where("unit_price = 0")
 		}
 		baseQuery = baseQuery.Where("id IN (?)", subQuery)
 	}
@@ -173,7 +185,7 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 			}
 		}
 	}
-	if filters.DueDateStart != "" || filters.DueDateEnd != "" || filters.PartNumber != "" || filters.PartName != "" {
+	if filters.DueDateStart != "" || filters.DueDateEnd != "" || filters.CompletionDateStart != "" || filters.CompletionDateEnd != "" || filters.PartNumber != "" || filters.PartName != "" || filters.ZeroPrice {
 		subQuery := r.db.Model(&models.OrderItem{}).Select("DISTINCT order_id")
 		if filters.DueDateStart != "" {
 			subQuery = subQuery.Where("due_date >= ?", filters.DueDateStart)
@@ -181,11 +193,20 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 		if filters.DueDateEnd != "" {
 			subQuery = subQuery.Where("due_date <= ?", filters.DueDateEnd)
 		}
+		if filters.CompletionDateStart != "" {
+			subQuery = subQuery.Where("completion_date >= ?", filters.CompletionDateStart)
+		}
+		if filters.CompletionDateEnd != "" {
+			subQuery = subQuery.Where("completion_date <= ?", filters.CompletionDateEnd)
+		}
 		if filters.PartNumber != "" {
 			subQuery = subQuery.Where("part_number LIKE ?", "%"+filters.PartNumber+"%")
 		}
 		if filters.PartName != "" {
 			subQuery = subQuery.Where("part_name LIKE ?", "%"+filters.PartName+"%")
+		}
+		if filters.ZeroPrice {
+			subQuery = subQuery.Where("unit_price = 0")
 		}
 		orderQuery = orderQuery.Where("id IN (?)", subQuery)
 	}
@@ -272,6 +293,16 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 		// 计算每个订单项的状态
 		for i := range items {
 			items[i].Status = models.OrderStatus(utils.CalculateOrderItemStatus(items[i].Processes))
+		}
+
+		// 同步零件交期为订单交期
+		for i := range items {
+			if order.StartDate != nil {
+				items[i].StartDate = order.StartDate
+			}
+			if order.DueDate != nil {
+				items[i].DueDate = order.DueDate
+			}
 		}
 
 		// 插入订单
@@ -384,6 +415,16 @@ func (r *OrderRepository) Update(order *models.Order, items []models.OrderItem) 
 		}
 
 		if items != nil {
+			// 同步零件交期为订单交期
+			for i := range items {
+				if order.StartDate != nil {
+					items[i].StartDate = order.StartDate
+				}
+				if order.DueDate != nil {
+					items[i].DueDate = order.DueDate
+				}
+			}
+
 			// 获取旧的订单项ID
 			var oldItemIDs []int64
 			tx.Model(&models.OrderItem{}).Where("order_id = ?", order.ID).Pluck("id", &oldItemIDs)
@@ -581,12 +622,16 @@ type OrderInfo struct {
 
 // DashboardStats 看板卡片统计数据
 type DashboardStats struct {
-	PendingCount    int64 `json:"pending_count"`
-	ProcessingCount int64 `json:"processing_count"`
-	CompletedCount  int64 `json:"completed_count"`
-	OverdueCount    int64 `json:"overdue_count"`  // 逾期订单
-	WarningCount    int64 `json:"warning_count"`  // 告警订单
-	NearDueCount    int64 `json:"near_due_count"` // 临期订单
+	PendingCount    int64 `json:"pending_count"`    // 待加工零件数
+	ProcessingCount int64 `json:"processing_count"` // 加工中零件数
+	CompletedCount  int64 `json:"completed_count"`  // 已完成零件数
+	OverdueCount    int64 `json:"overdue_count"`    // 逾期订单
+	WarningCount    int64 `json:"warning_count"`    // 告警订单
+	NearDueCount    int64 `json:"near_due_count"`   // 临期订单
+	// 订单级别数量
+	PendingOrderCount    int64 `json:"pending_order_count"`    // 待加工订单数
+	ProcessingOrderCount int64 `json:"processing_order_count"` // 加工中订单数
+	CompletedOrderCount  int64 `json:"completed_order_count"`  // 已完成订单数
 }
 
 // GetDashboardStats 获取看板卡片统计数据
@@ -627,6 +672,36 @@ func (r *OrderRepository) GetDashboardStats(corpID int64) (*DashboardStats, erro
 		completedQuery = completedQuery.Where("o.corp_id = ?", corpID)
 	}
 	completedQuery.Count(&stats.CompletedCount)
+
+	// 统计各状态的订单数量
+	orderQuery := r.db.Table("orders").
+		Where("status NOT IN ?", []string{"delivered", "completed"})
+	if corpID > 0 {
+		orderQuery = orderQuery.Where("corp_id = ?", corpID)
+	}
+	orderRows, err := orderQuery.Select("status, COUNT(*) as count").Group("status").Rows()
+	if err == nil {
+		defer orderRows.Close()
+		for orderRows.Next() {
+			var status string
+			var count int64
+			if err := orderRows.Scan(&status, &count); err == nil {
+				switch status {
+				case "pending":
+					stats.PendingOrderCount = count
+				case "processing":
+					stats.ProcessingOrderCount = count
+				}
+			}
+		}
+	}
+
+	// 已完成的订单统计
+	completedOrderQuery := r.db.Table("orders").Where("status = ?", "completed")
+	if corpID > 0 {
+		completedOrderQuery = completedOrderQuery.Where("corp_id = ?", corpID)
+	}
+	completedOrderQuery.Count(&stats.CompletedOrderCount)
 
 	// 逾期订单：零件交期 < 今天 且订单状态未完成
 	overdueQuery := r.db.Table("order_items as oi").

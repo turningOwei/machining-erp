@@ -21,6 +21,7 @@ interface DeliveryProps {
   setDeliveryPage: (page: number) => void;
   deliveryPageSize: number;
   setDeliveryPageSize: (size: number) => void;
+  orderTotal: number;
   editOrder: (order: Order) => void;
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
@@ -39,6 +40,7 @@ const Delivery: React.FC<DeliveryProps> = ({
   setDeliveryPage,
   deliveryPageSize,
   setDeliveryPageSize,
+  orderTotal,
   editOrder,
   setShowDrawingModal,
   handleProcessClick,
@@ -60,7 +62,21 @@ const Delivery: React.FC<DeliveryProps> = ({
     setIsSearching(true);
     try {
       const filtersWithStatus = { ...deliveryFilters, status: 'completed' };
-      await fetchOrdersWithFilters(filtersWithStatus, deliveryPage, deliveryPageSize);
+      setDeliveryPage(1);
+      await fetchOrdersWithFilters(filtersWithStatus, 1, deliveryPageSize);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handlePageChangeWithFilters = async (newPage: number, newPageSize?: number) => {
+    setIsSearching(true);
+    try {
+      if (newPage !== deliveryPage) {
+        setDeliveryPage(newPage);
+      }
+      const filtersWithStatus = { ...deliveryFilters, status: 'completed' };
+      await fetchOrdersWithFilters(filtersWithStatus, newPage, newPageSize || deliveryPageSize);
     } finally {
       setIsSearching(false);
     }
@@ -123,7 +139,7 @@ const Delivery: React.FC<DeliveryProps> = ({
         setPage={setDeliveryPage}
         pageSize={deliveryPageSize}
         setPageSize={setDeliveryPageSize}
-        total={completedOrders.length}
+        total={orderTotal}
         themeColor="emerald"
         editOrder={editOrder}
         setShowDrawingModal={setShowDrawingModal}
@@ -134,6 +150,7 @@ const Delivery: React.FC<DeliveryProps> = ({
         showOutsourcingFee={!hideCostFields}
         showTotalAmount={!hideCostFields}
         onSearch={handleSearch}
+        onPageChangeWithFilters={handlePageChangeWithFilters}
         isSearching={isSearching}
         deliveryMode={true}
         selectedOrderId={selectedOrderId}

@@ -49,7 +49,6 @@ const Pagination: React.FC<PaginationProps> = ({
           value={pageSize}
           onChange={(e) => {
             onPageSizeChange(Number(e.target.value));
-            onPageChange(1);
           }}
           className="bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-zinc-900"
         >

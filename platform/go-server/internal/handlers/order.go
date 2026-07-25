@@ -40,18 +40,21 @@ func (h *OrderHandler) List(c *gin.Context) {
 	}
 
 	filters := repository.OrderFilters{
-		CorpID:       middleware.GetCorpID(c),
-		DueDateStart: c.Query("dueDateStart"),
-		DueDateEnd:   c.Query("dueDateEnd"),
-		OrderNumber:  c.Query("orderNumber"),
-		PartNumber:   c.Query("partNumber"),
-		PartName:     c.Query("partName"),
-		CustomerName: c.Query("customerName"),
-		Priority:     c.Query("priority"),
-		Status:       c.Query("status"),
-		DateType:     c.Query("dateType"), // overdue, warning, near_due
-		Page:         page,
-		PageSize:     pageSize,
+		CorpID:              middleware.GetCorpID(c),
+		DueDateStart:        c.Query("dueDateStart"),
+		DueDateEnd:          c.Query("dueDateEnd"),
+		CompletionDateStart: c.Query("completionDateStart"),
+		CompletionDateEnd:   c.Query("completionDateEnd"),
+		OrderNumber:         c.Query("orderNumber"),
+		PartNumber:          c.Query("partNumber"),
+		PartName:            c.Query("partName"),
+		CustomerName:        c.Query("customerName"),
+		Priority:            c.Query("priority"),
+		Status:              c.Query("status"),
+		ZeroPrice:           c.Query("zeroPrice") == "true",
+		DateType:            c.Query("dateType"), // overdue, warning, near_due
+		Page:                page,
+		PageSize:            pageSize,
 	}
 
 	result, err := h.repo.GetWithFilters(filters)
@@ -70,43 +73,43 @@ func (h *OrderHandler) List(c *gin.Context) {
 }
 
 type CreateOrderRequest struct {
-	CustomerID        *int64          `json:"customer_id"`
-	CustomerName      *string         `json:"customer_name"`
-	CustomerShortName *string         `json:"customer_short_name"`
-	OrderNumber       string          `json:"order_number"`
-	OrderName         *string         `json:"order_name"`
-	ContactName       *string         `json:"contact_name"`
-	Priority          models.Priority `json:"priority"`
-	StartDate         string          `json:"start_date"`
-	DueDate           string          `json:"due_date"`
-	TotalAmount       float64         `json:"total_amount"`
-	Notes             *string         `json:"notes"`
+	CustomerID        *int64                   `json:"customer_id"`
+	CustomerName      *string                  `json:"customer_name"`
+	CustomerShortName *string                  `json:"customer_short_name"`
+	OrderNumber       string                   `json:"order_number"`
+	OrderName         *string                  `json:"order_name"`
+	ContactName       *string                  `json:"contact_name"`
+	Priority          models.Priority          `json:"priority"`
+	StartDate         string                   `json:"start_date"`
+	DueDate           string                   `json:"due_date"`
+	TotalAmount       float64                  `json:"total_amount"`
+	Notes             *string                  `json:"notes"`
 	Items             []CreateOrderItemRequest `json:"items"`
 }
 
 // CreateOrderItemRequest 创建订单项请求结构体（日期用string避免解析问题）
 type CreateOrderItemRequest struct {
-	ID              *int64                   `json:"id"`
-	OrderID         *int64                   `json:"order_id"`
-	PartName        string                   `json:"part_name"`
-	PartNumber      *string                  `json:"part_number"`
-	Quantity        int                      `json:"quantity"`
-	ScrapQuantity   int                      `json:"scrap_quantity"`
-	UnitPrice       float64                  `json:"unit_price"`
-	TotalPrice      float64                  `json:"total_price"`
-	Status          models.OrderStatus       `json:"status"`
-	DrawingData     *string                  `json:"drawing_data"`
-	Notes           *string                  `json:"notes"`
-	StartDate       string                   `json:"start_date"`
-	DueDate         string                   `json:"due_date"`
-	DeliveredQty    int                      `json:"delivered_quantity"`
-	ToolCost        float64                  `json:"tool_cost"`
-	FixtureCost     float64                  `json:"fixture_cost"`
-	MaterialCost    float64                  `json:"material_cost"`
-	OtherCost       float64                  `json:"other_cost"`
-	ItemNotes       *string                  `json:"item_notes"`
-	CompletionDate  string                   `json:"completion_date"`
-	Processes       []ProcessRequest         `json:"processes"`
+	ID             *int64             `json:"id"`
+	OrderID        *int64             `json:"order_id"`
+	PartName       string             `json:"part_name"`
+	PartNumber     *string            `json:"part_number"`
+	Quantity       int                `json:"quantity"`
+	ScrapQuantity  int                `json:"scrap_quantity"`
+	UnitPrice      float64            `json:"unit_price"`
+	TotalPrice     float64            `json:"total_price"`
+	Status         models.OrderStatus `json:"status"`
+	DrawingData    *string            `json:"drawing_data"`
+	Notes          *string            `json:"notes"`
+	StartDate      string             `json:"start_date"`
+	DueDate        string             `json:"due_date"`
+	DeliveredQty   int                `json:"delivered_quantity"`
+	ToolCost       float64            `json:"tool_cost"`
+	FixtureCost    float64            `json:"fixture_cost"`
+	MaterialCost   float64            `json:"material_cost"`
+	OtherCost      float64            `json:"other_cost"`
+	ItemNotes      *string            `json:"item_notes"`
+	CompletionDate string             `json:"completion_date"`
+	Processes      []ProcessRequest   `json:"processes"`
 }
 
 // ProcessRequest 工序请求结构体
@@ -250,18 +253,18 @@ func (h *OrderHandler) Create(c *gin.Context) {
 }
 
 type UpdateOrderRequest struct {
-	CustomerID        *int64            `json:"customer_id"`
-	CustomerName      *string           `json:"customer_name"`
-	CustomerShortName *string           `json:"customer_short_name"`
-	OrderNumber       string            `json:"order_number"`
-	OrderName         *string           `json:"order_name"`
-	ContactName       *string           `json:"contact_name"`
-	Priority          models.Priority   `json:"priority"`
-	StartDate         string            `json:"start_date"`
-	DueDate           string            `json:"due_date"`
-	Notes             *string           `json:"notes"`
-	TotalAmount       float64           `json:"total_amount"`
-	Status            models.OrderStatus `json:"status"`
+	CustomerID        *int64                   `json:"customer_id"`
+	CustomerName      *string                  `json:"customer_name"`
+	CustomerShortName *string                  `json:"customer_short_name"`
+	OrderNumber       string                   `json:"order_number"`
+	OrderName         *string                  `json:"order_name"`
+	ContactName       *string                  `json:"contact_name"`
+	Priority          models.Priority          `json:"priority"`
+	StartDate         string                   `json:"start_date"`
+	DueDate           string                   `json:"due_date"`
+	Notes             *string                  `json:"notes"`
+	TotalAmount       float64                  `json:"total_amount"`
+	Status            models.OrderStatus       `json:"status"`
 	Items             []CreateOrderItemRequest `json:"items"`
 }
 

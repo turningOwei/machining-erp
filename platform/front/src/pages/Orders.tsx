@@ -73,7 +73,8 @@ const Orders: React.FC<OrdersProps> = ({
   const handleSearch = async () => {
     setIsSearching(true);
     try {
-      await fetchOrdersWithFilters(orderFilters, currentPage, pageSize);
+      setCurrentPage(1);
+      await fetchOrdersWithFilters(orderFilters, 1, pageSize);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     } finally {
@@ -85,6 +86,9 @@ const Orders: React.FC<OrdersProps> = ({
   const handlePageChangeWithFilters = async (newPage: number, newPageSize?: number) => {
     setIsSearching(true);
     try {
+      if (newPage !== currentPage) {
+        setCurrentPage(newPage);
+      }
       await fetchOrdersWithFilters(orderFilters, newPage, newPageSize || pageSize);
     } catch (error) {
       console.error('Failed to fetch orders:', error);

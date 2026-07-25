@@ -28,6 +28,9 @@ interface DashboardProps {
     overdue_count: number;
     warning_count: number;
     near_due_count: number;
+    pending_order_count?: number;
+    processing_order_count?: number;
+    completed_order_count?: number;
   };
   dashboardPage: number;
   dashboardPageSize: number;
@@ -93,12 +96,12 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 px-4 md:px-8">
         {[
-          { label: '待加工', count: dashboardStats.pending_count, color: 'amber', icon: Clock, action: 'filter', filterStatus: 'pending' },
-          { label: '加工中', count: dashboardStats.processing_count, color: 'blue', icon: TrendingUp, action: 'filter', filterStatus: 'processing' },
+          { label: '待加工', count: dashboardStats.pending_count, orderCount: dashboardStats.pending_order_count ?? 0, color: 'amber', icon: Clock, action: 'filter', filterStatus: 'pending' },
+          { label: '加工中', count: dashboardStats.processing_count, orderCount: dashboardStats.processing_order_count ?? 0, color: 'blue', icon: TrendingUp, action: 'filter', filterStatus: 'processing' },
           { label: '逾期订单', count: dashboardStats.overdue_count, color: 'rose', icon: AlertCircle, action: 'tab', tab: 'overdue' },
           { label: '告警订单', count: dashboardStats.warning_count, color: 'orange', icon: AlertTriangle, action: 'tab', tab: 'warning_orders' },
           { label: '临期订单', count: dashboardStats.near_due_count, color: 'yellow', icon: Clock, action: 'tab', tab: 'imminent_orders' },
-          { label: '已完成', count: dashboardStats.completed_count, color: 'emerald', icon: CheckCircle2, action: 'filter', filterStatus: 'completed' },
+          { label: '已完成', count: dashboardStats.completed_count, orderCount: dashboardStats.completed_order_count ?? 0, color: 'emerald', icon: CheckCircle2, action: 'filter', filterStatus: 'completed' },
         ].map((stat, i) => {
           const colorStyles: Record<string, { bg: string; text: string; hover: string }> = {
             amber: { bg: 'bg-amber-50', text: 'text-amber-600', hover: 'hover:bg-amber-100' },
@@ -111,6 +114,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           };
           const style = colorStyles[stat.color] || colorStyles.zinc;
           const isClickable = stat.action !== 'none';
+          const showOrderCount = 'orderCount' in stat;
 
           const handleClick = () => {
             if (stat.action === 'tab' && stat.tab) {
@@ -139,13 +143,28 @@ const Dashboard: React.FC<DashboardProps> = ({
               onClick={isClickable ? handleClick : undefined}
               className={`bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm ${isClickable ? 'cursor-pointer hover:shadow-md hover:border-zinc-300 transition-all' : ''}`}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center`}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center shrink-0`}>
                   <stat.icon className={`w-5 h-5 ${style.text}`} />
                 </div>
+                {showOrderCount ? (
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-base font-bold">{stat.count}</span>
+                    <span className="text-xs font-medium text-zinc-400">零件</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-base font-bold">{stat.count}</span>
+                    <span className="text-xs font-medium text-zinc-400">订单</span>
+                  </div>
+                )}
               </div>
-              <p className="text-sm font-medium text-zinc-500">{stat.label}</p>
-              <p className="text-2xl font-bold mt-1">{stat.count}</p>
+              {showOrderCount && (
+                <p className="text-xs font-medium text-zinc-400 ml-13">
+                  订单 {stat.orderCount} 个
+                </p>
+              )}
+              <p className="text-sm font-medium text-zinc-500 mt-1">{stat.label}</p>
             </motion.div>
           );
         })}
