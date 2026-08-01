@@ -21,6 +21,8 @@ func NewOrderRepository(db *gorm.DB) *OrderRepository {
 // OrderFilters 订单筛选条件
 type OrderFilters struct {
 	CorpID              int64
+	StartDateStart      string
+	StartDateEnd        string
 	DueDateStart        string
 	DueDateEnd          string
 	CompletionDateStart string
@@ -67,6 +69,12 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 	}
 	if filters.Priority != "" {
 		baseQuery = baseQuery.Where("priority = ?", filters.Priority)
+	}
+	if filters.StartDateStart != "" {
+		baseQuery = baseQuery.Where("start_date >= ?", filters.StartDateStart)
+	}
+	if filters.StartDateEnd != "" {
+		baseQuery = baseQuery.Where("start_date <= ?", filters.StartDateEnd)
 	}
 
 	// 根据期限类型筛选
@@ -162,6 +170,12 @@ func (r *OrderRepository) GetWithFilters(filters OrderFilters) (OrderListResult,
 	}
 	if filters.Priority != "" {
 		orderQuery = orderQuery.Where("priority = ?", filters.Priority)
+	}
+	if filters.StartDateStart != "" {
+		orderQuery = orderQuery.Where("start_date >= ?", filters.StartDateStart)
+	}
+	if filters.StartDateEnd != "" {
+		orderQuery = orderQuery.Where("start_date <= ?", filters.StartDateEnd)
 	}
 	if filters.DateType != "" {
 		orderQuery = orderQuery.Where("status NOT IN ?", []string{"delivered", "completed"})
@@ -773,7 +787,7 @@ func (r *OrderRepository) GetDashboardItems(corpID int64, page, pageSize int) (*
 	if corpID > 0 {
 		dataQuery = dataQuery.Where("o.corp_id = ?", corpID)
 	}
-	err := dataQuery.Order("oi.start_date ASC, oi.due_date ASC, oi.status ASC").
+	err := dataQuery.Order("oi.start_date DESC, oi.due_date ASC, oi.status ASC").
 		Limit(pageSize).Offset(offset).
 		Find(&results).Error
 

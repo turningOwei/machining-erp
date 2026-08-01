@@ -81,7 +81,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center gap-4">
           <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs text-zinc-500">
             <span className="font-medium text-zinc-700">排序：</span>
-            订单日期<span className="text-emerald-500">↑</span> → 零件交期<span className="text-emerald-500">↑</span> → 零件状态<span className="text-emerald-500">↑</span>
+            订单日期<span className="text-emerald-500">↓</span> → 零件交期<span className="text-emerald-500">↑</span> → 零件状态<span className="text-emerald-500">↑</span>
           </div>
           <button
             onClick={resetAndOpenModal}

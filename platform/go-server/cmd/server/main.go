@@ -201,6 +201,7 @@ func main() {
 
 		// 统计
 		api.GET("/stats/monthly-output", statsHandler.GetMonthlyOutput)
+		api.GET("/stats/monthly-output/customers", statsHandler.GetMonthlyOutputByCustomer)
 
 		// 预警规则
 		api.GET("/advent-rules", adventRuleHandler.List)

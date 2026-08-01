@@ -41,6 +41,8 @@ func (h *OrderHandler) List(c *gin.Context) {
 
 	filters := repository.OrderFilters{
 		CorpID:              middleware.GetCorpID(c),
+		StartDateStart:      c.Query("startDateStart"),
+		StartDateEnd:        c.Query("startDateEnd"),
 		DueDateStart:        c.Query("dueDateStart"),
 		DueDateEnd:          c.Query("dueDateEnd"),
 		CompletionDateStart: c.Query("completionDateStart"),

@@ -707,7 +707,7 @@ export default function App() {
   // 监听订单管理分页变化
   useEffect(() => {
     if (!isAuthenticated || (activeTab !== 'orders' && activeTab !== 'production_orders')) return;
-    const hasFilters = orderFilters.status || orderFilters.orderNumber || orderFilters.customerName || orderFilters.partNumber || orderFilters.partName || orderFilters.priority || orderFilters.dueDateStart || orderFilters.dueDateEnd || orderFilters.completionDateStart || orderFilters.completionDateEnd || orderFilters.zeroPrice;
+    const hasFilters = orderFilters.status || orderFilters.orderNumber || orderFilters.customerName || orderFilters.partNumber || orderFilters.partName || orderFilters.priority || orderFilters.dueDateStart || orderFilters.dueDateEnd || orderFilters.startDateStart || orderFilters.startDateEnd || orderFilters.completionDateStart || orderFilters.completionDateEnd || orderFilters.zeroPrice;
     if (!hasFilters) {
       fetchOrdersData();
     }
@@ -747,6 +747,8 @@ export default function App() {
     const params = new URLSearchParams();
     if (filters.dueDateStart) params.append('dueDateStart', filters.dueDateStart);
     if (filters.dueDateEnd) params.append('dueDateEnd', filters.dueDateEnd);
+    if (filters.startDateStart) params.append('startDateStart', filters.startDateStart);
+    if (filters.startDateEnd) params.append('startDateEnd', filters.startDateEnd);
     if (filters.completionDateStart) params.append('completionDateStart', filters.completionDateStart);
     if (filters.completionDateEnd) params.append('completionDateEnd', filters.completionDateEnd);
     if (filters.orderNumber) params.append('orderNumber', filters.orderNumber);

@@ -4,6 +4,8 @@ import { FilterConfig } from '../components/OrderMonitorPanel';
 export const createEmptyFilters = () => ({
   dueDateStart: '',
   dueDateEnd: '',
+  startDateStart: '',
+  startDateEnd: '',
   completionDateStart: '',
   completionDateEnd: '',
   orderNumber: '',

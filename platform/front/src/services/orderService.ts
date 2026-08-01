@@ -5,6 +5,8 @@ import { Order } from '../types';
 export interface OrderFilters {
   dueDateStart?: string;
   dueDateEnd?: string;
+  startDateStart?: string;
+  startDateEnd?: string;
   completionDateStart?: string;
   completionDateEnd?: string;
   orderNumber?: string;
@@ -21,6 +23,8 @@ export const fetchOrders = async (filters?: OrderFilters): Promise<Order[]> => {
   const params = new URLSearchParams();
   if (filters?.dueDateStart) params.set('dueDateStart', filters.dueDateStart);
   if (filters?.dueDateEnd) params.set('dueDateEnd', filters.dueDateEnd);
+  if (filters?.startDateStart) params.set('startDateStart', filters.startDateStart);
+  if (filters?.startDateEnd) params.set('startDateEnd', filters.startDateEnd);
   if (filters?.completionDateStart) params.set('completionDateStart', filters.completionDateStart);
   if (filters?.completionDateEnd) params.set('completionDateEnd', filters.completionDateEnd);
   if (filters?.orderNumber) params.set('orderNumber', filters.orderNumber);
