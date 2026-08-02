@@ -23,6 +23,7 @@ func NewStatsHandler(db *gorm.DB) *StatsHandler {
 type MonthlyOutputItem struct {
 	Month                 string  `json:"month"`
 	OutputAmount          float64 `json:"output_amount"`
+	OutsourcingAmount     float64 `json:"outsourcing_amount"`
 	OrderCount            int64   `json:"order_count"`
 	ItemCount             int64   `json:"item_count"`
 	PartQuantity          int64   `json:"part_quantity"`
@@ -32,6 +33,7 @@ type MonthlyOutputItem struct {
 type MonthlyOutputResult struct {
 	Year                  int                 `json:"year"`
 	Total                 float64             `json:"total"`
+	OutsourcingAmount     float64             `json:"outsourcing_amount"`
 	OrderCount            int64               `json:"order_count"`
 	ItemCount             int64               `json:"item_count"`
 	PartQuantity          int64               `json:"part_quantity"`
@@ -40,18 +42,20 @@ type MonthlyOutputResult struct {
 }
 
 type CustomerMonthlyOutputItem struct {
-	CustomerName string  `json:"customer_name"`
-	OutputAmount float64 `json:"output_amount"`
-	OrderCount   int64   `json:"order_count"`
-	ItemCount    int64   `json:"item_count"`
-	PartQuantity int64   `json:"part_quantity"`
+	CustomerName      string  `json:"customer_name"`
+	OutputAmount      float64 `json:"output_amount"`
+	OutsourcingAmount float64 `json:"outsourcing_amount"`
+	OrderCount        int64   `json:"order_count"`
+	ItemCount         int64   `json:"item_count"`
+	PartQuantity      int64   `json:"part_quantity"`
 }
 
 type CustomerMonthlyOutputResult struct {
-	Month    string                      `json:"month"`
-	DateType string                      `json:"date_type"`
-	Total    float64                     `json:"total"`
-	Items    []CustomerMonthlyOutputItem `json:"items"`
+	Month             string                      `json:"month"`
+	DateType          string                      `json:"date_type"`
+	Total             float64                     `json:"total"`
+	OutsourcingAmount float64                     `json:"outsourcing_amount"`
+	Items             []CustomerMonthlyOutputItem `json:"items"`
 }
 
 func (h *StatsHandler) GetMonthlyOutput(c *gin.Context) {
@@ -77,6 +81,20 @@ func (h *StatsHandler) GetMonthlyOutput(c *gin.Context) {
 		return
 	}
 
+	includeOutsourcing := c.DefaultQuery("includeOutsourcing", "true") != "false"
+	outsourcingSelect := "0 AS outsourcing_amount"
+	if includeOutsourcing {
+		outsourcingSelect = `COALESCE(SUM((
+				SELECT COALESCE(SUM(op.outsourcing_fee), 0)
+				FROM order_processes op
+				WHERE op.order_item_id = oi.id
+					AND op.is_outsourced = 1
+			)), 0) AS outsourcing_amount`
+	}
+
+	startDate := time.Date(year, 1, 1, 0, 0, 0, 0, time.Local)
+	endDate := startDate.AddDate(1, 0, 0)
+
 	corpID := middleware.GetCorpID(c)
 	var rows []MonthlyOutputItem
 	err := h.db.Table("order_items AS oi").
@@ -86,15 +104,15 @@ func (h *StatsHandler) GetMonthlyOutput(c *gin.Context) {
 				WHEN oi.total_price IS NOT NULL AND oi.total_price > 0 THEN oi.total_price
 				ELSE oi.quantity * oi.unit_price
 			END), 0) AS output_amount,
+			%s,
 			COUNT(DISTINCT o.id) AS order_count,
 			COUNT(oi.id) AS item_count,
 			COALESCE(SUM(oi.quantity), 0) AS part_quantity,
 			COUNT(CASE WHEN oi.unit_price = 0 THEN 1 END) AS zero_price_part_quantity
-		`, dateColumn)).
+		`, dateColumn, outsourcingSelect)).
 		Joins("JOIN orders AS o ON o.id = oi.order_id").
-		Where(dateColumn+" IS NOT NULL").
-		Where(fmt.Sprintf("YEAR(%s) = ?", dateColumn), year).
 		Where("o.corp_id = ?", corpID).
+		Where(fmt.Sprintf("%s >= ? AND %s < ?", dateColumn, dateColumn), startDate, endDate).
 		Group("month").
 		Order("month").
 		Scan(&rows).Error
@@ -121,6 +139,7 @@ func (h *StatsHandler) GetMonthlyOutput(c *gin.Context) {
 			item = MonthlyOutputItem{Month: monthKey}
 		}
 		result.Total += item.OutputAmount
+		result.OutsourcingAmount += item.OutsourcingAmount
 		result.ItemCount += item.ItemCount
 		result.PartQuantity += item.PartQuantity
 		result.ZeroPricePartQuantity += item.ZeroPricePartQuantity
@@ -155,8 +174,21 @@ func (h *StatsHandler) GetMonthlyOutputByCustomer(c *gin.Context) {
 		return
 	}
 
+	includeOutsourcing := c.DefaultQuery("includeOutsourcing", "true") != "false"
+	outsourcingSelect := "0 AS outsourcing_amount"
+	if includeOutsourcing {
+		outsourcingSelect = `COALESCE(SUM((
+				SELECT COALESCE(SUM(op.outsourcing_fee), 0)
+				FROM order_processes op
+				WHERE op.order_item_id = oi.id
+					AND op.is_outsourced = 1
+			)), 0) AS outsourcing_amount`
+	}
+
 	corpID := middleware.GetCorpID(c)
 	monthKey := parsedMonth.Format("2006-01")
+	startDate := time.Date(parsedMonth.Year(), parsedMonth.Month(), 1, 0, 0, 0, 0, time.Local)
+	endDate := startDate.AddDate(0, 1, 0)
 	var items []CustomerMonthlyOutputItem
 	err = h.db.Table("order_items AS oi").
 		Select(fmt.Sprintf(`
@@ -169,14 +201,14 @@ func (h *StatsHandler) GetMonthlyOutputByCustomer(c *gin.Context) {
 				WHEN oi.total_price IS NOT NULL AND oi.total_price > 0 THEN oi.total_price
 				ELSE oi.quantity * oi.unit_price
 			END), 0) AS output_amount,
+			%s,
 			COUNT(DISTINCT o.id) AS order_count,
 			COUNT(oi.id) AS item_count,
 			COALESCE(SUM(oi.quantity), 0) AS part_quantity
-		`)).
+		`, outsourcingSelect)).
 		Joins("JOIN orders AS o ON o.id = oi.order_id").
-		Where(dateColumn+" IS NOT NULL").
-		Where(fmt.Sprintf("DATE_FORMAT(%s, '%%Y-%%m') = ?", dateColumn), monthKey).
 		Where("o.corp_id = ?", corpID).
+		Where(fmt.Sprintf("%s >= ? AND %s < ?", dateColumn, dateColumn), startDate, endDate).
 		Group("o.customer_id").
 		Order("output_amount DESC").
 		Scan(&items).Error
@@ -193,6 +225,7 @@ func (h *StatsHandler) GetMonthlyOutputByCustomer(c *gin.Context) {
 	}
 	for _, item := range items {
 		result.Total += item.OutputAmount
+		result.OutsourcingAmount += item.OutsourcingAmount
 	}
 
 	c.JSON(http.StatusOK, gin.H{
