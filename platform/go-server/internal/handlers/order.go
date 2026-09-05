@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"machining-erp/internal/middleware"
 	"machining-erp/internal/models"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type OrderHandler struct {
@@ -71,6 +73,42 @@ func (h *OrderHandler) List(c *gin.Context) {
 		"total":    result.Total,
 		"page":     page,
 		"pageSize": pageSize,
+	})
+}
+
+// NextNumber 获取当前企业的下一个订单号
+func (h *OrderHandler) NextNumber(c *gin.Context) {
+	orderNumber, err := h.orderNumSvc.Generate(middleware.GetCorpID(c))
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{
+		"code": 0,
+		"data": gin.H{"order_number": orderNumber},
+	})
+}
+
+// GetByID 获取当前企业的完整订单信息
+func (h *OrderHandler) GetByID(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(400, gin.H{"error": "无效的订单ID"})
+		return
+	}
+
+	order, err := h.repo.GetByID(id, middleware.GetCorpID(c))
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(404, gin.H{"error": "订单不存在"})
+		return
+	}
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{
+		"code": 0,
+		"data": order,
 	})
 }
 
@@ -171,7 +209,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 	orderNumber := req.OrderNumber
 	if orderNumber == "" {
 		var err error
-		orderNumber, err = h.orderNumSvc.Generate()
+		orderNumber, err = h.orderNumSvc.Generate(middleware.GetCorpID(c))
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
@@ -179,6 +217,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 	}
 
 	order := &models.Order{
+		CorpID:            middleware.GetCorpID(c),
 		CustomerID:        req.CustomerID,
 		CustomerName:      req.CustomerName,
 		CustomerShortName: req.CustomerShortName,

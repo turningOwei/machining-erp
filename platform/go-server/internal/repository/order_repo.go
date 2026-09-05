@@ -327,6 +327,7 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 		// 插入订单项
 		for i := range items {
 			items[i].OrderID = order.ID
+			items[i].CorpID = order.CorpID
 			// 先保存工序，然后清空避免 GORM 自动插入关联
 			processes := items[i].Processes
 			items[i].Processes = nil
@@ -337,6 +338,7 @@ func (r *OrderRepository) Create(order *models.Order, items []models.OrderItem) 
 			// 插入工序
 			for j := range processes {
 				processes[j].OrderItemID = items[i].ID
+				processes[j].CorpID = order.CorpID
 				processes[j].SortOrder = j
 				if err := tx.Create(&processes[j]).Error; err != nil {
 					return err
@@ -556,10 +558,14 @@ func (r *OrderRepository) Delete(id int64) error {
 	})
 }
 
-// GetByID 根据订单ID获取完整订单信息（包含零件和工序）
-func (r *OrderRepository) GetByID(orderID int64) (*models.Order, error) {
+// GetByID 根据订单ID和企业ID获取完整订单信息（包含零件和工序）
+func (r *OrderRepository) GetByID(orderID, corpID int64) (*models.Order, error) {
 	var order models.Order
-	if err := r.db.First(&order, orderID).Error; err != nil {
+	query := r.db.Where("id = ?", orderID)
+	if corpID > 0 {
+		query = query.Where("corp_id = ?", corpID)
+	}
+	if err := query.First(&order).Error; err != nil {
 		return nil, err
 	}
 

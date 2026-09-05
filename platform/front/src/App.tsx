@@ -46,6 +46,7 @@ import { useOrders } from './hooks/useOrders';
 import * as LucideIcons from 'lucide-react';
 import {
   fetchOrdersApi,
+  fetchOrderByIdApi,
   fetchCustomersApi,
   fetchDashboardDataApiNew,
   fetchInventoryDataApi,
@@ -525,8 +526,27 @@ export default function App() {
     setShowCustomerDropdown(false);
   };
 
-  const resetAndOpenModal = () => {
-    resetAndOpenModalFromHook(setNewOrder, setShowOrderModal);
+  const editOrderById = async (orderId: number) => {
+    try {
+      const order = await fetchOrderByIdApi(orderId);
+      editOrder(order);
+    } catch (error: any) {
+      setErrorTitle('加载订单失败');
+      setErrorMessage(error.message || '未知错误');
+      setShowErrorModal(true);
+    }
+  };
+
+  const resetAndOpenModal = async () => {
+    try {
+      await resetAndOpenModalFromHook(setNewOrder, setShowOrderModal);
+      setCustomerSearch('');
+      setShowCustomerDropdown(false);
+    } catch (error: any) {
+      setErrorTitle('获取订单号失败');
+      setErrorMessage(error.message || '未知错误');
+      setShowErrorModal(true);
+    }
   };
 
   // 获取客户数据
@@ -1004,6 +1024,7 @@ export default function App() {
             setAppliedOrderFilters={setAppliedOrderFilters}
             setCurrentPage={setCurrentPage}
             resetAndOpenModal={resetAndOpenModal}
+            editOrderById={editOrderById}
             fetchData={fetchDashboardData}
             formatDate={formatDate}
           />
@@ -1141,6 +1162,7 @@ export default function App() {
             setAppliedOrderFilters={setAppliedOrderFilters}
             setCurrentPage={setCurrentPage}
             resetAndOpenModal={resetAndOpenModal}
+            editOrderById={editOrderById}
             fetchData={fetchDashboardData}
             formatDate={formatDate}
           />

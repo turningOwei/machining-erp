@@ -174,6 +174,8 @@ func main() {
 
 		// 订单
 		api.GET("/orders", orderHandler.List)
+		api.GET("/orders/next-number", orderHandler.NextNumber)
+		api.GET("/orders/:id", orderHandler.GetByID)
 		api.POST("/orders", orderHandler.Create)
 		api.PATCH("/orders/:id", orderHandler.Update)
 		api.DELETE("/orders/:id", orderHandler.Delete)

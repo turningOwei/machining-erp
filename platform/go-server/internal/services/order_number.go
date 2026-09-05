@@ -17,13 +17,17 @@ func NewOrderNumberService(db *gorm.DB) *OrderNumberService {
 }
 
 // Generate 生成订单号，格式: YHS-YYYYMMDD-XXX
-func (s *OrderNumberService) Generate() (string, error) {
+func (s *OrderNumberService) Generate(corpID int64) (string, error) {
 	today := time.Now().Format("20060102")
 	prefix := fmt.Sprintf("YHS-%s-", today)
 
 	var orderNumbers []string
-	err := s.db.Model(&models.Order{}).
-		Where("order_number LIKE ?", prefix+"%").
+	query := s.db.Model(&models.Order{}).
+		Where("order_number LIKE ?", prefix+"%")
+	if corpID > 0 {
+		query = query.Where("corp_id = ?", corpID)
+	}
+	err := query.
 		Pluck("order_number", &orderNumbers).Error
 	if err != nil {
 		return "", err
@@ -38,5 +42,5 @@ func (s *OrderNumberService) Generate() (string, error) {
 		}
 	}
 
-	return fmt.Sprintf("%s%d", prefix, maxSuffix+1), nil
+	return fmt.Sprintf("%s%03d", prefix, maxSuffix+1), nil
 }

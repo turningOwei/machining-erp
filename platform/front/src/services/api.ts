@@ -17,6 +17,26 @@ export const fetchOrdersApi = async (dateType?: string, page?: number, pageSize?
   };
 };
 
+// 获取单个完整订单
+export const fetchOrderByIdApi = async (orderId: number): Promise<Order> => {
+  const res = await authFetch(`/api/platform/orders/${orderId}`);
+  const result = await res.json();
+  if (!res.ok || !result.data) {
+    throw new Error(result.error || '获取订单信息失败');
+  }
+  return result.data;
+};
+
+// 获取当前企业的下一个订单号
+export const fetchNextOrderNumberApi = async (): Promise<string> => {
+  const res = await authFetch('/api/platform/orders/next-number');
+  const result = await res.json();
+  if (!res.ok || !result.data?.order_number) {
+    throw new Error(result.error || '获取订单号失败');
+  }
+  return result.data.order_number;
+};
+
 // 获取客户数据
 export const fetchCustomersApi = async (): Promise<Customer[]> => {
   const res = await authFetch('/api/platform/customers');

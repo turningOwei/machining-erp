@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { Order, OrderItem, OrderProcess, AdventRule } from '../types';
 import { formatDateForInput, authFetch } from '../components/shared';
+import { fetchNextOrderNumberApi } from '../services/api';
 
 export function useOrders(
   orders: Order[],
@@ -192,27 +193,11 @@ export function useOrders(
   }, []);
 
   // 重置并打开新建订单弹框
-  const resetAndOpenModal = useCallback((
+  const resetAndOpenModal = useCallback(async (
     setNewOrder: (order: Partial<Order>) => void,
     setShowOrderModal: (show: boolean) => void
   ) => {
-    const today = new Date();
-    const dateStr = today.getFullYear().toString() +
-                    (today.getMonth() + 1).toString().padStart(2, '0') +
-                    today.getDate().toString().padStart(2, '0');
-    const prefix = `YHS-${dateStr}-`;
-
-    const todayOrders = orders.filter(o => o.order_number?.startsWith(prefix));
-    let nextSuffix = 1;
-    if (todayOrders.length > 0) {
-      const suffixes = todayOrders.map(o => {
-        const parts = o.order_number!.split('-');
-        const lastPart = parts[parts.length - 1];
-        return parseInt(lastPart) || 0;
-      });
-      nextSuffix = Math.max(...suffixes) + 1;
-    }
-    const generatedOrderNumber = `${prefix}${nextSuffix.toString().padStart(3, '0')}`;
+    const generatedOrderNumber = await fetchNextOrderNumberApi();
 
     setNewOrder({
       priority: 'medium',
@@ -223,7 +208,7 @@ export function useOrders(
       items: [{ part_name: '', quantity: 1, unit_price: 0, processes: [] }]
     } as Partial<Order>);
     setShowOrderModal(true);
-  }, [orders]);
+  }, []);
 
   return {
     getOrderMaxDueDate,

@@ -41,8 +41,9 @@ interface DashboardProps {
   setOrderFilters: (filters: any) => void;
   setAppliedOrderFilters: (filters: any) => void;
   setCurrentPage: (page: number) => void;
-  resetAndOpenModal: () => void;
+  resetAndOpenModal: () => void | Promise<void>;
   editOrder: (order: Order) => void;
+  editOrderById: (orderId: number) => void | Promise<void>;
   setShowDrawingModal: (data: string) => void;
   handleProcessClick: (orderId: number, itemId: number, processId: number, status: string, name: string) => void;
   fetchData: () => void;
@@ -64,7 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   setAppliedOrderFilters,
   setCurrentPage,
   resetAndOpenModal,
-  editOrder,
+  editOrderById,
   setShowDrawingModal,
   handleProcessClick,
   fetchData,
@@ -258,10 +259,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                       <div className="flex items-center gap-2 self-end sm:self-center">
                         <button
-                          onClick={() => {
-                            const order = orders.find(o => o.id === item.order_id);
-                            if (order) editOrder(order);
-                          }}
+                          onClick={() => editOrderById(item.order_id)}
                           className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900"
                           title="修改订单"
                         >
