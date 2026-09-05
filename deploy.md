@@ -2,14 +2,13 @@
 
 ## 构建 (本地)
 
-```bash
-# 前端 — 输出到 out/html/platform/
-cd platform/front && npm run build
+项目根目录已提供 `deploy.bat`，在 CMD 或 PowerShell 中执行：
 
-# 后端 (Windows 交叉编译 Linux) — 输出到 out/server
-cd platform/go-server
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../../out/server ./cmd/server
+```cmd
+deploy.bat
 ```
+
+脚本会依次构建前端、交叉编译 Linux AMD64 后端，并校验后端产物格式；任一步失败都会返回非零退出码。
 
 构建产物统一输出到项目根目录下的 `out/` 文件夹：
 
